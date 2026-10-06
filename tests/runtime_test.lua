@@ -13,6 +13,7 @@ local original=obj('original');local spell=obj('spell');local newer=obj('server-
 spell.GetModulesOfType=function()return{}end
 local record={id='test',name='Test Spell',skill='Woodcutting',level=1,unlocked=true,data=spell,cooldown=0,description='Test'}
 local pc=obj('pc');pc.Pawn=obj('pawn');pc.PlayerState=obj('state');pc.CurrentInputMode=obj('DIM_Gameplay')
+function pc:GetSkillPerkComponent()return obj("perks")end
 function pc:GetProgressComponent()return {IsSpellUnlocked=function()return record.unlocked end}end
 function pc:RefreshInputMode()end
 function pc:SetMouseLocation()end

@@ -1,4 +1,4 @@
--- Read-only MODTEST snapshot, 2026-10-05; Dragonwilds 1.0.
+-- Dragonwilds 1.0 snapshot; ownership verified through native progression, 2026-10-05.
 return {
  {id="USD_AxtralProjection", name="Axtral Projection", skill="Woodcutting", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Woodcutting/PerkV2_Woodcutting_AxtralProjection.PerkV2_Woodcutting_AxtralProjection", level=11, unlocked=false},
  {id="USD_Splinter", name="Splinter", skill="Woodcutting", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Woodcutting/PerkV2_Woodcutting_Splinter.PerkV2_Woodcutting_Splinter", level=27, unlocked=false},
@@ -22,7 +22,6 @@ return {
  {id="USD_FishingFrenzy", name="Fishing Frenzy", skill="Fishing", perk="SkillPerkData /Fishing/Gameplay/Character/Player/PerksV2/Perk_Fishing_Spell_FishingFrenzy.Perk_Fishing_Spell_FishingFrenzy", level=10, unlocked=false},
  {id="USD_InfernalRod", name="Infernal Rod", skill="Fishing", perk="SkillPerkData /Fishing/Gameplay/Character/Player/PerksV2/Perk_Fishing_Spell_InfernalRod.Perk_Fishing_Spell_InfernalRod", level=30, unlocked=false},
  {id="USD_FishCyclone", name="Fishnado", skill="Fishing", perk="SkillPerkData /Fishing/Gameplay/Character/Player/PerksV2/Perk_Fishing_Spell_FishCyclone.Perk_Fishing_Spell_FishCyclone", level=55, unlocked=false},
- {id="USD_Windstep", name="Windstep", skill="Runecrafting", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Runecrafting/PerkV2_Runecraftng_Windstep.PerkV2_Runecraftng_Windstep", level=5, unlocked=false},
  {id="USD_DetectAnimaVents", name="Summon Elemental Spirits", skill="Runecrafting", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Runecrafting/PerkV2_Runecrafting_DetectAnimaVent.PerkV2_Runecrafting_DetectAnimaVent", level=19, unlocked=false},
  {id="USD_HomeTeleport", name="Home Teleport", skill="Runecrafting", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Runecrafting/PerkV2_Runecraftng_HomeTeleport.PerkV2_Runecraftng_HomeTeleport", level=27, unlocked=false},
  {id="USD_FireSpirit", name="Fire Spirit", skill="Runecrafting", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Runecrafting/PerkV2_Runecrafting_FireSpirit.PerkV2_Runecrafting_FireSpirit", level=42, unlocked=false},
@@ -37,6 +36,7 @@ return {
  {id="USD_EnchantWeapon_Water", name="Enchant Weapon: Water", skill="Attack", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Attack/PerkV2_Attack_EnchantWeapon_Water.PerkV2_Attack_EnchantWeapon_Water", level=50, unlocked=false},
  {id="USD_SnareTrap", name="Snare", skill="Ranged", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Ranged/PerkV2_Ranged_SnareTrap.PerkV2_Ranged_SnareTrap", level=12, unlocked=false},
  {id="USD_CorruptionArrows", name="Spectral Arrows", skill="Ranged", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Ranged/PerkV2_Ranged_SpectralArrows.PerkV2_Ranged_SpectralArrows", level=25, unlocked=false},
+ {id="USD_Windstep", name="Windstep", skill="Agility", perk="SkillPerkData /Game/Gameplay/Character/Player/PerksV2/Runecrafting/PerkV2_Runecraftng_Windstep.PerkV2_Runecraftng_Windstep", level=5, unlocked=false},
  {id="USD_PhaseDash", name="Phase Dash", skill="Agility", perk="SkillPerkData /Agility/Gameplay/Character/Player/PerksV2/PerkV2_Agility_Spell_PhaseDash.PerkV2_Agility_Spell_PhaseDash", level=44, unlocked=false},
  {id="USD_Recall", name="Recall", skill="Agility", perk="SkillPerkData /Agility/Gameplay/Character/Player/PerksV2/PerkV2_Agility_Spell_Recall.PerkV2_Agility_Spell_Recall", level=57, unlocked=false},
 }

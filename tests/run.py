@@ -19,11 +19,15 @@ assert(#records == 39 and #groups == 12)
 local checked = 0
 for _,group in ipairs(groups) do
     for _,spell in ipairs(group.spells) do
-        assert(model.skillFromPerk(spell.perk) == group.id, spell.id)
+        assert(spell.skill == group.id, spell.id)
         checked = checked + 1
     end
 end
 assert(checked == 39)
-print('PASS: all 39 live spell records map to their owning skill')
+assert(groups[12].spells[1].id == 'USD_Windstep')
+assert(#groups[8].spells == 4 and #groups[12].spells == 3)
+print('PASS: all 39 progression records, including Windstep in Agility')
 """)
+lua.execute((root / "tests/catalogue_test.lua").read_text())
+lua.execute((root / "tests/layout_test.lua").read_text())
 lua.execute((root / "tests/runtime_test.lua").read_text())

@@ -4,10 +4,23 @@
 
 Open your spell wheel, hover a skill, then move outward to choose its spell.
 Twelve fixed skill positions organize all 39 current perk spells. Native icons,
-gold highlights, a short fade, and a dedicated description panel keep the wheel
-readable without covering neighboring spells with tooltips.
+large icons and gold highlights keep navigation clear. Numbered outer slots match
+a spell list beside the wheel; full names and descriptions stay in that panel.
 
-Version **0.1.0 — keyboard/mouse beta**. Tested in TRADE_TEST as TradeTester.
+Version **0.2.0 — keyboard/mouse beta**. Tested in TRADE_TEST as TradeTester.
+
+## What changed in 0.2.0
+
+Windstep is now under **Agility**, alongside Phase Dash and Recall. Jagex moved
+it in [update 0.12.1](https://dragonwilds.runescape.com/news/0.12.1-update);
+its asset filename retained the old skill. This release reads the native
+progression lists for all skills instead of inferring ownership from filenames.
+All 39 current assignments were checked against that progression data.
+
+The wheel now uses larger icons and compact slot numbers. A matching spell list
+keeps full names and required levels in a fixed panel, with separate space for
+the selected spell's description, cost, cooldown and feedback. Text is fitted
+using the game's rendered font metrics. No full spell name crosses a wheel slice.
 
 ## Controls
 
@@ -69,9 +82,12 @@ Native server updates take precedence over a pending restoration.
 Verified on 2026-10-05, Dragonwilds 1.0 / UE 5.6, Windows UE4SS:
 
 - Live catalogue: 39 perk spells across 12 skills, including Fishing/Agility
-  plugin content and the game's `Runecraftng` naming typo.
+  plugin content. Ownership comes from native skill progression: **Windstep is
+  Agility**, even though its old asset name still says Runecrafting.
 - Custom UMG rendering at 1920×1080, native skill/spell icons, neutral open,
-  descriptions, rune/cooldown information, and locked-state rendering.
+  descriptions, rune/cooldown information, and locked-state rendering. The 0.2.0
+  sweep measured all 52 views (neutral, 12 skills, 39 spells) with zero text
+  overflows; screenshots of every branch were inspected.
 - Real mouse selection: Windstep instant cast, Axtral Projection aim/confirm,
   and Recall advanced-movement targeting/confirmation.
 - Summon Shelter enters the correct native placement preview; blocked ground
@@ -82,7 +98,8 @@ Verified on 2026-10-05, Dragonwilds 1.0 / UE 5.6, Windows UE4SS:
   the fourth book and empty slots. Locked selection was also tested using a
   temporary UI fixture after unlocking the test character for icon discovery.
 - Standalone UE4SS startup and re-entry to TRADE_TEST (see test report).
-- Lua syntax, 58 radial checks, the 39-record catalogue snapshot, and native
+- Lua syntax, 66 radial/catalogue checks, 2,340 layout checks, the 39-record
+  progression snapshot, and native
   adapter simulations for rejection, aim/cancel, slot offsets, empty slots,
   concurrent server updates, locked/dead-zone selection and shutdown.
 
@@ -101,8 +118,8 @@ test fixture, test-character unlock or inventory change runs in a normal install
 Tests and artwork/package tools are in the source repository and excluded from
 the installable ZIP.
 
-Source: `Scripts/model.lua` (geometry/catalogue), `catalogue.lua` (safe asset
-reads), `view.lua` (reusable UMG), `icons.lua` (native asset paths), `main.lua`
+Source: `Scripts/model.lua` (geometry/catalogue), `catalogue.lua` (native skill
+progression), `layout.lua` (shared bounds), `view.lua` (measured, reusable UMG), `icons.lua` (native asset paths), `main.lua`
 (native lifecycle/input/casting adapter). Widgets are hidden and reused rather
 than detached. All engine calls run on the game thread.
 

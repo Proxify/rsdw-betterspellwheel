@@ -1,4 +1,4 @@
-# SpellBranches 0.1.0 test report
+# SpellBranches 0.2.0 test report
 
 2026-10-05. Dragonwilds 1.0 / UE 5.6, Windows client with project UE4SS build.
 Only TradeTester in TRADE_TEST was used for client mutations. MODTEST was used
@@ -9,9 +9,14 @@ for the earlier read-only spell catalogue investigation.
 `/tmp/luav/bin/python mods/SpellBranches/tests/run.py` passed:
 
 - Every Lua source/fixture compiles with Lua 5.4.
-- 58 model checks: boundaries, dead zones, angular wrap, skill dwell/hysteresis,
+- 66 model checks: boundaries, dead zones, angular wrap, skill dwell/hysteresis,
   branch latching, lock handling, stable order, pagination and catalogue filtering.
-- All 39 captured spell records map to the correct owning skill.
+- All 39 captured spell records map through native progression, including Windstep
+  in Agility. The prior filename-based assertion missed this reassignment.
+- Native-progression fixture verifies legacy asset names and localized skill names
+  cannot change ownership; missing progression fails closed.
+- 2,340 layout checks cover the corners of every skill/spell icon and number box,
+  including branch sizes 1–6 in all 12 orientations, plus panel text separation.
 - The real `main.lua` runs against a native-UI simulation: rejection preserves
   slots, aimed selection stays substituted until targeting ends, cancellation,
   second/fourth book offsets, empty slot restoration, newer server update wins,
@@ -20,14 +25,40 @@ for the earlier read-only spell catalogue investigation.
 
 The simulation does not substitute for the live tests below.
 
-## Live tests passed
+## Live 0.2.0 verification
+
+- Read-only native progression audit: all 39 spells; counts 3/3/4/3/4/2/3/4/4/4/2/3
+  in the wheel's fixed skill order. Only Windstep differed from the 0.1.0 mapping.
+  Agility owns Windstep (5), Phase Dash (44), Recall (57); Runecrafting has four.
+- `tests/live_layout.lua`: real pointer movement through 52 states (neutral,
+  all 12 skills, all 39 spells). Slate `GetDesiredSize` measured every visible
+  text node: **zero overflows**, with the expected skill/spell selected each time.
+  Results are preserved in `tests/live-layout-result.txt`.
+- Real mouse sweep and screenshot review of all 12 branches at 1920×1080.
+  Full names are confined to the roster/detail panel. Icons and compact numbers
+  stay within their wheel wedges. Uproot and Summon Elemental Spirits checked.
+- Real LMB on **Agility → Windstep** produced a new native Windstep cast-map
+  timestamp; returned to gameplay with all 48 spellbook entries preserved.
+
+- UI-only locked Recall fixture: click denied, dim icon and feedback visible,
+  no text overflow and all 48 slots unchanged. Fresh open resets the fixture.
+- Real RMB back, Q/Escape close and repeated opening passed; cursor/gameplay input
+  restored after close. Final view is Agility → Windstep with the fixture cleared.
+
+The first text sweep caught a two-pixel height shortage in the neutral help
+paragraph. Its box was enlarged, then all 52 states were swept again successfully.
+
+## Earlier 0.1.0 live casting coverage
+
+The casting adapter is unchanged. These checks were recorded before the visual
+redesign; they are retained as prior coverage, not claimed as new 0.2.0 reruns.
 
 | Scenario | Evidence |
 | --- | --- |
 | Catalogue and art | 39 perk spells/12 skills; native paths for all icons loaded; screenshots inspected |
 | Default Q open | Native open detected; centered cursor; neutral custom wheel; no automatic cast |
 | Skill/branch navigation | Real pointer movement; branch remains attached outside inner ring; RMB returns to skills without immediately reopening the branch |
-| Instant cast | Real LMB on Runecrafting → Windstep; `LastCastTimeBySpellData` recorded Windstep; original slot restored |
+| Instant cast | Real LMB on Windstep (incorrectly grouped in 0.1.0); `LastCastTimeBySpellData` recorded Windstep; original slot restored |
 | Aimed cast | Real LMB on Woodcutting → Axtral Projection; native prepared data matches Axtral; real confirmation recorded Axtral in cast map; all 48 slot values restored |
 | Advanced movement cast | Agility → Recall enters `DIM_SpellPlacementModeAdvancedMovement`, retains the Recall slot through movement/confirmation, records Recall in the cast map, and restores all 48 slots on return to gameplay |
 | Placed spell | Construction → Summon Shelter enters native placement preview with correct prepared data; native BLOCKED feedback remains; Escape restores all 48 slots |

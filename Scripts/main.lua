@@ -1,9 +1,9 @@
--- SpellBranches 0.1.0. Client UI; casting remains entirely native.
+-- SpellBranches 0.2.0. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'SpellBranches must run from its Scripts directory')
 if _G.SpellBranches and _G.SpellBranches.shutdown then _G.SpellBranches.shutdown() end
-local M={version='0.1.0',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.2.0',open=false,folder=folder,disabled=false,queue={}}
 _G.SpellBranches=M
 local model=dofile(folder..'/Scripts/model.lua')
 local catalogue=dofile(folder..'/Scripts/catalogue.lua')(model)
@@ -25,13 +25,15 @@ E.layout=StaticFindObject('/Script/UMG.Default__WidgetLayoutLibrary')
 E.render=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
 E.clock=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
-local view=dofile(folder..'/Scripts/view.lua')(E,model)
+local layout=dofile(folder..'/Scripts/layout.lua')
+local view=dofile(folder..'/Scripts/view.lua')(E,model,layout)
 local function log(s) print('[SpellBranches] '..s..'\n') end
 local cfg={Enabled=true}
 local file=io.open(folder..'/config.txt','r')
 if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' end end;file:close() end
 local pc,radial,panel,input,component,ui,state,pending
 local lastTime,frame,elapsed=0,0,0
+function M.auditLayout() return ui and ui.audit() or {'wheel not built'} end
 local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
 local function controls(on)
  pc.bShowMouseCursor=on
@@ -84,7 +86,7 @@ local function bindWorld()
 end
 local function open()
  restore()
- local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end)
+ local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
  if #errors>0 then log('Catalogue skipped '..#errors..' unavailable records') end
  state=model.new(groups);M.state=state
  -- Build before suppressing the native wheel, so a missing asset fails open.

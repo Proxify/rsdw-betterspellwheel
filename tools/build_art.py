@@ -30,7 +30,8 @@ def sector(name,ri,ro,angle,active):
         pts=[point(a+0.7+(b-a-1.4)*i/60,radius,c) for i in range(61)]
         d.line(pts,fill=(*GOLD,90 if active else 35),width=S)
     mid=(a+b)/2
-    d.polygon([point(mid,ro-10,c),point(mid-0.9,ro-15,c),point(mid,ro-20,c),point(mid+0.9,ro-15,c)],fill=(*GOLD,210 if active else 90))
+    if name.startswith('skill'):
+        d.polygon([point(mid,ro-10,c),point(mid-0.9,ro-15,c),point(mid,ro-20,c),point(mid+0.9,ro-15,c)],fill=(*GOLD,210 if active else 90))
     if active:
         light=Image.new('RGBA',im.size); ld=ImageDraw.Draw(light)
         ld.line(poly(a,b,ri,ro,c)+[point(a,ro,c)],fill=(*GOLD,110),width=3*S,joint='curve')

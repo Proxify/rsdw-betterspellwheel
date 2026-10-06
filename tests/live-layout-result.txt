@@ -1,0 +1,53 @@
+Neutral: PASS
+Woodcutting: PASS
+Woodcutting / Axtral Projection: PASS
+Woodcutting / Splinter: PASS
+Woodcutting / Trunk Totem: PASS
+Mining: PASS
+Mining / Rocksplosion: PASS
+Mining / Summon Stone Spirits: PASS
+Mining / Divine Rock: PASS
+Artisan: PASS
+Artisan / Bark to Bones: PASS
+Artisan / Superheat: PASS
+Artisan / Overdrive: PASS
+Artisan / Magical Mending: PASS
+Construction: PASS
+Construction / Eye Of Oculus: PASS
+Construction / Summon Shelter: PASS
+Construction / Personal Chest: PASS
+Farming: PASS
+Farming / Uproot: PASS
+Farming / Humidify: PASS
+Farming / Rapid Growth: PASS
+Farming / Mucksplosion: PASS
+Cooking: PASS
+Cooking / Internal Alchemy: PASS
+Cooking / Bones to Peaches: PASS
+Fishing: PASS
+Fishing / Fishing Frenzy: PASS
+Fishing / Infernal Rod: PASS
+Fishing / Fishnado: PASS
+Runecrafting: PASS
+Runecrafting / Summon Elemental Spirits: PASS
+Runecrafting / Home Teleport: PASS
+Runecrafting / Fire Spirit: PASS
+Runecrafting / Runes To Rune Essence: PASS
+Magic: PASS
+Magic / Surge: PASS
+Magic / Confuse: PASS
+Magic / Enfeeble: PASS
+Magic / Vengeance: PASS
+Attack: PASS
+Attack / Tempest Shield: PASS
+Attack / Enchant Weapon: Fire: PASS
+Attack / Enchant Weapon: Air: PASS
+Attack / Enchant Weapon: Water: PASS
+Ranged: PASS
+Ranged / Snare: PASS
+Ranged / Spectral Arrows: PASS
+Agility: PASS
+Agility / Windstep: PASS
+Agility / Phase Dash: PASS
+Agility / Recall: PASS
+TOTAL: 52 states, 0 errors

@@ -1,14 +1,16 @@
--- Run through srvr on MODTEST. Read-only: no characters, saves or inventories
+-- Run through the SpellBranches client console as TradeTester. Read-only: no characters, saves or inventories
 -- are changed. Pass only after copying this mod to D:\rsdw-mods\mods.
 local root = "D:/rsdw-mods/mods/SpellBranches/"
 local model = dofile(root.."Scripts/model.lua")
 local catalogue = dofile(root.."Scripts/catalogue.lua")(model)
-local groups, errors = catalogue.scan()
+local pc=FindFirstOf("BP_PlayerController_C")
+assert(pc:IsValid() and pc.PlayerState:GetPlayerName():ToString():lower()=="tradetester", "test character required")
+local groups, errors = catalogue.scan(nil,pc:GetSkillPerkComponent())
 assert(#errors == 0, table.concat(errors, "\n"))
 local expected = {Woodcutting=3, Mining=3, Artisan=4, Construction=3, Farming=4,
-    Cooking=2, Fishing=3, Runecrafting=5, Magic=4, Attack=4, Ranged=2, Agility=2}
+    Cooking=2, Fishing=3, Runecrafting=4, Magic=4, Attack=4, Ranged=2, Agility=3}
 local count, report, seen = 0, {}, {}
-local fixture = {"-- Read-only MODTEST snapshot, 2026-10-05; Dragonwilds 1.0.", "return {"}
+local fixture = {"-- Dragonwilds 1.0 snapshot; ownership verified through native progression, 2026-10-05.", "return {"}
 for _,group in ipairs(groups) do
     assert(#group.spells == expected[group.id], "unexpected spell count: "..group.id)
     assert(group.available == 0, "scan without player must fail closed")

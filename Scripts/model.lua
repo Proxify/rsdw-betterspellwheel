@@ -29,16 +29,12 @@ function M.delta(a, b) return (a - b + math.pi) % TAU - math.pi end
 function M.point(angle, radius) return math.sin(angle)*radius, -math.cos(angle)*radius end
 function M.skillAngle(index, count) return (index - 1) * TAU / count end
 
--- OwningPerk names were read from the live 1.0 server. No soft pointer
--- marshalling: that crashes this UE4SS build. Match whole tokens, including
--- the Fishing and Agility plugin assets and the game's "Runecraftng" typo.
-function M.skillFromPerk(path)
-    if type(path) ~= "string" then return nil end
-    local name = path:match("%.([^%.]+)$") or path:match("([^/]+)$") or path
-    local id = name:match("^PerkV2_([^_]+)_") or name:match("^Perk_([^_]+)_")
-    if id == "Runecraftng" then id = "Runecrafting" end
-    return skillById[id] and id or nil
-end
+-- Reflected ESkill values in Dragonwilds 1.0. Perk asset names can be
+-- historical (Windstep still says Runecrafting); progression owns the mapping.
+local skillTypes = { [1]="Agility", [2]="Artisan", [3]="Attack", [4]="Construction",
+    [5]="Cooking", [8]="Magic", [9]="Mining", [10]="Ranged", [11]="Runecrafting",
+    [13]="Woodcutting", [14]="Farming", [16]="Fishing" }
+function M.skillFromType(value) return skillTypes[value] end
 
 -- Records contain only plain Lua values, apart from an opaque engine data
 -- handle stored by the caller. Read unlock state afresh on each open.
@@ -50,7 +46,7 @@ function M.catalogue(records)
         lookup[skill.id] = groups[i]
     end
     for _, record in ipairs(records) do
-        local id = record.skill or M.skillFromPerk(record.perk)
+        local id = record.skill
         local group = lookup[id]
         if group and type(record.id) == "string" and record.id ~= ""
             and type(record.name) == "string" and record.name ~= ""

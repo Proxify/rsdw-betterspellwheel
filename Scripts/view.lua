@@ -1,159 +1,188 @@
--- Reusable UMG tree. Geometry, pointer hit tests and art use one design space.
--- No widget is detached after creation (focused-widget removal crashes UE4SS).
-return function(E, model)
+-- Reusable, measured UMG layout. No widget is detached after creation.
+return function(E, model, L)
  local R={}
- local GOLD={R=.82,G=.70,B=.44,A=1}
- local INK={R=.72,G=.75,B=.72,A=1}
- local WHITE={R=.93,G=.91,B=.82,A=1}
- local RED={R=.89,G=.43,B=.36,A=1}
-  function R.new(pc,folder,icons)
-  local u={pc=pc,skills={},spells={},textures={},last=""}
-  u.root=E.create(pc,"/Game/UI/Panels/WBP_Panel.WBP_Panel_C")
+ local GOLD={R=.86,G=.73,B=.46,A=1}
+ local MUTED={R=.56,G=.63,B=.65,A=1}
+ local WHITE={R=.92,G=.92,B=.85,A=1}
+ local RED={R=.95,G=.49,B=.42,A=1}
+ function R.new(pc,folder,icons)
+  local u={pc=pc,skills={},spells={},rows={},textures={},last='',textNodes={}}
+  u.root=E.create(pc,'/Game/UI/Panels/WBP_Panel.WBP_Panel_C')
   local tree=u.root.WidgetTree
-  local function widget(name) return StaticConstructObject(E.class("/Script/UMG."..name),tree) end
-  local rootCanvas=widget("CanvasPanel");tree.RootWidget=rootCanvas
-  local function place(parent,w,x,y,width,height)
-   local s=parent:AddChildToCanvas(w);s:SetPosition({X=x,Y=y});s:SetSize({X=width,Y=height});return s
+  local function widget(name) return StaticConstructObject(E.class('/Script/UMG.'..name),tree) end
+  local rootCanvas=widget('CanvasPanel');tree.RootWidget=rootCanvas
+  local function place(parent,w,b,z)
+   local s=parent:AddChildToCanvas(w);s:SetPosition({X=b.x,Y=b.y});s:SetSize({X=b.w,Y=b.h});s:SetZOrder(z or 0);return s
   end
-  local dim=widget("Image");dim:SetColorAndOpacity({R=.015,G=.022,B=.028,A=.88})
+  local dim=widget('Image');dim:SetColorAndOpacity({R=.012,G=.022,B=.028,A=.96})
   local ds=rootCanvas:AddChildToCanvas(dim)
-  ds:SetAnchors({Minimum={X=0,Y=0},Maximum={X=1,Y=1}})
-  ds:SetOffsets({Left=0,Top=0,Right=0,Bottom=0});dim:SetVisibility(3)
-  u.canvas=widget("CanvasPanel")
+  ds:SetAnchors({Minimum={X=0,Y=0},Maximum={X=1,Y=1}});ds:SetOffsets({Left=0,Top=0,Right=0,Bottom=0});dim:SetVisibility(3)
+  u.canvas=widget('CanvasPanel')
   local cs=rootCanvas:AddChildToCanvas(u.canvas)
-  cs:SetAnchors({Minimum={X=.5,Y=.5},Maximum={X=.5,Y=.5}})
-  cs:SetAlignment({X=.5,Y=.5});cs:SetSize({X=1440,Y=960})
+  cs:SetAnchors({Minimum={X=.5,Y=.5},Maximum={X=.5,Y=.5}});cs:SetAlignment({X=.5,Y=.5});cs:SetSize({X=L.width,Y=L.height})
   u.canvas:SetRenderTransformPivot({X=.5,Y=.5})
-  local function img(texture,x,y,w,h)
-   local im=widget("Image");im:SetVisibility(3)
+  local function img(texture,b,z)
+   local im=widget('Image');im:SetVisibility(3)
    if E.valid(texture) then im:SetBrushFromTexture(texture,false) end
-   place(u.canvas,im,x,y,w,h);return im
+   place(u.canvas,im,b,z);return im
   end
   local fonts={}
-  local function text(value,x,y,w,h,size,style,color,center)
+  local function text(value,b,size,style,color,center,wrap,id)
    if not fonts[style] then
-    local donor=StaticConstructObject(E.class("/Game/UI/Common/WBP_DomTextBlock.WBP_DomTextBlock_C"),tree)
-    donor:SetStyle(E.class("/Game/UI/Styles/Texts/CUIS_"..style..".CUIS_"..style.."_C"))
-    fonts[style]=donor
+    local donor=StaticConstructObject(E.class('/Game/UI/Common/WBP_DomTextBlock.WBP_DomTextBlock_C'),tree)
+    donor:SetStyle(E.class('/Game/UI/Styles/Texts/CUIS_'..style..'.CUIS_'..style..'_C'));fonts[style]=donor
    end
-   local tb=widget("TextBlock")
-   local font=fonts[style].Font;font.Size=size;font.LetterSpacing=0;tb:SetFont(font)
-   tb:SetText(FText(value));tb:SetAutoWrapText(true)
-   tb:SetColorAndOpacity({SpecifiedColor=color or INK,ColorUseRule=0})
-   tb:SetJustification(center and 1 or 0);tb:SetVisibility(3)
-   local slot=place(u.canvas,tb,x,y,w,h);slot:SetZOrder(20);return tb
+   local tb=widget('TextBlock')
+   local f=fonts[style].Font;f.Size=size;f.LetterSpacing=0;tb:SetFont(f)
+   tb.WrapTextAt=wrap and b.w or 0;tb:SetAutoWrapText(wrap==true)
+   tb:SetText(FText(value));tb:SetColorAndOpacity({SpecifiedColor=color or MUTED,ColorUseRule=0})
+   tb:SetJustification(center and 1 or 0);tb:SetClipping(1);tb:SetVisibility(3)
+   place(u.canvas,tb,b,20)
+   u.textNodes[#u.textNodes+1]={widget=tb,box=b,id=id or value}
+   return tb
   end
-  function u.set(tb,value,color)
+  local function set(tb,value,color)
    tb:SetText(FText(value))
    if color then tb:SetColorAndOpacity({SpecifiedColor=color,ColorUseRule=0}) end
   end
+  local function fit(tb,value,b,size,minimum,color)
+   set(tb,value,color)
+   -- Measure actual Slate font metrics instead of estimating text by length.
+   for n=size,minimum or size,-1 do
+    local f=tb.Font;f.Size=n;tb:SetFont(f);tb:ForceLayoutPrepass()
+    local d=tb:GetDesiredSize()
+    if d.X<=b.w+.5 and d.Y<=b.h+.5 then break end
+   end
+  end
   function u.texture(path)
-   if not path or path=="" then return nil end
+   if not path or path=='' then return nil end
    if not E.valid(u.textures[path]) then u.textures[path]=E.asset(path) end
    return u.textures[path]
   end
-  for _,n in ipairs({"skill","skill_active","spell","spell_active","center"}) do
-   local t=E.render:ImportFileAsTexture2D(pc,folder.."/Assets/"..n..".png")
-   assert(E.valid(t),"missing ring artwork: "..n);u.textures[n]=t
+  for _,n in ipairs({'skill','skill_active','spell','spell_active','center'}) do
+   local t=E.render:ImportFileAsTexture2D(pc,folder..'/Assets/'..n..'.png')
+   assert(E.valid(t),'missing ring artwork: '..n);u.textures[n]=t
   end
-  text("S P E L L B R A N C H E S",250,6,500,35,24,"PlayerListTitleTextStyle",GOLD,true)
-  text("YOUR SKILLS.  YOUR MAGIC.",260,45,480,30,12,"DescriptionTextStyle",INK,true)
-  -- Ring images are rotated around the same center as the pointer model.
+  text('S P E L L B R A N C H E S',{x=962,y=8,w=396,h=58},22,'PlayerListTitleTextStyle',GOLD,true,false,'brand')
+  text('CHOOSE A SKILL.  FOLLOW ITS MAGIC.',{x=962,y=72,w=396,h=26},10,'DescriptionTextStyle',MUTED,true,false,'tagline')
+  local ring={x=76,y=56,w=848,h=848}
   for i,g in ipairs(model.skills) do
-   local angle=model.skillAngle(i,#model.skills)
-   local base=img(u.textures.skill,76,56,848,848);base:SetRenderTransformAngle(math.deg(angle))
-   local hi=img(u.textures.skill_active,76,56,848,848);hi:SetRenderTransformAngle(math.deg(angle));hi:SetRenderOpacity(0)
-   local x,y=model.point(angle,model.geometry.skillRadius-9)
-   local icon=img(u.texture(icons.skills[g.id]),500+x-23,480+y-31,46,46);icon.Slot:SetZOrder(10)
-   local label=text(g.label:upper(),500+x-72,480+y+19,144,30,12,"DescriptionTextStyle",INK,true)
-   u.skills[i]={base=base,highlight=hi,icon=icon,label=label,alpha=0}
+   local a=model.skillAngle(i,#model.skills)
+   local base=img(u.textures.skill,ring);base:SetRenderTransformAngle(math.deg(a))
+   local hi=img(u.textures.skill_active,ring);hi:SetRenderTransformAngle(math.deg(a));hi:SetRenderOpacity(0)
+   local icon=img(u.texture(icons.skills[g.id]),L.icon(model,a,model.geometry.skillRadius,64),10)
+   u.skills[i]={highlight=hi,icon=icon,alpha=0}
   end
   for i=1,model.geometry.maxBranch do
-   local b=img(u.textures.spell,76,56,848,848)
-   local h=img(u.textures.spell_active,76,56,848,848)
-   local icon=img(nil,0,0,48,48);icon.Slot:SetZOrder(10)
-   local label=text("",0,0,140,48,12,"PlayerListDescriptionTextStyle",WHITE,true)
-   local level=text("",0,0,100,22,11,"DescriptionTextStyle",INK,true)
-   u.spells[i]={base=b,highlight=h,icon=icon,label=label,level=level,alpha=0}
-   for _,w in ipairs({b,h,icon,label,level}) do w:SetVisibility(2) end
+   local b=img(u.textures.spell,ring);local h=img(u.textures.spell_active,ring)
+   local icon=img(nil,{x=0,y=0,w=64,h=64},10)
+   local number=text(tostring(i),{x=0,y=0,w=22,h=28},12,'DescriptionTextStyle',MUTED,true,false,'wheel number '..i)
+   u.spells[i]={base=b,highlight=h,icon=icon,number=number,alpha=0}
+   for _,w in ipairs({b,h,icon,number}) do w:SetVisibility(2) end
   end
-  img(u.textures.center,76,56,848,848)
-  u.centerIcon=img(nil,476,411,48,48);u.centerIcon:SetVisibility(2)
-  u.centerTitle=text("CHOOSE A SKILL",396,472,208,56,18,"PlayerListTitleTextStyle",GOLD,true)
-  u.centerMeta=text("Move outward to explore",412,534,176,40,12,"PlayerListDescriptionTextStyle",INK,true)
-  -- Details stay in one place; long spell names never cover neighboring slices.
-  local line=img(nil,950,292,400,1);line:SetColorAndOpacity({R=.78,G=.64,B=.38,A=.55})
-  u.eyebrow=text("SKILL SPELLBOOK",950,242,400,44,13,"DescriptionTextStyle",GOLD)
-  u.title=text("Choose a skill",950,319,400,110,32,"HeaderTextStyle",WHITE)
-  u.body=text("Hover a skill to reveal its spells. Move into the outer ring to choose one.",950,435,400,215,18,"PlayerListDescriptionTextStyle",INK)
-  u.cost=text("",950,675,400,72,15,"PlayerListDescriptionTextStyle",GOLD)
-  u.status=text("",950,770,400,75,16,"PlayerListDescriptionTextStyle",INK)
-  local lower=img(nil,950,858,400,1);lower:SetColorAndOpacity({R=.78,G=.64,B=.38,A=.35})
-  text("DISCOVER • SELECT • CAST",950,883,400,24,12,"DescriptionTextStyle",INK)
-  u.hint=text("LMB  Select spell     RMB  Back to skills     Q / ESC  Close",205,920,1110,36,14,"WorldInputLabelStyle",INK,true)
+  img(u.textures.center,ring)
+  u.centerIcon=img(nil,{x=472,y=398,w=56,h=56},10);u.centerIcon:SetVisibility(2)
+  local centerTitleBox={x=394,y=478,w=212,h=42}
+  u.centerTitle=text('Choose a skill',centerTitleBox,20,'PlayerListTitleTextStyle',GOLD,true,false,'center title')
+  u.centerMeta=text('Move onto an icon',{x=410,y=531,w=180,h=46},12,'PlayerListDescriptionTextStyle',MUTED,true,true,'center meta')
+  local panel=img(nil,L.panel);panel:SetColorAndOpacity({R=.02,G=.035,B=.045,A=.78})
+  local border=img(nil,{x=942,y=110,w=2,h=800});border:SetColorAndOpacity({R=.66,G=.52,B=.29,A=.6})
+  u.heading=text('YOUR SPELLBOOK',L.heading,24,'HeaderTextStyle',WHITE,false,false,'heading')
+  u.meta=text('Twelve skills. One gesture.',L.meta,12,'DescriptionTextStyle',MUTED,false,false,'meta')
+  for i=1,model.geometry.maxBranch do
+   local b,nb,tb,lb=L.row(i)
+   local bg=img(nil,b);bg:SetColorAndOpacity({R=.19,G=.16,B=.09,A=.85})
+   local number=text(tostring(i),nb,15,'PlayerListDescriptionTextStyle',GOLD,false,false,'row number '..i)
+   local title=text('',tb,16,'PlayerListDescriptionTextStyle',WHITE,false,false,'row title '..i)
+   local level=text('',lb,11,'DescriptionTextStyle',MUTED,false,false,'row level '..i)
+   u.rows[i]={bg=bg,number=number,title=title,level=level,titleBox=tb}
+   for _,w in ipairs({bg,number,title,level}) do w:SetVisibility(2) end
+  end
+  u.empty=text('Hover an inner icon to explore a skill.\n\nIts spells appear in the outer ring.\nThe numbers match this list.',{x=962,y=244,w=380,h=224},17,'PlayerListDescriptionTextStyle',MUTED,false,true,'intro')
+  local divider=img(nil,{x=962,y=489,w=396,h=1});divider:SetColorAndOpacity({R=.66,G=.52,B=.29,A=.6})
+  u.title=text('Find your next spell.',L.title,25,'HeaderTextStyle',GOLD,false,true,'spell title')
+  u.body=text('Move outward to select a spell. Click to use the game\'s normal casting controls.',L.body,16,'PlayerListDescriptionTextStyle',WHITE,false,true,'description')
+  u.cost=text('',L.cost,13,'PlayerListDescriptionTextStyle',MUTED,false,true,'cost')
+  u.status=text('',L.status,13,'PlayerListDescriptionTextStyle',GOLD,false,true,'status')
+  u.hint=text('LMB  Select     RMB  Back     Q / ESC  Close',{x=300,y=920,w=1040,h=28},13,'WorldInputLabelStyle',MUTED,true,false,'controls')
   u.root:SetVisibility(2);u.root:AddToViewport(9000)
   function u.resize()
    local v=E.layout:GetViewportSize(pc);local dpi=E.layout:GetViewportScale(pc)
-   u.width,u.height=v.X/dpi,v.Y/dpi
-   u.scale=math.min(u.width/1480,u.height/1010)
+   u.width,u.height=v.X/dpi,v.Y/dpi;u.scale=math.min(u.width/1480,u.height/1010)
    u.canvas:SetRenderScale({X=u.scale,Y=u.scale})
   end
   function u.pointer()
    local m=E.layout:GetMousePositionOnViewport(pc)
-   return (m.X-u.width/2)/u.scale+720-500,(m.Y-u.height/2)/u.scale+480-480
+   return (m.X-u.width/2)/u.scale+L.width/2-L.cx,(m.Y-u.height/2)/u.scale+L.height/2-L.cy
   end
-  function u.hide() u.root:SetVisibility(2);u.last="" end
-  function u.show() u.resize();u.root:SetVisibility(3);u.root:SetRenderOpacity(0);u.fade=0;u.last="" end
-  function u.draw(state,dt,message,cost,status)
-   u.fade=math.min(1,(u.fade or 0)+dt/0.12);u.root:SetRenderOpacity(u.fade)
-   local group=state.groups[state.group]
-   local spell=group and group.spells[state.spell]
-   for i,node in ipairs(u.skills) do
-    local target=i==state.group and 1 or 0
-    node.alpha=node.alpha+(target-node.alpha)*math.min(1,dt*20)
-    node.highlight:SetRenderOpacity(node.alpha)
+  function u.hide() u.root:SetVisibility(2);u.last='' end
+  function u.show() u.resize();u.root:SetVisibility(3);u.root:SetRenderOpacity(0);u.fade=0;u.last='';u.branchKey='' end
+  function u.audit()
+   u.root:ForceLayoutPrepass()
+   local errors={}
+   for _,n in ipairs(u.textNodes) do
+    if n.widget:GetVisibility()==3 then
+     local size=n.widget:GetDesiredSize()
+     if size.X>n.box.w+.5 or size.Y>n.box.h+.5 then errors[#errors+1]=n.id..': '..size.X..'x'..size.Y..' > '..n.box.w..'x'..n.box.h end
+    end
    end
-   local key=tostring(state.group)..":"..state.page..":"..tostring(state.spell)..":"..tostring(message)..":"..tostring(cost)..":"..tostring(status)
+   return errors
+  end
+  function u.draw(state,dt,message,cost,status)
+   u.fade=math.min(1,(u.fade or 0)+dt/.12);u.root:SetRenderOpacity(u.fade)
+   local group=state.groups[state.group];local spell=group and group.spells[state.spell]
+   for i,n in ipairs(u.skills) do
+    local target=i==state.group and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*20);n.highlight:SetRenderOpacity(n.alpha)
+    n.icon:SetRenderOpacity((not group or i==state.group) and 1 or .65)
+   end
+   local branchKey=tostring(state.group)..':'..state.page
+   if branchKey~=u.branchKey then u.branchKey=branchKey;u.branchFade=0 end
+   u.branchFade=math.min(1,(u.branchFade or 0)+dt/.1)
+   local key=branchKey..':'..tostring(state.spell)..':'..tostring(message)..':'..tostring(cost)..':'..tostring(status)
    if key~=u.last then
     u.last=key
     local b=model.branch(state)
-    for i,node in ipairs(u.spells) do
-     local visible=b and i<=b.count
-     for _,w in ipairs({node.base,node.highlight,node.icon,node.label,node.level}) do w:SetVisibility(visible and 3 or 2) end
+    for i,n in ipairs(u.spells) do
+     local row=u.rows[i];local visible=b and i<=b.count
+     for _,w in ipairs({n.base,n.highlight,n.icon,n.number,row.number,row.title,row.level}) do w:SetVisibility(visible and 3 or 2) end
+     row.bg:SetVisibility(visible and state.spell==b.first+i-1 and 3 or 2)
      if visible then
-      local d=group.spells[b.first+i-1]
-      local angle=b.center-b.span/2+b.step*(i-.5)
-      local x,y=model.point(angle,model.geometry.spellRadius-12)
-      node.base:SetRenderTransformAngle(math.deg(angle));node.highlight:SetRenderTransformAngle(math.deg(angle))
-      node.highlight:SetRenderOpacity(state.spell==b.first+i-1 and 1 or 0)
-      local t=u.texture(icons.spells[d.id]) or u.texture(icons.skills[group.id])
-      if E.valid(t) then node.icon:SetBrushFromTexture(t,false) end
-      node.icon:SetRenderOpacity(d.unlocked and 1 or .34)
-      node.icon.Slot:SetPosition({X=500+x-24,Y=480+y-40})
-      node.label.Slot:SetPosition({X=500+x-70,Y=480+y+12})
-      node.level.Slot:SetPosition({X=500+x-50,Y=480+y-62})
-      u.set(node.label,d.name,d.unlocked and WHITE or INK)
-      u.set(node.level,d.unlocked and "" or "LV "..d.level,GOLD)
+      local d=group.spells[b.first+i-1];local a=b.center-b.span/2+b.step*(i-.5)
+      n.base:SetRenderTransformAngle(math.deg(a));n.highlight:SetRenderTransformAngle(math.deg(a))
+      n.active=state.spell==b.first+i-1;n.unlocked=d.unlocked
+      local iconBox=L.icon(model,a,model.geometry.spellRadius,64)
+      n.icon.Slot:SetPosition({X=iconBox.x,Y=iconBox.y})
+      local x,y=model.point(a,385);n.number.Slot:SetPosition({X=L.cx+x-11,Y=L.cy+y-14})
+      local t=u.texture(icons.spells[d.id]) or u.texture(icons.skills[group.id]);if E.valid(t) then n.icon:SetBrushFromTexture(t,false) end
+      set(n.number,tostring(i),n.active and GOLD or MUTED)
+      fit(row.title,d.name,row.titleBox,16,12,d.unlocked and WHITE or MUTED)
+      set(row.level,'Lv '..d.level,d.unlocked and MUTED or GOLD)
      end
     end
+    u.empty:SetVisibility(group and 2 or 3)
     if group then
      local t=u.texture(icons.skills[group.id]);if E.valid(t) then u.centerIcon:SetBrushFromTexture(t,false);u.centerIcon:SetVisibility(3) end
-     u.set(u.centerTitle,group.label)
-     u.set(u.centerMeta,group.available.." / "..#group.spells.." unlocked")
-     u.set(u.eyebrow,group.label:upper()..(spell and "  /  LEVEL "..spell.level or "  /  SPELLS"))
-     local title=spell and spell.name or group.label
-     local tf=u.title.Font;tf.Size=#title>20 and 26 or 32;u.title:SetFont(tf)
-     local bf=u.body.Font;bf.Size=spell and #spell.description>180 and 16 or 18;u.body:SetFont(bf)
-     u.set(u.title,title)
-     u.set(u.body,spell and spell.description or "Move outward to choose a spell. Return to the inner ring to explore another skill.")
-     u.set(u.cost,cost or "")
-     u.set(u.status,message or status or (spell and (spell.unlocked and "LMB  Select spell" or "Unlock at level "..spell.level) or "Explore the outer branch"),message and RED or GOLD)
+     fit(u.centerTitle,group.label,centerTitleBox,20,16,GOLD)
+     set(u.centerMeta,group.available..' / '..#group.spells..' unlocked')
+     fit(u.heading,group.label,L.heading,24,20,WHITE)
+     set(u.meta,#group.spells..' spells  /  '..group.available..' unlocked')
+     fit(u.title,spell and spell.name or 'Choose a spell',L.title,25,20,GOLD)
+     fit(u.body,spell and spell.description or 'Move to a numbered outer icon. Return to the inner ring to change skills.',L.body,16,12,WHITE)
+     fit(u.cost,cost or '',L.cost,13,11,MUTED)
+     fit(u.status,message or status or (spell and (spell.unlocked and 'LMB  Select spell' or 'Unlock at level '..spell.level) or 'Move outward to explore'),L.status,13,11,message and RED or GOLD)
     else
-     u.centerIcon:SetVisibility(2);u.set(u.centerTitle,"CHOOSE A SKILL");u.set(u.centerMeta,"Move outward to explore")
-     u.set(u.eyebrow,"SKILL SPELLBOOK");local tf=u.title.Font;tf.Size=32;u.title:SetFont(tf);local bf=u.body.Font;bf.Size=18;u.body:SetFont(bf);u.set(u.title,"Choose a skill")
-     u.set(u.body,"Hover a skill to reveal its spells. Move into the outer ring to choose one.");u.set(u.cost,"");u.set(u.status,message or "")
+     u.centerIcon:SetVisibility(2);fit(u.centerTitle,'Choose a skill',centerTitleBox,20,16,GOLD);set(u.centerMeta,'Move onto an icon')
+     fit(u.heading,'YOUR SPELLBOOK',L.heading,24,20,WHITE);set(u.meta,'Twelve skills. One gesture.')
+     fit(u.title,'Find your next spell.',L.title,25,20,GOLD)
+     fit(u.body,'Move outward to select a spell. Click to use the game\'s normal casting controls.',L.body,16,12,WHITE)
+     set(u.cost,'');fit(u.status,message or '',L.status,13,11,RED)
     end
-    u.set(u.hint,"LMB  Select spell     RMB  Back to skills     Q / ESC  Close"..(model.pages(state)>1 and "     F / G  Branch page" or ""))
+    set(u.hint,'LMB  Select     RMB  Back     Q / ESC  Close'..(model.pages(state)>1 and '     F / G  Page '..state.page..' / '..model.pages(state) or ''))
+   end
+   for _,n in ipairs(u.spells) do
+    n.base:SetRenderOpacity(u.branchFade);n.number:SetRenderOpacity(u.branchFade)
+    n.icon:SetRenderOpacity(u.branchFade*(n.unlocked and 1 or .3))
+    local target=n.active and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*22);n.highlight:SetRenderOpacity(n.alpha*u.branchFade)
    end
   end
   return u
