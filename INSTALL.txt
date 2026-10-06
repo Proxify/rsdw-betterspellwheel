@@ -1,0 +1,79 @@
+BETTERSPELLWHEEL 0.2.2 - INSTALLATION (WINDOWS / STEAM)
+====================================================
+
+Choose ONE installation method below. The setup EXE is a separate download;
+it is not inside this ZIP. PlayerTrading and RuneSchema are not required.
+
+EASY INSTALL - BetterSpellWheel-0.2.2-setup.exe
+---------------------------------------------
+1. Close RuneScape: Dragonwilds.
+2. Run BetterSpellWheel-0.2.2-setup.exe. It finds the game through Steam,
+   or asks you to choose the game folder if it cannot find it.
+3. The installer adds BetterSpellWheel and enables it. It includes the tested
+   Dragonwilds UE4SS loader and installs it only if UE4SS is not already present.
+   Existing UE4SS, other mods and your BetterSpellWheel settings are preserved.
+4. Start the game, enter a world and press Q.
+
+Run the same EXE again to choose Update or Uninstall. Close the game first.
+The installer log is %TEMP%\BetterSpellWheel-install.log.
+This installer is not code-signed; Windows may identify it as an unknown publisher.
+
+MANUAL INSTALL - THIS ZIP
+-------------------------
+This ZIP contains the mod and these instructions. It requires an existing
+Dragonwilds-compatible UE4SS installation. If you do not have UE4SS, use the
+separate setup EXE above, which includes it.
+
+1. Close the game.
+2. In Steam, right-click RuneScape: Dragonwilds > Manage > Browse local files.
+3. Open RSDragonwilds\Binaries\Win64\ue4ss\Mods inside that game folder.
+4. Copy the BetterSpellWheel folder from this ZIP into Mods. The final path is:
+   <game folder>\RSDragonwilds\Binaries\Win64\ue4ss\Mods\BetterSpellWheel\Scripts\main.lua
+   Keep the Assets folder and enabled.txt too.
+5. If updating, replace Scripts, Assets, README.md, INSTALL.txt and enabled.txt.
+   Keep your existing config.txt if you customized it. Do not delete mod data.
+6. If Mods\mods.txt is present, add this line (or change the existing one to 1):
+       BetterSpellWheel : 1
+   Keep all other entries. Do not replace mods.txt with a new file.
+7. Start the game, enter a world and press Q.
+
+Some older UE4SS installs put Mods directly beside the game's Shipping.exe.
+For that layout, copy BetterSpellWheel into that existing Mods folder instead.
+The installer can detect this layout; it does not upgrade an existing UE4SS.
+The mod itself requires the Dragonwilds-compatible build used for this game.
+
+UPGRADING FROM THE OLD SPELLBRANCHES NAME
+----------------------------------------
+Close the game. Remove the old SpellBranches folder from Mods and its entry
+from mods.txt before installing BetterSpellWheel. Copy your Enabled setting
+into BetterSpellWheel\config.txt if you changed it. Keep only one wheel enabled.
+Setup refuses to install alongside the old folder to avoid duplicate wheels.
+
+CONTROLS
+--------
+Q: open. Hover an inner skill, move outward to a spell and left-click to select.
+Right-click: back. Q / Escape: close. Casting uses the game's normal controls.
+This is a keyboard-and-mouse beta; controllers are not supported.
+
+DISABLE / UNINSTALL
+-------------------
+To disable, set Enabled=false in BetterSpellWheel\config.txt and restart.
+To uninstall, run setup again and choose Uninstall, or remove ONLY the
+BetterSpellWheel mod folder and its mods.txt entry with the game closed.
+Uninstall removes this mod's settings/data with its folder; back them up first
+if you want to keep them. Other mods are retained. Setup removes bundled UE4SS
+only if this installer installed it and no other mod folders remain.
+Never delete the entire UE4SS folder if another mod uses it.
+
+TROUBLESHOOTING
+---------------
+- No wheel: check the folder path, enabled.txt and the mods.txt entry.
+- Check RSDragonwilds\Binaries\Win64\ue4ss\UE4SS.log for [BetterSpellWheel].
+- Setup refuses while Dragonwilds is running. Close the game and retry.
+- Setup leaves an existing UE4SS installation untouched. An incompatible loader
+  must be updated separately with the appropriate Dragonwilds build.
+- Setup refuses conflicting dwmapi.dll loaders and junction/symlink mod targets
+  rather than replacing them. Use manual installation for a developer checkout.
+
+Source: https://github.com/Proxify/rsdw-betterspellwheel
+See BetterSpellWheel\README.md for features, testing and known limitations.

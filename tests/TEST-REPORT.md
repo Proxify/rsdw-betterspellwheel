@@ -1,8 +1,33 @@
-# BetterSpellWheel 0.2.1 test report
+# BetterSpellWheel 0.2.2 test report
 
 2026-10-05. Dragonwilds 1.0 / UE 5.6, Windows client with project UE4SS build.
 Only TradeTester in TRADE_TEST was used for client mutations. MODTEST was used
 for the earlier read-only spell catalogue investigation.
+
+## 0.2.2 release packaging and installer (2026-10-05/06)
+
+This release adds the standalone Windows installer and INSTALL.txt. The mod's
+runtime changes only its version string; wheel/casting behavior is unchanged.
+
+- ZIP: 15 production mod files plus top-level INSTALL.txt; no EXE, dev.txt, tests,
+  data or developer configuration. Instructions are also installed with the mod.
+- Separate setup EXE: same 15 production files plus version metadata, the tested
+  Dragonwilds UE4SS loader/settings and the dependency license. Shared manifest
+  and `tests/release_test.py` verify exact source bytes in both outputs.
+- Existing Lua model/catalogue/layout/casting-adapter regressions passed again.
+- `tests/installer_windows.ps1` ran on Windows in disposable fake game directories.
+  Installed SHA-256 values matched all mod files and bundled dependencies.
+  Running-game refusal, fresh install, upgrade/repeat install, config/data
+  retention, deduplicated enablement, existing UE4SS layouts, other-mod retention,
+  uninstall cleanup, invalid path, loader conflict, legacy-name collision and
+  junction refusal passed. See `tests/installer-results.txt`.
+- Interactive installation, the Update/Uninstall choice, update completion and
+  uninstall completion were checked with real desktop clicks and screenshots
+  against the disposable target. Read-only Steam detection also found the actual
+  Dragonwilds installation. The real game folder was never an installer target.
+- The EXE is not code-signed. Tests do not certify every antivirus/SmartScreen
+  environment or protected Steam-directory permissions. The game was not launched
+  from fake test folders. Earlier in-game coverage remains listed below.
 
 ## 0.2.1 rename verification
 

@@ -1,0 +1,13 @@
+PASS: running game refuses with no installation writes
+PASS: fresh install: all 15 mod files and four dependency hashes match
+PASS: upgrade and repeat install preserve custom config/data and enable once
+PASS: uninstall removes this mod and installer-owned unused UE4SS
+PASS: uninstall retains bundled UE4SS when another mod needs it
+PASS: existing UE4SS/other mods preserved, duplicate loader entries normalized; legacy=False
+PASS: existing UE4SS/other mods preserved, duplicate loader entries normalized; legacy=True
+PASS: conflicting loader refused without modification
+PASS: invalid target refused without modification
+PASS: old SpellBranches folder refused before writes
+PASS: junction install/uninstall refused with linked source intact
+PASS: interactive fresh install, update selection/completion, uninstall selection/completion
+PASS: read-only Steam detection found the real game installation

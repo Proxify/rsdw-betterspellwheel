@@ -3,11 +3,17 @@
 **Your skills. Your magic.** A skill-first Q wheel for RuneScape: Dragonwilds 1.0.
 
 Open your spell wheel, hover a skill, then move outward to choose its spell.
-Twelve fixed skill positions organize all 39 current perk spells. Native icons,
-large icons and gold highlights keep navigation clear. Numbered outer slots match
+Twelve fixed skill positions organize all 39 current perk spells. Large native icons
+and gold highlights keep navigation clear. Numbered outer slots match
 a spell list beside the wheel; full names and descriptions stay in that panel.
 
-Version **0.2.1 — keyboard/mouse beta**. Tested in TRADE_TEST as TradeTester.
+Version **0.2.2 — keyboard/mouse beta**. Tested in TRADE_TEST as TradeTester.
+
+## What changed in 0.2.2
+
+A separate Windows setup EXE now installs the mod and includes UE4SS for fresh
+installs. The ZIP includes INSTALL.txt with manual installation instructions.
+The wheel and casting behavior are unchanged.
 
 ## What changed in 0.2.1
 
@@ -59,7 +65,13 @@ feedback. Hovering alone never casts.
 
 ## Install
 
-Requires the Dragonwilds-compatible UE4SS build already installed in your game.
+**Easy installation:** close the game and run `BetterSpellWheel-0.2.2-setup.exe`.
+It finds the Steam installation, installs UE4SS if absent, and adds the mod.
+Run it again to update or uninstall. Existing settings and other mods are kept
+on update. The EXE is a separate download, not inside the ZIP.
+
+**Manual installation:** the ZIP includes `INSTALL.txt` at its top level. This
+method requires Dragonwilds-compatible UE4SS already installed in your game.
 PlayerTrading and RuneSchema are not dependencies.
 
 1. Extract the `BetterSpellWheel` folder into:
@@ -137,7 +149,8 @@ than detached. All engine calls run on the game thread.
 
 Run `python tests/run.py` in an environment with `lupa` (Lua 5.4).
 Rebuild artwork with `python tools/build_art.py` (Pillow).
-Build the release with `python tools/package.py`.
+Build the ZIP with `python tools/package.py`; build the separate setup EXE using
+the instructions in `installer/README.md`. Every release includes both files.
 
 For a test installation only, `dev.txt` may contain an absolute directory ending
 in `/`; `in.lua` executes there and writes `out.txt`. This file and all tests are
