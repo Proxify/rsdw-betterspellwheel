@@ -72,7 +72,8 @@ Verified on 2026-10-05, Dragonwilds 1.0 / UE 5.6, Windows UE4SS:
   plugin content and the game's `Runecraftng` naming typo.
 - Custom UMG rendering at 1920×1080, native skill/spell icons, neutral open,
   descriptions, rune/cooldown information, and locked-state rendering.
-- Real mouse selection: Windstep instant cast and Axtral Projection aim/confirm.
+- Real mouse selection: Windstep instant cast, Axtral Projection aim/confirm,
+  and Recall advanced-movement targeting/confirmation.
 - Summon Shelter enters the correct native placement preview; blocked ground
   remains blocked, and Escape cancels normally.
 - Missing-rune rejection, right-click back, Q/Escape close, repeated opening,

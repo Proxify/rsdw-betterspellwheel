@@ -29,6 +29,7 @@ The simulation does not substitute for the live tests below.
 | Skill/branch navigation | Real pointer movement; branch remains attached outside inner ring; RMB returns to skills without immediately reopening the branch |
 | Instant cast | Real LMB on Runecrafting → Windstep; `LastCastTimeBySpellData` recorded Windstep; original slot restored |
 | Aimed cast | Real LMB on Woodcutting → Axtral Projection; native prepared data matches Axtral; real confirmation recorded Axtral in cast map; all 48 slot values restored |
+| Advanced movement cast | Agility → Recall enters `DIM_SpellPlacementModeAdvancedMovement`, retains the Recall slot through movement/confirmation, records Recall in the cast map, and restores all 48 slots on return to gameplay |
 | Placed spell | Construction → Summon Shelter enters native placement preview with correct prepared data; native BLOCKED feedback remains; Escape restores all 48 slots |
 | Rune shortage | Splinter with insufficient runes keeps custom wheel open, gives denial feedback, restores original slot |
 | Locked selection | Temporary plain-Lua UI fixture makes Trunk Totem locked; dim icon, LV50 badge, denial feedback; no changed slots |
