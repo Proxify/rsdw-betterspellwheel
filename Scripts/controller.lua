@@ -1,7 +1,7 @@
 -- Engine-independent controller navigation. No release-to-cast, and a held
 -- confirm can never both enter a skill and cast its first spell.
 return function(model)
- local C={deadzone=.28,releaseZone=.20,repeatDelay=.36,repeatInterval=.12}
+ local C={deadzone=.28,releaseZone=.20,repeatDelay=.18,repeatInterval=.08}
  function C.new()
   return {stage='skills',buttons={},neutral=true,direction=0,nextRepeat=0}
  end

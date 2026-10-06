@@ -5,7 +5,9 @@ return function(E)
  local names={mx='MouseX',my='MouseY',x='Gamepad_LeftX',y='Gamepad_LeftY',rx='Gamepad_RightX',ry='Gamepad_RightY',q='Q',
   accept='Gamepad_FaceButton_Bottom',back='Gamepad_FaceButton_Right',close='Gamepad_Special_Right',
   toggle='Gamepad_FaceButton_Top',previous='Gamepad_LeftShoulder',next='Gamepad_RightShoulder',
-  up='Gamepad_DPad_Up',down='Gamepad_DPad_Down',left='Gamepad_DPad_Left',right='Gamepad_DPad_Right'}
+  up='Gamepad_DPad_Up',down='Gamepad_DPad_Down',left='Gamepad_DPad_Left',right='Gamepad_DPad_Right',
+  confirm='Gamepad_RightTrigger',cancel='Gamepad_LeftTrigger',
+  mouseConfirm='LeftMouseButton',mouseCancel='RightMouseButton',escape='Escape'}
  local keys={}
  for k,n in pairs(names) do keys[k]={KeyName=FName(n)} end
  function I.new(pc)

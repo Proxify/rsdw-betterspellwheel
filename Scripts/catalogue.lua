@@ -43,5 +43,15 @@ return function(model)
         assert(#records > 0, "no spells resolved from current progression")
         return model.catalogue(records), errors
     end
+    function M.refresh(groups, isUnlocked)
+        for _, group in ipairs(groups or {}) do
+            group.available = 0
+            for _, record in ipairs(group.spells or {}) do
+                record.unlocked = isUnlocked(record) == true
+                if record.unlocked then group.available = group.available + 1 end
+            end
+        end
+        return groups
+    end
     return M
 end

@@ -3,7 +3,7 @@
 local M = {}
 local TAU = math.pi * 2
 M.geometry = { dead = 112, inner = 132, outer = 264, branchInner = 282,
-    branchOuter = 408, skillRadius = 202, spellRadius = 344, dwell = 0.055,
+    branchOuter = 408, skillRadius = 202, spellRadius = 344, dwell = 0.022,
     hysteresis = math.rad(3), maxBranch = 6 }
 
 -- Stable positions: a level-up must never rearrange a player's muscle memory.
@@ -118,6 +118,9 @@ function M.update(state, x, y, now)
         end
         state.zone = "skill"
         if index ~= state.group then
+            -- Reveal the first submenu immediately. Keep a short debounce
+            -- only when switching between already selected skills.
+            if not state.group then M.setGroup(state, index); return end
             if state.candidate ~= index then state.candidate, state.candidateSince = index, now end
             if now - state.candidateSince >= g.dwell then M.setGroup(state, index) end
         else state.candidate = nil end

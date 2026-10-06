@@ -111,7 +111,9 @@ return function(E, model, L)
     u.root:SetVisibility(2);u.root:AddToViewport(9000)
   function u.resize()
    local v=E.layout:GetViewportSize(pc);local dpi=E.layout:GetViewportScale(pc)
-   u.width,u.height=v.X/dpi,v.Y/dpi;u.scale=math.min(u.width/1480,u.height/1010)
+   local width,height=v.X/dpi,v.Y/dpi;local scale=math.min(width/1480,height/1010)
+   if u.width==width and u.height==height and u.scale==scale then return end
+   u.width,u.height,u.scale=width,height,scale
    u.canvas:SetRenderScale({X=u.scale,Y=u.scale})
   end
   function u.pointer()
@@ -136,15 +138,15 @@ return function(E, model, L)
    local browsing=state.controllerStage=='spells'
    local accept=state.padStyle=='playstation' and 'Cross' or 'A'
    local back=state.padStyle=='playstation' and 'Circle' or 'B'
-   u.fade=math.min(1,(u.fade or 0)+dt/.12);u.root:SetRenderOpacity(u.fade)
+   u.fade=math.min(1,(u.fade or 0)+dt/.07);u.root:SetRenderOpacity(u.fade)
    local group=state.groups[state.group];local spell=group and group.spells[state.spell]
    for i,n in ipairs(u.skills) do
-    local target=i==state.group and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*20);n.highlight:SetRenderOpacity(n.alpha)
+    local target=i==state.group and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*36);n.highlight:SetRenderOpacity(n.alpha)
     n.icon:SetRenderOpacity((not group or i==state.group) and 1 or .65)
    end
    local branchKey=tostring(state.group)..':'..state.page
    if branchKey~=u.branchKey then u.branchKey=branchKey;u.branchFade=0 end
-   u.branchFade=math.min(1,(u.branchFade or 0)+dt/.1)
+   u.branchFade=math.min(1,(u.branchFade or 0)+dt/.045)
    -- Cooldowns change without changing the selected spell. Rebuild the text
    -- once per second so the list and detail panel stay readable without
    -- invalidating the whole widget tree every frame.
@@ -196,7 +198,7 @@ return function(E, model, L)
    for _,n in ipairs(u.spells) do
     n.base:SetRenderOpacity(u.branchFade);n.number:SetRenderOpacity(u.branchFade)
      n.icon:SetRenderOpacity(u.branchFade*(n.unlocked and (n.cooldown and .55 or 1) or .3))
-    local target=n.active and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*22);n.highlight:SetRenderOpacity(n.alpha*u.branchFade)
+    local target=n.active and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*36);n.highlight:SetRenderOpacity(n.alpha*u.branchFade)
    end
   end
   return u

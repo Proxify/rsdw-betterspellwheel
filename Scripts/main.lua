@@ -35,14 +35,63 @@ local cfg={Enabled=true,ControllerPrompts="auto"}
 local file=io.open(folder..'/config.txt','r')
 if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() end end;file:close() end
 local pc,radial,panel,input,component,ui,state,pending,device,pad
+local cachedGroups,lastCatalogueRefresh= nil,nil
+local uiBuildErrorLogged=false
 local pointerX,pointerY
-local lastTime,frame,elapsed=0,0,0
+local lastTime,frame,elapsed,renderDt=0,0,0,0
 M.cooldowns=cooldowns
 function M.auditLayout() return ui and ui.audit() or {'wheel not built'} end
 local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
 local function gameTime()
  local ok,value=pcall(function() return E.clock:GetGameTimeInSeconds(pc) end)
- return ok and tonumber(value) or elapsed
+ local number=ok and tonumber(value)
+ return number or elapsed
+end
+local function ensureUi()
+ if ui and E.valid(ui.root) then return true end
+ local ok,result=pcall(function() return view.new(pc,folder,icons) end)
+ if ok then
+  ui=result;uiBuildErrorLogged=false
+  return true
+ end
+ if not uiBuildErrorLogged then
+  log('Waiting to build custom wheel: '..tostring(result));uiBuildErrorLogged=true
+ end
+ return false
+end
+local function suppressNativeWheel()
+ if E.valid(panel) then panel:SetRenderOpacity(0);panel:SetVisibility(2) end
+end
+local function inputModeName()
+ local mode=pc.CurrentInputMode
+ return E.valid(mode) and mode:GetFName():ToString() or ''
+end
+local function isCastingMode(name)
+ return name:find('SpellPlacement') or name:find('Spellcasting')
+end
+local function cacheCatalogue()
+ if cachedGroups then return true end
+ local ok,groups,errors=pcall(function()
+  return catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
+ end)
+ if not ok then
+  if not uiBuildErrorLogged then log('Waiting to cache spell catalogue: '..tostring(groups));uiBuildErrorLogged=true end
+  return false
+ end
+ cachedGroups=groups
+ lastCatalogueRefresh=elapsed
+ if #errors>0 then log('Catalogue skipped '..#errors..' unavailable records') end
+ return true
+end
+local function refreshCatalogue()
+ if not cachedGroups then return false end
+ if not lastCatalogueRefresh or elapsed-lastCatalogueRefresh>=5 then
+  catalogue.refresh(cachedGroups,function(record)
+   return pc:GetProgressComponent():IsSpellUnlocked(record.data)
+  end)
+  lastCatalogueRefresh=elapsed
+ end
+ return true
 end
 local function controls(on)
  pc.bShowMouseCursor=on
@@ -57,7 +106,7 @@ local function controls(on)
 end
 local function restore()
  if not pending then return end
- local p=pending;pending=nil
+ local p=pending;pending=nil;M.pending=nil;M.cancelRequested=nil
  if E.valid(p.component) then
   -- Never overwrite a newer update from the game/server.
   local current=p.component.SelectedSpells[p.index]
@@ -77,10 +126,16 @@ function M.close()
  if M.open then
   M.open=false
   if state then model.close(state) end
-  if nativeOpen() then input:CloseWidgetIfOpen(pc,21,false,false) end
-  if E.valid(pc) then controls(false) end
+  if nativeOpen() and not M.suppressQUntilRelease then input:CloseWidgetIfOpen(pc,21,false,false) end
+  -- Q is also the native wheel toggle. Keep our high-priority input capture
+  -- until Q is released, otherwise the same key event can reopen the legacy
+  -- wheel after this custom wheel closes.
+  if E.valid(pc) and not M.suppressQUntilRelease then controls(false) end
  end
- if E.valid(panel) then panel:SetRenderOpacity(1);panel:SetVisibility(2) end
+ -- Keep the native wheel hidden through its close transition. Restoring its
+ -- opacity here creates the one-frame flash seen when Q/Esc closes the mod.
+ suppressNativeWheel()
+ M.nativeSuppressedUntil=elapsed+.30
  M.queue={};M.message=nil
 end
 local function bindWorld()
@@ -89,28 +144,42 @@ local function bindWorld()
   if M.open then M.close() end
   restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;return false
  end
- if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
- M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil
+  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then
+   if not M.open and not pending then
+    if not ensureUi() or not cacheCatalogue() then return false end
+    refreshCatalogue()
+    suppressNativeWheel()
+  end
+  return true
+ end
+  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;cachedGroups=nil;lastCatalogueRefresh=nil
  for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
   if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
  end
  if not E.valid(radial) then return false end
  panel=radial:GetOuter():GetOuter();input=FindFirstOf('InputManagerUIAPI');component=pc:GetSpellcastingComponent()
  if not (E.valid(panel) and E.valid(input) and E.valid(component)) then return false end
+ if not M.open and not pending then
+  -- Build the replacement while the native wheel is closed, then keep the
+  -- native panel hidden so its open animation cannot flash for one frame.
+  if not ensureUi() or not cacheCatalogue() then return false end
+  refreshCatalogue()
+  suppressNativeWheel()
+ end
  return true
 end
 local function open()
  restore()
- local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
- if #errors>0 then log('Catalogue skipped '..#errors..' unavailable records') end
+ if not cachedGroups then return end
+ local groups=cachedGroups
  state=model.new(groups);M.state=state
  pad=controller.new()
  local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
  controller.prime(pad,device.sample());state.controllerStage=pad.stage
  -- Build before suppressing the native wheel, so a missing asset fails open.
- if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons) end
+ if not ensureUi() then return end
  radial:StopRadialSelection();panel:SetVisibility(2);panel:SetRenderOpacity(0)
- M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed
+ M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed;renderDt=0
  ui.show();controls(true)
  local dpi=E.layout:GetViewportScale(pc)
  pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor(ui.height/2*dpi))
@@ -126,7 +195,7 @@ local function costText(spell,now)
   end)
  end
  local s=#parts>0 and ('BASE COST  '..table.concat(parts,'  ·  ')) or 'No rune cost'
- local duration=tonumber(spell.cooldown) or 0
+ local duration=cooldowns:duration(spell)
  if duration>0 then
   local remaining=cooldowns:remaining(spell,now)
   s=s..'\nCOOLDOWN  '..string.format('%gs',duration)..'  ·  '..(remaining>0 and ('READY IN '..cooldowns:format(remaining)) or 'READY')
@@ -150,6 +219,7 @@ local function selectSpell()
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
  pending={component=component,original=component.SelectedSpells[index],spell=spell.data,slot=slot,index=index,book=book,since=elapsed}
+ M.pending=pending
  component:Client_NotifySelectedSpell(spell.data,slot)
  radial.CachedSectionId=0;radial:HighlightSlice(0)
  -- Use native selection: requirements, cooldowns, rune costs and targeting.
@@ -159,12 +229,21 @@ local function selectSpell()
     M.message='Unable to cast. Check runes, equipment and cooldown.'
   if requirement~='' and requirement~='-' then M.message='Requires '..requirement end
   restore();radial:StopRadialSelection();controls(true)
- else
-  -- Native selection accepted the spell and entered its cast/placement mode.
-  -- The native system remains authoritative; this timer only mirrors the
-  -- duration so the custom wheel can explain why a repeat selection is blocked.
-  cooldowns:start(spell,gameTime())
-  -- Aimed/placed spells reread the slot on confirmation. Restore only after
+  else
+   -- Start a provisional timer immediately so the wheel can show feedback
+   -- while native targeting is active. A cancellation removes it below.
+   cooldowns:start(spell,gameTime())
+   local modeName=inputModeName()
+   if isCastingMode(modeName) then
+    pending.awaitingConfirm=true
+    pending.cooldownStarted=true
+    local sample=device.sample()
+    pending.confirmArmed=not (sample.confirm or sample.mouseConfirm)
+    pending.cancelArmed=not (sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close)
+   else
+    -- Instant spells have already been accepted and cast by native selection.
+   end
+   -- Aimed/placed spells reread the slot on confirmation. Restore only after
   -- the native casting/placement mode has ended, including cancellation.
   M.open=false;model.close(state);ui.hide();panel:SetRenderOpacity(1);M.queue={}
  end
@@ -172,26 +251,55 @@ end
 local function tick()
  frame=frame+1;elapsed=elapsed+.016
  if not cfg.Enabled or M.disabled then return end
+ -- The replacement is already built and hidden natively. Poll idle state at
+ -- roughly frame rate; input and UI work run faster only while the wheel is open.
  if not M.open and not pending and not (device and device.draining) and frame%2~=0 then return end
  if not bindWorld() then return end
  if device.draining then device.release() end
  if pending then
-  local mode=pc.CurrentInputMode
-  local name=E.valid(mode) and mode:GetFName():ToString() or ''
-  if elapsed-pending.since>.15 and not name:find('SpellPlacement') and not name:find('Spellcasting') then restore() end
+   if pending.awaitingConfirm then
+    local sample=device.sample()
+    if not pending.confirmArmed then
+     pending.confirmArmed=not (sample.confirm or sample.mouseConfirm)
+    elseif sample.confirm or sample.mouseConfirm then
+     pending.confirmed=true
+    end
+    if not pending.cancelArmed then
+     pending.cancelArmed=not (sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close)
+    elseif sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close then
+     pending.cancelled=true
+    end
+    if M.cancelRequested then pending.cancelled=true;M.cancelRequested=nil end
+   end
+   local name=inputModeName()
+   if elapsed-pending.since>.15 and not isCastingMode(name) then
+    if pending.awaitingConfirm and pending.cancelled then cooldowns:clear(pending.spell) end
+    restore()
+   end
  end
  if not M.open then
+  if M.nativeSuppressedUntil then
+   if nativeOpen() and not M.suppressQUntilRelease then input:CloseWidgetIfOpen(pc,21,false,false) end
+   suppressNativeWheel()
+   if M.suppressQUntilRelease and not device.sample().q then
+    M.suppressQUntilRelease=false
+    controls(false)
+    M.reopenAfter=elapsed+.2
+   end
+   if elapsed<M.nativeSuppressedUntil then return end
+   M.nativeSuppressedUntil=nil
+  end
   if M.suppressQUntilRelease then
     if device.sample().q then
-      if nativeOpen() then input:CloseWidgetIfOpen(pc,21,false,false);if E.valid(panel) then panel:SetVisibility(2) end end
+       if nativeOpen() then input:CloseWidgetIfOpen(pc,21,false,false);suppressNativeWheel() end
      return
     end
-   M.suppressQUntilRelease=false;M.reopenAfter=elapsed+.2
+   M.suppressQUntilRelease=false;controls(false);M.reopenAfter=elapsed+.2
   end
   if M.reopenAfter then
     if nativeOpen() then
      input:CloseWidgetIfOpen(pc,21,false,false)
-      if E.valid(panel) then panel:SetVisibility(2) end
+       suppressNativeWheel()
      return
     end
    if elapsed<M.reopenAfter then return end
@@ -202,9 +310,9 @@ local function tick()
  end
  if not nativeOpen() then M.close();return end
  if not E.valid(ui.root) then M.close();return end
- local now=E.clock:GetGameTimeInSeconds(pc)
+ local now=gameTime()
  local dt=math.min(.05,math.max(.001,now-lastTime));lastTime=now
- ui.resize()
+ renderDt=renderDt+dt
  local x,y=ui.pointer()
  local sample=device.sample()
  local moved=(pointerX and ((x-pointerX)^2+(y-pointerY)^2)>9) or math.abs(sample.mx or 0)>.5 or math.abs(sample.my or 0)>.5
@@ -246,8 +354,12 @@ local function tick()
  end
  -- Game HUD activation can restore game input underneath custom UI.
  if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
- panel:SetVisibility(2);panel:SetRenderOpacity(0)
- ui.draw(state,dt,M.message,M.cost,nil,now,cooldowns)
+ if frame%2==0 then
+  panel:SetVisibility(2);panel:SetRenderOpacity(0)
+  ui.resize()
+  ui.draw(state,renderDt,M.message,M.cost,nil,now,cooldowns)
+  renderDt=0
+ end
 end
 function M.shutdown()
  M.close()
@@ -266,6 +378,8 @@ if not _G.BetterSpellWheelKeys then
    if m and m.open then
     if boundKey==0x51 then m.suppressQUntilRelease=true end
     m.queue[#m.queue+1]=boundAction
+   elseif m and m.pending and boundKey==0x1B then
+    m.cancelRequested=true
    end
   end)
  end
@@ -286,7 +400,7 @@ if devFile then
   os.remove(dir..'out.txt');os.rename(dir..'out.tmp',dir..'out.txt')
  end
 end
-M.handle=LoopInGameThreadWithDelay(5,function()
+M.handle=LoopInGameThreadWithDelay(8,function()
  if devPoll and frame%6==0 then pcall(devPoll) end
  if _G.BetterSpellWheel~=M then return end
  local ok,err=pcall(tick)

@@ -12,6 +12,13 @@ local function key(spell)
     return spell and spell.id
 end
 
+function M:duration(spell)
+    local value = spell and spell.cooldown
+    if type(value) == 'number' then return value end
+    local ok, result = pcall(function() return value + 0 end)
+    return ok and tonumber(result) or tonumber(value) or 0
+end
+
 function M:remaining(spell, now)
     local id = key(spell)
     if not id then return 0 end
@@ -27,10 +34,15 @@ end
 
 function M:start(spell, now)
     local id = key(spell)
-    local duration = tonumber(spell and spell.cooldown) or 0
+    local duration = self:duration(spell)
     if not id or duration <= 0 then return end
     local untilAt = (tonumber(now) or 0) + duration
     self.untilById[id] = math.max(self.untilById[id] or 0, untilAt)
+end
+
+function M:clear(spell)
+    local id = key(spell)
+    if id then self.untilById[id] = nil end
 end
 
 function M:format(seconds)
