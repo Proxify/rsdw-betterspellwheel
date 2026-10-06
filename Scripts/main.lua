@@ -1,13 +1,14 @@
--- BetterSpellWheel 0.3.0. Client UI; casting remains entirely native.
+-- BetterSpellWheel 0.4.0. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.3.0',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.4.0',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
 local catalogue=dofile(folder..'/Scripts/catalogue.lua')(model)
+local cooldowns=dofile(folder..'/Scripts/cooldowns.lua').new()
 local icons=dofile(folder..'/Scripts/icons.lua')
 local E={}
 function E.valid(x) return x~=nil and x:IsValid() end
@@ -36,8 +37,13 @@ if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(
 local pc,radial,panel,input,component,ui,state,pending,device,pad
 local pointerX,pointerY
 local lastTime,frame,elapsed=0,0,0
+M.cooldowns=cooldowns
 function M.auditLayout() return ui and ui.audit() or {'wheel not built'} end
 local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
+local function gameTime()
+ local ok,value=pcall(function() return E.clock:GetGameTimeInSeconds(pc) end)
+ return ok and tonumber(value) or elapsed
+end
 local function controls(on)
  pc.bShowMouseCursor=on
  if on then
@@ -46,7 +52,7 @@ local function controls(on)
   pc.bShowMouseCursor=state.input~='controller'
  else
   if device then device.release() end
-  E.lib:SetInputMode_GameOnly(pc,not (device and device.draining));pc:RefreshInputMode()
+  E.lib:SetInputMode_GameOnly(pc,false);pc:RefreshInputMode()
  end
 end
 local function restore()
@@ -68,13 +74,13 @@ local function restore()
 end
 function M.close()
  if ui and E.valid(ui.root) then ui.hide() end
- if E.valid(panel) then panel:SetRenderOpacity(1);if nativeOpen() then panel:SetVisibility(0) end end
  if M.open then
   M.open=false
   if state then model.close(state) end
   if nativeOpen() then input:CloseWidgetIfOpen(pc,21,false,false) end
   if E.valid(pc) then controls(false) end
  end
+ if E.valid(panel) then panel:SetRenderOpacity(1);panel:SetVisibility(2) end
  M.queue={};M.message=nil
 end
 local function bindWorld()
@@ -107,10 +113,10 @@ local function open()
  M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed
  ui.show();controls(true)
  local dpi=E.layout:GetViewportScale(pc)
- pc:SetMouseLocation(math.floor((ui.width/2-220*ui.scale)*dpi),math.floor(ui.height/2*dpi))
+ pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor(ui.height/2*dpi))
  pointerX,pointerY=ui.pointer()
 end
-local function costText(spell)
+local function costText(spell,now)
  if not spell then return '' end
  local parts={}
  for _,v in ipairs(spell.data:GetModulesOfType(E.class('/Script/Dominion.SpellModule_CostItems'))) do
@@ -120,7 +126,11 @@ local function costText(spell)
   end)
  end
  local s=#parts>0 and ('BASE COST  '..table.concat(parts,'  ·  ')) or 'No rune cost'
- if spell.cooldown>0 then s=s..'\nCOOLDOWN  '..string.format('%gs',spell.cooldown) end
+ local duration=tonumber(spell.cooldown) or 0
+ if duration>0 then
+  local remaining=cooldowns:remaining(spell,now)
+  s=s..'\nCOOLDOWN  '..string.format('%gs',duration)..'  ·  '..(remaining>0 and ('READY IN '..cooldowns:format(remaining)) or 'READY')
+ end
  return s
 end
 local function selectSpell()
@@ -130,6 +140,12 @@ local function selectSpell()
   return
  end
  if not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
+ local remaining=cooldowns:remaining(spell,gameTime())
+ if remaining>0 then
+  M.message='On cooldown. Ready in '..cooldowns:format(remaining)..'.'
+  radial:InvalidSelectAudioTrigger()
+  return
+ end
  local slot=radial.RadialSlice_0.SpellSlotNum
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
@@ -144,6 +160,10 @@ local function selectSpell()
   if requirement~='' and requirement~='-' then M.message='Requires '..requirement end
   restore();radial:StopRadialSelection();controls(true)
  else
+  -- Native selection accepted the spell and entered its cast/placement mode.
+  -- The native system remains authoritative; this timer only mirrors the
+  -- duration so the custom wheel can explain why a repeat selection is blocked.
+  cooldowns:start(spell,gameTime())
   -- Aimed/placed spells reread the slot on confirmation. Restore only after
   -- the native casting/placement mode has ended, including cancellation.
   M.open=false;model.close(state);ui.hide();panel:SetRenderOpacity(1);M.queue={}
@@ -160,7 +180,26 @@ local function tick()
   local name=E.valid(mode) and mode:GetFName():ToString() or ''
   if elapsed-pending.since>.15 and not name:find('SpellPlacement') and not name:find('Spellcasting') then restore() end
  end
- if not M.open then if nativeOpen() then open() end;return end
+ if not M.open then
+  if M.suppressQUntilRelease then
+    if device.sample().q then
+      if nativeOpen() then input:CloseWidgetIfOpen(pc,21,false,false);if E.valid(panel) then panel:SetVisibility(2) end end
+     return
+    end
+   M.suppressQUntilRelease=false;M.reopenAfter=elapsed+.2
+  end
+  if M.reopenAfter then
+    if nativeOpen() then
+     input:CloseWidgetIfOpen(pc,21,false,false)
+      if E.valid(panel) then panel:SetVisibility(2) end
+     return
+    end
+   if elapsed<M.reopenAfter then return end
+   M.reopenAfter=nil
+  end
+  if nativeOpen() then open() end
+  return
+ end
  if not nativeOpen() then M.close();return end
  if not E.valid(ui.root) then M.close();return end
  local now=E.clock:GetGameTimeInSeconds(pc)
@@ -190,7 +229,13 @@ local function tick()
  end
  local group=state.groups[state.group];local spell=group and group.spells[state.spell]
  local hover=spell and spell.id or tostring(state.group)
- if hover~=M.hover then M.hover=hover;M.message=nil;M.cost=costText(spell) end
+ local cooldownTick=math.ceil(now)
+ if hover~=M.hover or cooldownTick~=M.cooldownTick then
+  local changed=hover~=M.hover
+  M.hover=hover;M.cooldownTick=cooldownTick
+  if changed then M.message=nil end
+  M.cost=costText(spell,now)
+ end
  local queue=M.queue;M.queue={}
  for _,action in ipairs(queue) do
   if action=='close' then M.close();return
@@ -202,7 +247,7 @@ local function tick()
  -- Game HUD activation can restore game input underneath custom UI.
  if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
  panel:SetVisibility(2);panel:SetRenderOpacity(0)
- ui.draw(state,dt,M.message,M.cost)
+ ui.draw(state,dt,M.message,M.cost,nil,now,cooldowns)
 end
 function M.shutdown()
  M.close()
@@ -215,7 +260,14 @@ end
 if not _G.BetterSpellWheelKeys then
  _G.BetterSpellWheelKeys=true
  for key,action in pairs({[1]='select',[2]='back',[0x51]='close',[0x1B]='close',[0x46]='previous',[0x47]='next'}) do
-  RegisterKeyBind(key,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]=action end end)
+  local boundKey,boundAction=key,action
+  RegisterKeyBind(boundKey,function()
+   local m=_G.BetterSpellWheel
+   if m and m.open then
+    if boundKey==0x51 then m.suppressQUntilRelease=true end
+    m.queue[#m.queue+1]=boundAction
+   end
+  end)
  end
 end
 -- Opt-in development console; dev.txt is never included in release archives.
@@ -234,7 +286,7 @@ if devFile then
   os.remove(dir..'out.txt');os.rename(dir..'out.tmp',dir..'out.txt')
  end
 end
-M.handle=LoopInGameThreadWithDelay(16,function()
+M.handle=LoopInGameThreadWithDelay(5,function()
  if devPoll and frame%6==0 then pcall(devPoll) end
  if _G.BetterSpellWheel~=M then return end
  local ok,err=pcall(tick)
