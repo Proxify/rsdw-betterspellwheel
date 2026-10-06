@@ -1,0 +1,57 @@
+-- Native 1.0 texture paths. No game art is redistributed.
+local spells={
+["USD_AccessPersonalChest"]="/Game/Art/UI/Skills/Icons/Unlock/Construction/T_Skill_Construction_Access_Personal_Chest.T_Skill_Construction_Access_Personal_Chest",
+["USD_AxtralProjection"]="/Game/Art/UI/Skills/Icons/Unlock/Woodcutting/T_Skill_Woodcutting_Axtral_Projection.T_Skill_Woodcutting_Axtral_Projection",
+["USD_BonesToPeaches"]="/Game/Art/UI/Skills/Icons/Unlock/Cooking/T_Skill_Cooking_Spell_BonesToPeaches.T_Skill_Cooking_Spell_BonesToPeaches",
+["USD_Confuse"]="/Game/Art/UI/Skills/Icons/Unlock/Magic/T_Skill_Magic_Spell_Confuse.T_Skill_Magic_Spell_Confuse",
+["USD_CorruptionArrows"]="/Game/Art/UI/Skills/Icons/Unlock/Ranged/T_Skill_Ranged_Spell_SpectralArrows.T_Skill_Ranged_Spell_SpectralArrows",
+["USD_DetectAnimaVents"]="/Game/Art/UI/Skills/Icons/Unlock/Runecrafting/T_Skill_Runecrafting_Spell_DetectAnimaVent.T_Skill_Runecrafting_Spell_DetectAnimaVent",
+["USD_DetectOre"]="/Game/Art/UI/Skills/Icons/Unlock/Mining/T_Skill_Mining_Detect_Ore.T_Skill_Mining_Detect_Ore",
+["USD_DivineRock"]="/Game/Art/UI/Skills/Icons/Unlock/Mining/T_Skill_Mining_Spell_DivineRock.T_Skill_Mining_Spell_DivineRock",
+["USD_EnchantWeapon_Air"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Air.T_Skill_Attack_Spell_Enchantweapon_Air",
+["USD_EnchantWeapon_Fire"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Fire.T_Skill_Attack_Spell_Enchantweapon_Fire",
+["USD_EnchantWeapon_Water"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Water.T_Skill_Attack_Spell_Enchantweapon_Water",
+["USD_Enfeeble"]="/Game/Art/UI/Skills/Icons/Unlock/Magic/T_Skill_Magic_Spell_Enfeeble.T_Skill_Magic_Spell_Enfeeble",
+["USD_EyeOfOculus"]="/Game/Art/UI/Skills/Icons/Unlock/Construction/T_Skill_Construction_Eye_Of_Oculus.T_Skill_Construction_Eye_Of_Oculus",
+["USD_Farming_Compost"]="/Game/Art/UI/Skills/Icons/Unlock/Farming/T_Skill_Farming_LivingComposter.T_Skill_Farming_LivingComposter",
+["USD_Farming_RapidGrowth"]="/Game/Art/UI/Skills/Icons/Unlock/Farming/T_Skill_Farming_RapidGrowth.T_Skill_Farming_RapidGrowth",
+["USD_FerociousFurnace"]="/Game/Art/UI/Skills/Icons/Unlock/Artisan/T_Skill_Artisan_Ferocious_Furnace.T_Skill_Artisan_Ferocious_Furnace",
+["USD_FireSpirit"]="/Game/Art/UI/Skills/Icons/Unlock/Artisan/T_Skill_Artisan_Fire_Spirit.T_Skill_Artisan_Fire_Spirit",
+["USD_FishCyclone"]="/Fishing/Art/UI/Icons/Fishing_Skill_Icons/T_Skill_Fishing_Spell_FishCyclone.T_Skill_Fishing_Spell_FishCyclone",
+["USD_FishingFrenzy"]="/Fishing/Art/UI/Icons/Fishing_Skill_Icons/T_Skill_Fishing_Spell_FishingFrenzy.T_Skill_Fishing_Spell_FishingFrenzy",
+["USD_Harvest"]="/Game/Art/UI/Skills/Icons/Unlock/Farming/T_Skill_Farming_Uproot.T_Skill_Farming_Uproot",
+["USD_HomeTeleport"]="/Game/Art/UI/Skills/Icons/Unlock/Runecrafting/T_Skill_Runecrafting_Spell_HomeTeleport.T_Skill_Runecrafting_Spell_HomeTeleport",
+["USD_Humidify"]="/Game/Art/UI/Skills/Icons/Unlock/Farming/T_Skill_Farming_Humidity.T_Skill_Farming_Humidity",
+["USD_InfernalRod"]="/Fishing/Art/UI/Icons/Fishing_Skill_Icons/T_Skill_Fishing_Spell_InfernalRod.T_Skill_Fishing_Spell_InfernalRod",
+["USD_InternalAlchemy"]="/Game/Art/UI/Skills/Icons/Unlock/Cooking/T_Skill_Cooking_Spell_InternalAlchemy.T_Skill_Cooking_Spell_InternalAlchemy",
+["USD_MagicalMending"]="/Game/Art/UI/Skills/Icons/Unlock/Artisan/T_Skill_Artisan_Magical_Mending.T_Skill_Artisan_Magical_Mending",
+["USD_PhaseDash"]="/Agility/Art/UI/Icons/Spells/T_Skill_Agility_Spell_EnchantedSpirit_PhaseDash.T_Skill_Agility_Spell_EnchantedSpirit_PhaseDash",
+["USD_PileEmUp"]="/Game/Art/UI/Skills/Icons/Unlock/Woodcutting/T_Skill_Woodcutting_Spell_PileEmUp.T_Skill_Woodcutting_Spell_PileEmUp",
+["USD_Recall"]="/Agility/Art/UI/Icons/Spells/T_Skill_Agility_Spell_Recall.T_Skill_Agility_Spell_Recall",
+["USD_Rocksplosion"]="/Game/Art/UI/Skills/Icons/Unlock/Mining/T_Skill_Mining_Rocksplosian.T_Skill_Mining_Rocksplosian",
+["USD_RunesToRuneEssence"]="/Game/Art/UI/Skills/Icons/Unlock/Runecrafting/T_Skill_Runecrafting_Spell_RuneToRuneEssence.T_Skill_Runecrafting_Spell_RuneToRuneEssence",
+["USD_SnareTrap"]="/Game/Art/UI/Skills/Icons/Unlock/Ranged/T_Skill_Ranged_Spell_Snare.T_Skill_Ranged_Spell_Snare",
+["USD_SpeedupStation"]="/Game/Art/UI/Skills/Icons/Unlock/Magic/T_Skill_Artisan_Spell_SpeedUp.T_Skill_Artisan_Spell_SpeedUp",
+["USD_Splinter"]="/Game/Art/UI/Skills/Icons/Unlock/Woodcutting/T_Skill_Woodcutting_Splinter.T_Skill_Woodcutting_Splinter",
+["USD_SummonShelter"]="/Game/Art/UI/Skills/Icons/Unlock/Construction/T_Skill_Construction_Summon_Shelter.T_Skill_Construction_Summon_Shelter",
+["USD_Surge"]="/Game/Art/UI/Skills/Icons/Unlock/Magic/T_Skill_Magic_Spell_Surge.T_Skill_Magic_Spell_Surge",
+["USD_TempestShield"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Tempestshield.T_Skill_Attack_Spell_Tempestshield",
+["USD_Treequipment"]="/Game/Art/UI/Skills/Icons/Unlock/Artisan/T_Skill_Artisan_Treequipment.T_Skill_Artisan_Treequipment",
+["USD_Vengeance"]="/Game/Art/UI/Skills/Icons/Unlock/Magic/T_Skill_Magic_Spell_Vengence.T_Skill_Magic_Spell_Vengence",
+["USD_Windstep"]="/Game/Art/UI/Skills/Icons/Unlock/Runecrafting/T_Skill_Runecrafting_Spell_Windstep.T_Skill_Runecrafting_Spell_Windstep",
+}
+
+local skills = {}
+skills["Woodcutting"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Woodcutting.T_Notification_Skill_Woodcutting"
+skills["Mining"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Mining.T_Notification_Skill_Mining"
+skills["Artisan"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Crafting.T_Notification_Skill_Crafting"
+skills["Construction"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Construction.T_Notification_Skill_Construction"
+skills["Farming"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Farming.T_Notification_Skill_Farming"
+skills["Cooking"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Cooking.T_Notification_Skill_Cooking"
+skills["Fishing"]="/Fishing/Art/UI/Icons/Fishing_Skill_Icons/T_Notification_Skill_Fishing.T_Notification_Skill_Fishing"
+skills["Runecrafting"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Runecrafting.T_Notification_Skill_Runecrafting"
+skills["Magic"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Magic.T_Notification_Skill_Magic"
+skills["Attack"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Attack.T_Notification_Skill_Attack"
+skills["Ranged"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Ranged.T_Notification_Skill_Ranged"
+skills["Agility"]="/Game/Art/UI/Skills/Icons/T_Notification_Skill_Agility.T_Notification_Skill_Agility"
+return {skills=skills, spells=spells}

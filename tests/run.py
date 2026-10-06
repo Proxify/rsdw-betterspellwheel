@@ -26,3 +26,4 @@ end
 assert(checked == 39)
 print('PASS: all 39 live spell records map to their owning skill')
 """)
+lua.execute((root / "tests/runtime_test.lua").read_text())

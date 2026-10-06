@@ -17,7 +17,7 @@ return function(model)
                     description = perk.PerkDescription:ToString(), cooldown = data.CooldownDuration,
                     -- Availability is injected by the client adapter only after
                     -- its native unlock query has passed the live probe.
-                    unlocked = isUnlocked ~= nil and isUnlocked(perk) == true or false,
+                    unlocked = isUnlocked ~= nil and isUnlocked(perk, data) == true or false,
                     data = data }
             end)
             if ok then

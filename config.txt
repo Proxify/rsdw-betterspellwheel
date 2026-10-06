@@ -1,0 +1,2 @@
+# Set false to use the standard Dragonwilds wheel. Restart after changing.
+Enabled=true
