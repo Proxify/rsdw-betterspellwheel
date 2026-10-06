@@ -1,6 +1,6 @@
 param([ValidateSet('Guard','Suite')][string]$Mode='Suite',
-      [string]$Installer='D:\rsdw-mods\dist\BetterSpellWheel-0.2.2-setup.exe',
-      [string]$Manifest='D:\rsdw-mods\dist\BetterSpellWheel-0.2.2-setup.manifest.json')
+      [string]$Installer='D:\rsdw-mods\dist\BetterSpellWheel-0.3.0-setup.exe',
+      [string]$Manifest='D:\rsdw-mods\dist\BetterSpellWheel-0.3.0-setup.manifest.json')
 $ErrorActionPreference='Stop'
 $root=Join-Path 'D:\rsdw-mods\repl' ('bsw-installer-tests-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root | Out-Null
@@ -48,7 +48,7 @@ try {
    Assert ((Get-FileHash (Join-Path $w ('ue4ss\'+$name))).Hash.ToLower() -eq $hashes.$name) ('Dependency mismatch '+$name)
   }
   Assert ((Get-FileHash (Join-Path $w 'dwmapi.dll')).Hash.ToLower() -eq $hashes.'dwmapi.dll') 'Loader mismatch'
-  Pass 'fresh install: all 15 mod files and four dependency hashes match'
+  Pass 'fresh install: all packaged mod files and four dependency hashes match'
   Put (Join-Path $m 'config.txt') 'Enabled=false';Put (Join-Path $m 'data\keep.txt') 'user data'
   Put (Join-Path $m 'Scripts\main.lua') 'old mod version'
   Run $dir;Installed $m $true;Run $dir

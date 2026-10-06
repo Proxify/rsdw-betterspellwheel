@@ -5,6 +5,8 @@ local root=arg[1]:gsub('/Scripts/model.lua$','')
 local model=realDofile(root..'/Scripts/model.lua')
 local clock,book,native,aim,denied=0,0,false,false,false
 local x,y=0,0
+local padSample,usingPad={},false
+local captured=false
 local function obj(id)
  return {IsValid=function() return true end,GetAddress=function()return id end,GetFName=function()return {ToString=function()return id end}end}
 end
@@ -39,6 +41,7 @@ end
 local input=obj('input');function input:IsOpen()return native end
 function input:CloseWidgetIfOpen()native=false;pc.CurrentInputMode=obj('DIM_Gameplay')end
 local lib=obj('lib');function lib:SetInputMode_UIOnlyEx()end;function lib:SetInputMode_GameOnly()end
+function lib:SetInputMode_GameAndUIEx()end
 function lib:GetGameTimeInSeconds()return clock end
 function lib:GetViewportScale()return 1 end
 function StaticFindObject()return lib end
@@ -51,6 +54,10 @@ keys={};function RegisterKeyBind(key,fn)keys[key]=fn end
 function LoopInGameThreadWithDelay(_,fn)callback=fn;return 1 end
 function CancelDelayedAction()end
 function dofile(path)
+ if path:find('/input.lua',1,true)then return function()return {new=function()return {
+  sample=function()local s={x=0,y=0};for k,v in pairs(padSample)do s[k]=v end;return s end, device=function()return usingPad,'xbox' end,
+  capture=function()captured=true end,release=function()captured=false end,shutdown=function()captured=false end,
+ }end}end end
  if path:find('/catalogue.lua',1,true)then return function()return {scan=function()return model.catalogue({record}),{}end}end end
  if path:find('/view.lua',1,true)then return function()return {new=function()
   assert(not failView,'test missing artwork')
@@ -89,6 +96,26 @@ record.unlocked=true;x,y=0,0;ticks();select();assert(calls==before)
 keys[0x51]();ticks();assert(not mod.open)
 -- Reload/shutdown during targeting cancels and restores before stopping.
 open();select();sameSlots(1,spell);mod.shutdown();sameSlots()
+-- Controller opens via native wheel, selects a skill, enters, and casts once.
+mod=realDofile(root..'/Scripts/main.lua');usingPad=true;padSample={};native=true;x,y=0,0;ticks(20)
+assert(mod.open and captured and mod.state.input=='controller')
+padSample={x=0,y=1};ticks(2);assert(mod.state.group==1 and not mod.state.spell)
+padSample={accept=true};ticks();assert(mod.open and mod.state.spell==1)
+ticks(20);sameSlots() -- a held A must not cast the highlighted first spell
+padSample={};ticks();padSample={accept=true};ticks();assert(not mod.open);sameSlots(1,spell)
+padSample={};finish();sameSlots()
+-- B first backs out of spells, then closes; held B cannot do both.
+native=true;ticks(20);padSample={x=0,y=1};ticks();padSample={accept=true};ticks()
+padSample={};ticks();padSample={back=true};ticks();assert(mod.open and not mod.state.spell)
+ticks(20);assert(mod.open);padSample={};ticks();padSample={back=true};ticks();assert(not mod.open)
+-- Mouse takes over only after real movement, not its stationary cached location.
+padSample={};native=true;ticks(20);padSample={x=0,y=1};ticks();padSample={};ticks()
+assert(mod.state.input=='controller');x,y=0,-202;ticks(20);assert(mod.state.input=='mouse')
+x,y=0,-344;ticks();select();assert(not mod.open);padSample={};finish();sameSlots()
+-- Hidden-cursor handoff also works from raw MouseX without position change.
+usingPad=true;padSample={};native=true;ticks(20);assert(mod.state.input=='controller')
+padSample={mx=4};ticks();assert(mod.state.input=='mouse')
+usingPad=false;padSample={};mod.shutdown()
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
 for _=1,4 do callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')

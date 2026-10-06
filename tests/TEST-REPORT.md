@@ -1,3 +1,55 @@
+# BetterSpellWheel 0.3.0 controller verification — 2026-10-06
+
+Test environment: Dragonwilds 1.0 / UE 5.6 / Windows 1080p, TradeTester connected to
+local dedicated MODTEST. Virtual Xbox360 device via existing ViGEmBus and test-only
+vgamepad0.1.0, driving the engine input path. No physical controller was connected.
+
+- PASS: native Y opens; both analog polling and D-pad reach the mod.
+- PASS: all 12 skill directions, A enters, D-pad advances spells, B returns to
+  skills and a second press closes. Held A/B cannot skip stages. See
+  [recorded sweep](controller-live-results.txt).
+- PASS: zero text overflows at every sweep stage; visually inspected
+  [Xbox wheel](../docs/controller-xbox.jpg) and
+  [PlayStation label fixture](../docs/controller-playstation-labels.jpg).
+- PASS: real Windstep instant cast and AxtralProjection RT confirmation recorded
+  in LastCastTimeBySpellData; all 48 saved spell slots restored after gameplay
+  mode returned. LT cancellation also returned to gameplay with all 48 restored.
+- PASS: locked-record selection shows denial without closing or casting.
+- PASS: stick navigation did not move the character or turn the camera while
+  browsing. Y close restored native camera input. Mouse movement switched back
+  to mouse navigation; raw MouseX/Y fixes hidden-cursor handoff.
+- PASS: hot reload into final0.3.0, repeated open/back/close and layout audit.
+- PASS: tests/run.py — Lua syntax,66 model checks,2340 layout checks,39 progression
+  records, controller navigation/input-capture unit tests and real-adapter mocks
+  covering controller stages, mouse handoff, casts, denial, all book offsets,
+  cancellation, newer server updates, shutdown and native fallback.
+- PASS: final EXE running-game refusal and complete Windows disposable-directory
+  installer suite (fresh/update/repeat/uninstall, config/data/other-mod retention,
+  loader/old-name/junction refusal and both UE4SS layouts). See
+  [installer results](installer-results-0.3.0.txt).
+- PASS: interactive installer fresh install, update and uninstall in a disposable
+  game directory, with all three success screens visually inspected.
+- PASS: release_test.py —17 production files match source in both outputs;
+  ZIP has18 entries including root INSTALL.txt; EXE is separate.
+
+Live failures caught and resolved: native B initially closed the whole wheel
+before polling; the scoped consuming mapping fixed it. Cursor-position-only
+handoff missed hidden-cursor movement; raw mouse deltas fixed it. Early native
+animation/cancel assertions ran before mode restoration; settled-state checks
+confirmed correct cast/cancel and slot restoration. Short camera check similarly
+ran too early; a subsequent held-stick check confirmed controls restored.
+
+Not verified: physical Xbox hardware, native DualShock/DualSense input, Bluetooth,
+Steam Deck, ultrawide/high-DPI, device disconnect mid-selection, death/disconnect
+while targeting, every spell effect, and other wheel mods. PlayStation labels
+were verified visually, not with PlayStation hardware. Paging is unit-tested;
+none of the current39 spells creates a skill with more than six entries.
+
+Earlier release results follow as historical evidence (their unsupported-controller
+statements describe those earlier versions).
+
+---
+
 # BetterSpellWheel 0.2.2 test report
 
 2026-10-05. Dragonwilds 1.0 / UE 5.6, Windows client with project UE4SS build.

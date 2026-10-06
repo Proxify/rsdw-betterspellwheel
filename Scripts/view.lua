@@ -129,6 +129,10 @@ return function(E, model, L)
    return errors
   end
   function u.draw(state,dt,message,cost,status)
+   local pad=state.input=='controller'
+   local browsing=state.controllerStage=='spells'
+   local accept=state.padStyle=='playstation' and 'Cross' or 'A'
+   local back=state.padStyle=='playstation' and 'Circle' or 'B'
    u.fade=math.min(1,(u.fade or 0)+dt/.12);u.root:SetRenderOpacity(u.fade)
    local group=state.groups[state.group];local spell=group and group.spells[state.spell]
    for i,n in ipairs(u.skills) do
@@ -138,7 +142,7 @@ return function(E, model, L)
    local branchKey=tostring(state.group)..':'..state.page
    if branchKey~=u.branchKey then u.branchKey=branchKey;u.branchFade=0 end
    u.branchFade=math.min(1,(u.branchFade or 0)+dt/.1)
-   local key=branchKey..':'..tostring(state.spell)..':'..tostring(message)..':'..tostring(cost)..':'..tostring(status)
+   local key=branchKey..':'..tostring(state.spell)..':'..tostring(message)..':'..tostring(cost)..':'..tostring(status)..':'..tostring(pad)..':'..tostring(browsing)..':'..accept
    if key~=u.last then
     u.last=key
     local b=model.branch(state)
@@ -160,6 +164,7 @@ return function(E, model, L)
      end
     end
     u.empty:SetVisibility(group and 2 or 3)
+    set(u.empty,pad and 'Point the stick at a skill, or browse with the D-pad.\n\nPress '..accept..' to explore its spells.' or 'Hover an inner icon to explore a skill.\n\nIts spells appear in the outer ring.\nThe numbers match this list.')
     if group then
      local t=u.texture(icons.skills[group.id]);if E.valid(t) then u.centerIcon:SetBrushFromTexture(t,false);u.centerIcon:SetVisibility(3) end
      fit(u.centerTitle,group.label,centerTitleBox,20,16,GOLD)
@@ -167,17 +172,17 @@ return function(E, model, L)
      fit(u.heading,group.label,L.heading,24,20,WHITE)
      set(u.meta,#group.spells..' spells  /  '..group.available..' unlocked')
      fit(u.title,spell and spell.name or 'Choose a spell',L.title,25,20,GOLD)
-     fit(u.body,spell and spell.description or 'Move to a numbered outer icon. Return to the inner ring to change skills.',L.body,16,12,WHITE)
+     fit(u.body,spell and spell.description or (pad and ('Press '..accept..' to browse these spells. '..back..' closes the wheel.') or 'Move to a numbered outer icon. Return to the inner ring to change skills.'),L.body,16,12,WHITE)
      fit(u.cost,cost or '',L.cost,13,11,MUTED)
-     fit(u.status,message or status or (spell and (spell.unlocked and 'LMB  Select spell' or 'Unlock at level '..spell.level) or 'Move outward to explore'),L.status,13,11,message and RED or GOLD)
+     fit(u.status,message or status or (spell and (spell.unlocked and (pad and accept..'  Select spell' or 'LMB  Select spell') or 'Unlock at level '..spell.level) or (pad and accept..'  Choose skill' or 'Move outward to explore')),L.status,13,11,message and RED or GOLD)
     else
-     u.centerIcon:SetVisibility(2);fit(u.centerTitle,'Choose a skill',centerTitleBox,20,16,GOLD);set(u.centerMeta,'Move onto an icon')
+     u.centerIcon:SetVisibility(2);fit(u.centerTitle,'Choose a skill',centerTitleBox,20,16,GOLD);set(u.centerMeta,pad and 'Stick / D-pad' or 'Move onto an icon')
      fit(u.heading,'YOUR SPELLBOOK',L.heading,24,20,WHITE);set(u.meta,'Twelve skills. One gesture.')
      fit(u.title,'Find your next spell.',L.title,25,20,GOLD)
-     fit(u.body,'Move outward to select a spell. Click to use the game\'s normal casting controls.',L.body,16,12,WHITE)
+     fit(u.body,pad and ('Choose a skill, then a spell. Press '..accept..' to use the game\'s normal casting controls.') or 'Move outward to select a spell. Click to use the game\'s normal casting controls.',L.body,16,12,WHITE)
      set(u.cost,'');fit(u.status,message or '',L.status,13,11,RED)
     end
-    set(u.hint,'LMB  Select     RMB  Back     Q / ESC  Close'..(model.pages(state)>1 and '     F / G  Page '..state.page..' / '..model.pages(state) or ''))
+    set(u.hint,pad and ('Stick / D-pad  Browse     '..accept..(browsing and '  Cast     ' or '  Choose     ')..back..(browsing and '  Back' or '  Close')..(model.pages(state)>1 and (state.padStyle=='playstation' and '     L1 / R1  Page' or '     LB / RB  Page') or '')) or ('LMB  Select     RMB  Back     Q / ESC  Close'..(model.pages(state)>1 and '     F / G  Page '..state.page..' / '..model.pages(state) or '')))
    end
    for _,n in ipairs(u.spells) do
     n.base:SetRenderOpacity(u.branchFade);n.number:SetRenderOpacity(u.branchFade)

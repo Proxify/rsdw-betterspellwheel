@@ -27,8 +27,8 @@ zig cc -target x86_64-windows-gnu -O2 -municode -Wl,--subsystem,windows \
   -o dist/setup-stub.exe installer/setup.c -lshell32 -lole32 -ladvapi32 -luser32
 python3 tools/package.py
 python3 installer/build.py dist/setup-stub.exe /path/to/clean/ue4ss \
-  /path/to/dwmapi.dll installer/UE4SS-LICENSE.txt dist/BetterSpellWheel-0.2.2-setup.exe
-python3 tests/release_test.py dist/BetterSpellWheel-0.2.2.zip dist/BetterSpellWheel-0.2.2-setup.exe
+  /path/to/dwmapi.dll installer/UE4SS-LICENSE.txt dist/BetterSpellWheel-0.3.0-setup.exe
+python3 tests/release_test.py dist/BetterSpellWheel-0.3.0.zip dist/BetterSpellWheel-0.3.0-setup.exe
 ```
 
 Both builders use `tools/release_manifest.py`. The EXE builder emits a companion

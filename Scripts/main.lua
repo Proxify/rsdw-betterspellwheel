@@ -1,11 +1,12 @@
--- BetterSpellWheel 0.2.2. Client UI; casting remains entirely native.
+-- BetterSpellWheel 0.3.0. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.2.2',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.3.0',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
+local controller=dofile(folder..'/Scripts/controller.lua')(model)
 local catalogue=dofile(folder..'/Scripts/catalogue.lua')(model)
 local icons=dofile(folder..'/Scripts/icons.lua')
 local E={}
@@ -26,19 +27,27 @@ E.render=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
 E.clock=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
+local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
 local view=dofile(folder..'/Scripts/view.lua')(E,model,layout)
 local function log(s) print('[BetterSpellWheel] '..s..'\n') end
-local cfg={Enabled=true}
+local cfg={Enabled=true,ControllerPrompts="auto"}
 local file=io.open(folder..'/config.txt','r')
-if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' end end;file:close() end
-local pc,radial,panel,input,component,ui,state,pending
+if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() end end;file:close() end
+local pc,radial,panel,input,component,ui,state,pending,device,pad
+local pointerX,pointerY
 local lastTime,frame,elapsed=0,0,0
 function M.auditLayout() return ui and ui.audit() or {'wheel not built'} end
 local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
 local function controls(on)
  pc.bShowMouseCursor=on
- if on then E.lib:SetInputMode_UIOnlyEx(pc,nil,0,false)
- else E.lib:SetInputMode_GameOnly(pc,true);pc:RefreshInputMode() end
+ if on then
+  device.capture()
+  E.lib:SetInputMode_GameAndUIEx(pc,nil,0,false,false)
+  pc.bShowMouseCursor=state.input~='controller'
+ else
+  if device then device.release() end
+  E.lib:SetInputMode_GameOnly(pc,not (device and device.draining));pc:RefreshInputMode()
+ end
 end
 local function restore()
  if not pending then return end
@@ -72,10 +81,10 @@ local function bindWorld()
  local found=FindFirstOf('BP_PlayerController_C')
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
-  restore();pc=nil;radial=nil;return false
+  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;return false
  end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
- M.close();restore();pc=found;radial=nil;ui=nil
+ M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil
  for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
   if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
  end
@@ -89,6 +98,9 @@ local function open()
  local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
  if #errors>0 then log('Catalogue skipped '..#errors..' unavailable records') end
  state=model.new(groups);M.state=state
+ pad=controller.new()
+ local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
+ controller.prime(pad,device.sample());state.controllerStage=pad.stage
  -- Build before suppressing the native wheel, so a missing asset fails open.
  if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons) end
  radial:StopRadialSelection();panel:SetVisibility(2);panel:SetRenderOpacity(0)
@@ -96,6 +108,7 @@ local function open()
  ui.show();controls(true)
  local dpi=E.layout:GetViewportScale(pc)
  pc:SetMouseLocation(math.floor((ui.width/2-220*ui.scale)*dpi),math.floor(ui.height/2*dpi))
+ pointerX,pointerY=ui.pointer()
 end
 local function costText(spell)
  if not spell then return '' end
@@ -139,8 +152,9 @@ end
 local function tick()
  frame=frame+1;elapsed=elapsed+.016
  if not cfg.Enabled or M.disabled then return end
- if not M.open and not pending and frame%2~=0 then return end
+ if not M.open and not pending and not (device and device.draining) and frame%2~=0 then return end
  if not bindWorld() then return end
+ if device.draining then device.release() end
  if pending then
   local mode=pc.CurrentInputMode
   local name=E.valid(mode) and mode:GetFName():ToString() or ''
@@ -153,8 +167,27 @@ local function tick()
  local dt=math.min(.05,math.max(.001,now-lastTime));lastTime=now
  ui.resize()
  local x,y=ui.pointer()
- if M.back and x*x+y*y<model.geometry.outer^2 then M.back=false end
- if not M.back then model.update(state,x,y,now) end
+ local sample=device.sample()
+ local moved=(pointerX and ((x-pointerX)^2+(y-pointerY)^2)>9) or math.abs(sample.mx or 0)>.5 or math.abs(sample.my or 0)>.5
+ pointerX,pointerY=x,y
+ local padActivity=sample.x*sample.x+sample.y*sample.y>=controller.deadzone^2
+ for _,k in ipairs({'accept','back','close','previous','next','up','down','left','right'}) do if sample[k] then padActivity=true end end
+ if padActivity and state.input~='controller' then
+  state.input='controller';pad=controller.new();state.spell=nil;M.back=false
+  local _,style=device.device();state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
+ elseif moved and not padActivity and state.input~='mouse' then
+  state.input='mouse';state.spell=nil;M.back=false
+ end
+ if state.input=='controller' then
+  local action=controller.step(pad,state,sample,now)
+  state.controllerStage=pad.stage
+  if action=='select' or action=='close' then M.queue[#M.queue+1]=action end
+  if action=='back' or action=='enter' then M.message=nil end
+ else
+  controller.prime(pad,sample)
+  if M.back and x*x+y*y<model.geometry.outer^2 then M.back=false end
+  if not M.back then model.update(state,x,y,now) end
+ end
  local group=state.groups[state.group];local spell=group and group.spells[state.spell]
  local hover=spell and spell.id or tostring(state.group)
  if hover~=M.hover then M.hover=hover;M.message=nil;M.cost=costText(spell) end
@@ -167,7 +200,7 @@ local function tick()
   elseif action=='select' and elapsed-M.since>.15 then selectSpell();if not M.open then return end end
  end
  -- Game HUD activation can restore game input underneath custom UI.
- if frame%12==0 or not pc.bShowMouseCursor then controls(true) end
+ if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
  panel:SetVisibility(2);panel:SetRenderOpacity(0)
  ui.draw(state,dt,M.message,M.cost)
 end
@@ -175,6 +208,7 @@ function M.shutdown()
  M.close()
  if pending and E.valid(component) then component:CancelSpellcasting() end
  restore()
+ if device then device.shutdown() end
  if M.handle then CancelDelayedAction(M.handle);M.handle=nil end
 end
 -- Key callbacks only queue plain data; every UObject operation runs on game thread.
@@ -206,7 +240,7 @@ M.handle=LoopInGameThreadWithDelay(16,function()
  local ok,err=pcall(tick)
  if not ok then
   log('Disabled after error; restoring native controls: '..tostring(err));M.disabled=true
-  pcall(M.close);pcall(restore)
+  pcall(M.close);pcall(restore);if device then pcall(device.shutdown) end
  end
 end)
 log('Loaded '..M.version..'. Open the spell wheel with your normal key (Q).')

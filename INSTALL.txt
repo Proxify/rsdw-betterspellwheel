@@ -1,13 +1,13 @@
-BETTERSPELLWHEEL 0.2.2 - INSTALLATION (WINDOWS / STEAM)
+BETTERSPELLWHEEL 0.3.0 - INSTALLATION (WINDOWS / STEAM)
 ====================================================
 
 Choose ONE installation method below. The setup EXE is a separate download;
 it is not inside this ZIP. PlayerTrading and RuneSchema are not required.
 
-EASY INSTALL - BetterSpellWheel-0.2.2-setup.exe
+EASY INSTALL - BetterSpellWheel-0.3.0-setup.exe
 ---------------------------------------------
 1. Close RuneScape: Dragonwilds.
-2. Run BetterSpellWheel-0.2.2-setup.exe. It finds the game through Steam,
+2. Run BetterSpellWheel-0.3.0-setup.exe. It finds the game through Steam,
    or asks you to choose the game folder if it cannot find it.
 3. The installer adds BetterSpellWheel and enables it. It includes the tested
    Dragonwilds UE4SS loader and installs it only if UE4SS is not already present.
@@ -53,7 +53,11 @@ CONTROLS
 --------
 Q: open. Hover an inner skill, move outward to a spell and left-click to select.
 Right-click: back. Q / Escape: close. Casting uses the game's normal controls.
-This is a keyboard-and-mouse beta; controllers are not supported.
+Controller: Y / Triangle opens. Stick or D-pad browses. A / Cross chooses a
+skill, then its spell. B / Circle goes back, then closes. Release the stick
+after choosing a skill before browsing spells. RT / R2 confirms targeting;
+LT / L2 cancels. ControllerPrompts=PlayStation selects PlayStation labels
+when Steam Input reports an Xbox controller. Mouse movement switches input modes.
 
 DISABLE / UNINSTALL
 -------------------

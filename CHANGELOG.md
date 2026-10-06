@@ -1,3 +1,13 @@
+# 0.3.0 — Controller navigation
+
+- Open using the native controller binding and browse skills with either stick or D-pad.
+- Confirm to enter a skill, browse its spells, then confirm to cast through native targeting.
+- Back returns to skills; a second press closes. Held buttons cannot skip both stages.
+- Deadzone, directional hysteresis, repeat timing, neutral-stick gate and mouse handoff.
+- Xbox / PlayStation hints, with a config override for Steam Input.
+- Temporary input capture blocks gameplay and native UI bindings during browsing;
+  teardown removes only this mod's mapping and actor.
+
 # Changelog
 
 ## 0.2.2

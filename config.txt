@@ -1,2 +1,6 @@
 # Set false to use the standard Dragonwilds wheel. Restart after changing.
 Enabled=true
+
+# Controller button labels: Auto, Xbox, or PlayStation.
+# Use PlayStation when Steam Input presents your controller as Xbox.
+ControllerPrompts=Auto
