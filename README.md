@@ -1,4 +1,4 @@
-# SpellBranches
+# BetterSpellWheel
 
 **Your skills. Your magic.** A skill-first Q wheel for RuneScape: Dragonwilds 1.0.
 
@@ -7,7 +7,19 @@ Twelve fixed skill positions organize all 39 current perk spells. Native icons,
 large icons and gold highlights keep navigation clear. Numbered outer slots match
 a spell list beside the wheel; full names and descriptions stay in that panel.
 
-Version **0.2.0 — keyboard/mouse beta**. Tested in TRADE_TEST as TradeTester.
+Version **0.2.1 — keyboard/mouse beta**. Tested in TRADE_TEST as TradeTester.
+
+## What changed in 0.2.1
+
+The mod is now **BetterSpellWheel** (formerly SpellBranches), with its own source
+repository: [Proxify/rsdw-betterspellwheel](https://github.com/Proxify/rsdw-betterspellwheel).
+The install folder, in-game title and release archive use the new name. The skill
+mapping and casting behavior are unchanged from 0.2.0.
+
+**Upgrading from SpellBranches:** exit the game, remove the old `SpellBranches`
+folder and its `SpellBranches : 1` entry from `mods.txt`, then install
+`BetterSpellWheel`. Keep only one version enabled. Copy your `Enabled` preference
+into the new config if you changed it.
 
 ## What changed in 0.2.0
 
@@ -50,10 +62,10 @@ feedback. Hovering alone never casts.
 Requires the Dragonwilds-compatible UE4SS build already installed in your game.
 PlayerTrading and RuneSchema are not dependencies.
 
-1. Extract the `SpellBranches` folder into:
+1. Extract the `BetterSpellWheel` folder into:
    `RSDragonwilds/RSDragonwilds/Binaries/Win64/ue4ss/Mods/`
 2. Keep `enabled.txt` in that folder. If your loader uses `Mods/mods.txt`, add
-   `SpellBranches : 1` on its own line.
+   `BetterSpellWheel : 1` on its own line.
 3. Restart the game and open the spell wheel in a world.
 
 The folder must contain `Scripts/`, `Assets/`, `config.txt`, `README.md` and
@@ -65,7 +77,7 @@ To uninstall, exit the game, remove the folder and its `mods.txt` entry.
 
 ## Casting and spellbooks
 
-SpellBranches reads your actual spell unlocks. It does not grant abilities,
+BetterSpellWheel reads your actual spell unlocks. It does not grant abilities,
 change levels, remove costs, bypass cooldowns, or call a custom server cast RPC.
 Selection goes through the game's radial selection function and its normal
 validation and targeting flow.

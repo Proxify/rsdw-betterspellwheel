@@ -1,10 +1,10 @@
--- SpellBranches 0.2.0. Client UI; casting remains entirely native.
+-- BetterSpellWheel 0.2.1. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
-assert(folder,'SpellBranches must run from its Scripts directory')
-if _G.SpellBranches and _G.SpellBranches.shutdown then _G.SpellBranches.shutdown() end
-local M={version='0.2.0',open=false,folder=folder,disabled=false,queue={}}
-_G.SpellBranches=M
+assert(folder,'BetterSpellWheel must run from its Scripts directory')
+if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
+local M={version='0.2.1',open=false,folder=folder,disabled=false,queue={}}
+_G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local catalogue=dofile(folder..'/Scripts/catalogue.lua')(model)
 local icons=dofile(folder..'/Scripts/icons.lua')
@@ -27,7 +27,7 @@ E.clock=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local view=dofile(folder..'/Scripts/view.lua')(E,model,layout)
-local function log(s) print('[SpellBranches] '..s..'\n') end
+local function log(s) print('[BetterSpellWheel] '..s..'\n') end
 local cfg={Enabled=true}
 local file=io.open(folder..'/config.txt','r')
 if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' end end;file:close() end
@@ -178,10 +178,10 @@ function M.shutdown()
  if M.handle then CancelDelayedAction(M.handle);M.handle=nil end
 end
 -- Key callbacks only queue plain data; every UObject operation runs on game thread.
-if not _G.SpellBranchesKeys then
- _G.SpellBranchesKeys=true
+if not _G.BetterSpellWheelKeys then
+ _G.BetterSpellWheelKeys=true
  for key,action in pairs({[1]='select',[2]='back',[0x51]='close',[0x1B]='close',[0x46]='previous',[0x47]='next'}) do
-  RegisterKeyBind(key,function() local m=_G.SpellBranches;if m and m.open then m.queue[#m.queue+1]=action end end)
+  RegisterKeyBind(key,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]=action end end)
  end
 end
 -- Opt-in development console; dev.txt is never included in release archives.
@@ -192,7 +192,7 @@ if devFile then
  devPoll=function()
   local f=io.open(dir..'in.lua','r');if not f then return end
   local code=f:read('a');f:close();os.remove(dir..'in.lua')
-  local fn,err=load(code,'SpellBranches dev','t',_G)
+  local fn,err=load(code,'BetterSpellWheel dev','t',_G)
   local ok,result=false,err
   if fn then ok,result=xpcall(fn,debug.traceback) end
   local out=assert(io.open(dir..'out.tmp','w'))
@@ -202,7 +202,7 @@ if devFile then
 end
 M.handle=LoopInGameThreadWithDelay(16,function()
  if devPoll and frame%6==0 then pcall(devPoll) end
- if _G.SpellBranches~=M then return end
+ if _G.BetterSpellWheel~=M then return end
  local ok,err=pcall(tick)
  if not ok then
   log('Disabled after error; restoring native controls: '..tostring(err));M.disabled=true

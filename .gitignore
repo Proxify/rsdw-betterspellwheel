@@ -1,0 +1,8 @@
+# Developer console and local state
+dev.txt
+data/
+dist/
+__pycache__/
+*.pyc
+*.zip
+*.exe

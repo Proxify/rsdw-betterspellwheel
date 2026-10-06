@@ -1,6 +1,6 @@
--- Run through the SpellBranches client console as TradeTester. Read-only: no characters, saves or inventories
+-- Run through the BetterSpellWheel client console as TradeTester. Read-only: no characters, saves or inventories
 -- are changed. Pass only after copying this mod to D:\rsdw-mods\mods.
-local root = "D:/rsdw-mods/mods/SpellBranches/"
+local root = "D:/rsdw-mods/mods/BetterSpellWheel/"
 local model = dofile(root.."Scripts/model.lua")
 local catalogue = dofile(root.."Scripts/catalogue.lua")(model)
 local pc=FindFirstOf("BP_PlayerController_C")

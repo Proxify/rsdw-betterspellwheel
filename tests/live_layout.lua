@@ -1,6 +1,6 @@
--- Run in the SpellBranches test console with the wheel open as TradeTester.
+-- Run in the BetterSpellWheel test console with the wheel open as TradeTester.
 -- Moves the test pointer only; checks Slate text bounds and native progression.
-local M=assert(SpellBranches)
+local M=assert(BetterSpellWheel)
 local pc=FindFirstOf('BP_PlayerController_C')
 assert(pc:IsValid() and pc.PlayerState:GetPlayerName():ToString():lower()=='tradetester','test character required')
 assert(M.open and not M.disabled and M.state.group==nil,'open a fresh wheel first')

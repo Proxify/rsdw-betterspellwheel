@@ -63,7 +63,7 @@ return function(E, model, L)
    local t=E.render:ImportFileAsTexture2D(pc,folder..'/Assets/'..n..'.png')
    assert(E.valid(t),'missing ring artwork: '..n);u.textures[n]=t
   end
-  text('S P E L L B R A N C H E S',{x=962,y=8,w=396,h=58},22,'PlayerListTitleTextStyle',GOLD,true,false,'brand')
+  text('BETTER SPELL WHEEL',{x=962,y=8,w=396,h=58},22,'PlayerListTitleTextStyle',GOLD,true,false,'brand')
   text('CHOOSE A SKILL.  FOLLOW ITS MAGIC.',{x=962,y=72,w=396,h=26},10,'DescriptionTextStyle',MUTED,true,false,'tagline')
   local ring={x=76,y=56,w=848,h=848}
   for i,g in ipairs(model.skills) do

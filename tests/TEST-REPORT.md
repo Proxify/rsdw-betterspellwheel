@@ -1,12 +1,28 @@
-# SpellBranches 0.2.0 test report
+# BetterSpellWheel 0.2.1 test report
 
 2026-10-05. Dragonwilds 1.0 / UE 5.6, Windows client with project UE4SS build.
 Only TradeTester in TRADE_TEST was used for client mutations. MODTEST was used
 for the earlier read-only spell catalogue investigation.
 
+## 0.2.1 rename verification
+
+The mod was renamed from SpellBranches to BetterSpellWheel and moved to the
+standalone `Proxify/rsdw-betterspellwheel` repository, preserving its mod history.
+The casting adapter and skill mapping are unchanged.
+
+- All automated checks below passed again with the renamed Lua globals.
+- Hot reload from `D:/rsdw-mods/mods/BetterSpellWheel/Scripts/main.lua` returned
+  0.2.1. The Windows junction and loader entry now use BetterSpellWheel.
+- Real Q opening and Agility → Windstep hover passed. The new title was reviewed
+  in-game at 1920×1080; the layout audit reported zero text overflows.
+- The renamed key bindings close with Q, hide the cursor and restore gameplay.
+- `docs/preview.jpg` shows 0.2.1; the other screenshots record 0.2.0 coverage under
+  its former name. No fresh cold-start or casting-effect rerun is claimed for
+  this naming-only release.
+
 ## Automated checks
 
-`/tmp/luav/bin/python mods/SpellBranches/tests/run.py` passed:
+`/tmp/luav/bin/python mods/BetterSpellWheel/tests/run.py` passed:
 
 - Every Lua source/fixture compiles with Lua 5.4.
 - 66 model checks: boundaries, dead zones, angular wrap, skill dwell/hysteresis,
