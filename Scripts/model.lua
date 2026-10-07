@@ -68,8 +68,10 @@ function M.catalogue(records)
 end
 
 function M.new(groups)
-    return { groups = groups, group = nil, spell = nil, candidate = nil,
-        candidateSince = 0, page = 1, zone = "center", opened = true }
+ return { groups = groups, group = nil, spell = nil, candidate = nil,
+        candidateSince = 0, page = 1, zone = "center", opened = true,
+        cursorVisible = false, cursorX = nil, cursorY = nil, cursorAngle = nil,
+        cursorRadius = 0 }
 end
 
 function M.pages(state)
@@ -85,6 +87,20 @@ function M.branch(state)
     local step = math.rad(20)
     return { center = M.skillAngle(state.group, #state.groups), first = first,
         count = count, step = step, span = step * count }
+end
+
+function M.nearestSpell(state, x, y)
+    local b = M.branch(state)
+    if not b or b.count == 0 then return nil end
+    local best, distance = nil, math.huge
+    for i = 1, b.count do
+        local angle = b.center - b.span / 2 + b.step * (i - .5)
+        local px, py = M.point(angle, M.geometry.spellRadius)
+        local dx, dy = x - px, y - py
+        local current = dx * dx + dy * dy
+        if current < distance then best, distance = i, current end
+    end
+    return best and b.first + best - 1 or nil
 end
 
 function M.setGroup(state, index)

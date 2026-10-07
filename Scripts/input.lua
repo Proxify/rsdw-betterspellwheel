@@ -18,7 +18,11 @@ return function(E)
     if k=='x' or k=='y' or k=='rx' or k=='ry' or k=='mx' or k=='my' then s[k]=pc:GetInputAnalogKeyState(key)
     else s[k]=pc:IsInputKeyDown(key) end
    end
-   if s.rx*s.rx+s.ry*s.ry>s.x*s.x+s.y*s.y then s.x,s.y=s.rx,s.ry end
+   -- BetterSpellWheel navigation is right-stick only. On this controller
+   -- path, only the vertical right-stick axis is reflected. Normalize that
+   -- axis while preserving horizontal left/right. Never fall back to the
+   -- left stick.
+   s.x,s.y=s.rx,-s.ry
    s.close=s.close or s.toggle
    return s
   end

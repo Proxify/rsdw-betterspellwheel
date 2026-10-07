@@ -1,50 +1,93 @@
--- Engine-independent controller navigation. No release-to-cast, and a held
--- confirm can never both enter a skill and cast its first spell.
+-- Simple controller navigation. The right stick moves a cursor around the
+-- wheel; the normal radial model decides when a skill or spell is hovered.
 return function(model)
- local C={deadzone=.28,releaseZone=.20,repeatDelay=.18,repeatInterval=.08}
+ local C={deadzone=.28,releaseZone=.20,repeatDelay=.18,repeatInterval=.08,
+  cursorSpeed=1350,selectedCursorSpeed=843.75,cursorResponse=3}
  function C.new()
-  return {stage='skills',buttons={},neutral=true,direction=0,nextRepeat=0}
+  return {stage='skills',buttons={},neutral=true,direction=0,nextRepeat=0,
+   stickEngaged=false}
  end
  function C.prime(c,sample)
   c.buttons=sample or {};c.neutral=false;c.direction=0
  end
+ local function clear(state)
+  state.group,state.spell,state.candidate=nil,nil,nil
+  state.page,state.zone=1,'center'
+ end
  local function browse(state,c,direction)
-  if c.stage=='skills' then
-   model.setGroup(state,((state.group or (direction>0 and 0 or 1))-1+direction)%#state.groups+1)
-   state.zone='skill'
-  else
+  if c.stage=='spells' and state.group then
    local b=model.branch(state)
    if b and b.count>0 then
     state.spell=b.first+((state.spell or b.first)-b.first+direction)%b.count
     state.zone='spell'
    end
+  else
+   model.setGroup(state,((state.group or (direction>0 and 0 or 1))-1+direction)%#state.groups+1)
+   state.zone='skill'
+  end
+ end
+ local function moveCursor(state,x,y,r,dt)
+  local stickDistance=math.max(0,math.min(1,(r-C.releaseZone)/(1-C.releaseZone)))
+  local baseSpeed=state.group and C.selectedCursorSpeed or C.cursorSpeed
+  local speed=baseSpeed*stickDistance^C.cursorResponse
+  local nextX=(state.cursorX or 0)+x*speed*dt
+  local nextY=(state.cursorY or 0)-y*speed*dt
+  local radius=math.sqrt(nextX*nextX+nextY*nextY)
+  if radius>model.geometry.branchOuter then
+   local scale=model.geometry.branchOuter/radius
+   nextX,nextY=nextX*scale,nextY*scale
+   radius=model.geometry.branchOuter
+  end
+  state.cursorX,state.cursorY=nextX,nextY
+  state.cursorRadius=radius
+  state.cursorAngle=radius>1 and model.angle(nextX,nextY) or model.angle(x,-y)
+  state.cursorVisible=true
+ end
+ local function updateHover(state,now)
+  if not state.cursorX or not state.cursorY then return end
+  model.update(state,state.cursorX,state.cursorY,now)
+  local radius=state.cursorRadius or math.sqrt(state.cursorX*state.cursorX+state.cursorY*state.cursorY)
+  if radius>=model.geometry.branchInner and state.group then
+   local spell=model.nearestSpell(state,state.cursorX,state.cursorY)
+   if spell then state.spell,state.zone=spell,'spell' end
   end
  end
  function C.step(c,state,s,now)
+  local dt=c.lastTime and math.max(0,math.min(.1,now-c.lastTime)) or .016
+  c.lastTime=now
   local pressed={}
-  for _,k in ipairs({'accept','back','close','previous','next'}) do pressed[k]=s[k] and not c.buttons[k] end
+  for _,k in ipairs({'accept','confirm','back','close','previous','next'}) do
+   pressed[k]=s[k] and not c.buttons[k]
+  end
   c.buttons=s
   local x,y=s.x or 0,s.y or 0
   local r=math.sqrt(x*x+y*y)
-  if r<C.releaseZone then c.neutral=true end
+  if r>=C.deadzone then
+   c.stickEngaged=true
+   moveCursor(state,x,y,r,dt)
+   if c.neutral then updateHover(state,now) end
+  elseif r<C.releaseZone then
+   if c.stickEngaged then
+    c.stickEngaged=false
+    -- Releasing never moves the cursor. Keep an outer spell available for
+    -- casting; only an inner-area release clears the category.
+    if (state.cursorRadius or 0)<model.geometry.inner then
+     clear(state);c.stage='skills';c.direction=0
+    end
+   end
+   c.neutral=true
+  end
+  c.stage=state.zone=='spell' and 'spells' or 'skills'
   if pressed.close then return 'close' end
   if pressed.back then
-   if c.stage=='skills' then return 'close' end
-   c.stage='skills';state.spell=nil;state.zone='skill';c.neutral=false;c.direction=0
-   return 'back'
-  end
-  if c.stage=='skills' and c.neutral and r>=C.deadzone then
-   local angle=model.angle(x,-y)
-   local step=math.pi*2/#state.groups
-   local index=math.floor((angle+step/2)%(math.pi*2)/step)+1
-   if state.group and math.abs(model.delta(angle,model.skillAngle(state.group,#state.groups)))<step/2+model.geometry.hysteresis then index=state.group end
-   model.setGroup(state,index);state.zone='skill'
+   if c.stage=='spells' or state.group then
+    clear(state);c.stage='skills';c.neutral=false
+    return 'back'
+   end
+   return 'close'
   end
   local direction=0
   if s.right or s.down then direction=1 elseif s.left or s.up then direction=-1 end
-  if c.stage=='spells' and direction==0 and c.neutral and r>=C.deadzone then
-   direction=(math.abs(x)>=math.abs(y) and x or -y)>=0 and 1 or -1
-  end
   if direction==0 then c.direction=0
   elseif direction~=c.direction or now>=c.nextRepeat then
    browse(state,c,direction)
@@ -53,15 +96,22 @@ return function(model)
   end
   if c.stage=='spells' and (pressed.previous or pressed.next) then
    model.turnPage(state,pressed.previous and -1 or 1)
-   local b=model.branch(state);state.spell=b and b.count>0 and b.first or nil
+   local b=model.branch(state)
+   state.spell=b and b.count>0 and b.first or nil
    state.zone=state.spell and 'spell' or 'skill'
   end
-  if pressed.accept then
-   if c.stage=='spells' then return 'select' end
-   local b=model.branch(state)
-   if b and b.count>0 then
-    c.stage='spells';state.spell=b.first;state.zone='spell';c.neutral=false;c.direction=0
-    return 'enter'
+  if pressed.accept or pressed.confirm then
+   if c.stage=='spells' and state.zone=='spell' then
+    return 'select'
+   end
+   -- Keep D-pad-only browsing usable as a fallback. Right-stick users do
+   -- not need this path because the cursor reaches spells directly.
+   if c.stage=='skills' then
+    local b=model.branch(state)
+    if b and b.count>0 then
+     c.stage='spells';state.spell=b.first;state.zone='spell'
+     return 'enter'
+    end
    end
   end
  end

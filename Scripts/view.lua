@@ -6,7 +6,7 @@ return function(E, model, L)
  local WHITE={R=.92,G=.92,B=.85,A=1}
  local RED={R=.95,G=.49,B=.42,A=1}
  function R.new(pc,folder,icons)
-  local u={pc=pc,skills={},spells={},rows={},textures={},last='',textNodes={}}
+  local u={pc=pc,skills={},spells={},rows={},textures={},last='',fitCache={},textNodes={}}
   u.root=E.create(pc,'/Game/UI/Panels/WBP_Panel.WBP_Panel_C')
   local tree=u.root.WidgetTree
   local function widget(name) return StaticConstructObject(E.class('/Script/UMG.'..name),tree) end
@@ -47,12 +47,19 @@ return function(E, model, L)
   end
   local function fit(tb,value,b,size,minimum,color)
    set(tb,value,color)
+   local cacheKey=tostring(value)..'|'..tostring(b.w)..'|'..tostring(b.h)..'|'..tostring(size)..'|'..tostring(minimum or size)
+   local cached=u.fitCache[cacheKey]
+   if cached then
+    local f=tb.Font;f.Size=cached;tb:SetFont(f)
+    return
+   end
    -- Measure actual Slate font metrics instead of estimating text by length.
    for n=size,minimum or size,-1 do
     local f=tb.Font;f.Size=n;tb:SetFont(f);tb:ForceLayoutPrepass()
     local d=tb:GetDesiredSize()
-    if d.X<=b.w+.5 and d.Y<=b.h+.5 then break end
+    if d.X<=b.w+.5 and d.Y<=b.h+.5 then u.fitCache[cacheKey]=n;break end
    end
+   if not u.fitCache[cacheKey] then u.fitCache[cacheKey]=minimum or size end
   end
   function u.texture(path)
    if not path or path=='' then return nil end
@@ -82,6 +89,15 @@ return function(E, model, L)
   end
   img(u.textures.center,ring)
   u.centerIcon=img(nil,{x=472,y=398,w=56,h=56},10);u.centerIcon:SetVisibility(2)
+  -- A small diamond gives controller users a direct, visible target without
+  -- introducing a mouse cursor into the normal mouse flow.
+  u.cursor=widget('Border');u.cursor:SetBrushColor({R=GOLD.R,G=GOLD.G,B=GOLD.B,A=.95})
+  u.cursorSlot=place(u.canvas,u.cursor,{x=0,y=0,w=22,h=22},30)
+  u.cursor:SetRenderTransformPivot({X=.5,Y=.5});u.cursor:SetRenderTransformAngle(45)
+  u.cursorCore=widget('Border');u.cursorCore:SetBrushColor({R=.06,G=.04,B=.025,A=1})
+  u.cursorCoreSlot=place(u.canvas,u.cursorCore,{x=0,y=0,w=8,h=8},31)
+  u.cursorCore:SetRenderTransformPivot({X=.5,Y=.5});u.cursorCore:SetRenderTransformAngle(45)
+  u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2)
   local centerTitleBox={x=394,y=478,w=212,h=42}
   u.centerTitle=text('Choose a skill',centerTitleBox,20,'PlayerListTitleTextStyle',GOLD,true,false,'center title')
   u.centerMeta=text('Move onto an icon',{x=410,y=531,w=180,h=46},12,'PlayerListDescriptionTextStyle',MUTED,true,true,'center meta')
@@ -120,8 +136,8 @@ return function(E, model, L)
    local m=E.layout:GetMousePositionOnViewport(pc)
    return (m.X-u.width/2)/u.scale+L.width/2-L.cx,(m.Y-u.height/2)/u.scale+L.height/2-L.cy
   end
-  function u.hide() u.root:SetVisibility(2);u.last='' end
-  function u.show() u.resize();u.root:SetVisibility(3);u.root:SetRenderOpacity(0);u.fade=0;u.last='';u.branchKey='' end
+  function u.hide() u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2);u.root:SetVisibility(2);u.last='' end
+  function u.show() u.resize();u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2);u.root:SetVisibility(3);u.root:SetRenderOpacity(0);u.fade=0;u.last='';u.branchKey='' end
   function u.audit()
    u.root:ForceLayoutPrepass()
    local errors={}
@@ -137,8 +153,17 @@ return function(E, model, L)
    local pad=state.input=='controller'
    local browsing=state.controllerStage=='spells'
    local accept=state.padStyle=='playstation' and 'Cross' or 'A'
+   local cast=state.padStyle=='playstation' and 'R2' or 'RT'
    local back=state.padStyle=='playstation' and 'Circle' or 'B'
    u.fade=math.min(1,(u.fade or 0)+dt/.07);u.root:SetRenderOpacity(u.fade)
+   local cursor=pad and state.cursorVisible and state.cursorX and state.cursorY
+   if cursor then
+    u.cursorSlot:SetPosition({X=L.cx+state.cursorX-11,Y=L.cy+state.cursorY-11})
+    u.cursorCoreSlot:SetPosition({X=L.cx+state.cursorX-4,Y=L.cy+state.cursorY-4})
+    u.cursor:SetVisibility(3);u.cursorCore:SetVisibility(3)
+   else
+    u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2)
+   end
    local group=state.groups[state.group];local spell=group and group.spells[state.spell]
    for i,n in ipairs(u.skills) do
     local target=i==state.group and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*36);n.highlight:SetRenderOpacity(n.alpha)
@@ -151,29 +176,37 @@ return function(E, model, L)
    -- once per second so the list and detail panel stay readable without
    -- invalidating the whole widget tree every frame.
    local cooldownTick=math.ceil(tonumber(now) or 0)
-   local key=branchKey..':'..tostring(state.spell)..':'..tostring(message)..':'..tostring(cost)..':'..tostring(status)..':'..tostring(cooldownTick)..':'..tostring(pad)..':'..tostring(browsing)..':'..accept
+   local branchDataKey=branchKey..':'..tostring(cooldownTick)..':'..tostring(pad)
+   local key=branchKey..':'..tostring(state.spell)..':'..tostring(message)..':'..tostring(cost)..':'..tostring(status)..':'..tostring(cooldownTick)..':'..tostring(pad)..':'..tostring(browsing)..':'..accept..':'..cast
    if key~=u.last then
     u.last=key
+    local branchChanged=branchDataKey~=u.branchDataKey
+    if branchChanged then u.branchDataKey=branchDataKey end
     local b=model.branch(state)
     for i,n in ipairs(u.spells) do
      local row=u.rows[i];local visible=b and i<=b.count
-    for _,w in ipairs({n.base,n.highlight,n.icon,n.number}) do w:SetVisibility(visible and 3 or 2) end
+    if branchChanged then for _,w in ipairs({n.base,n.highlight,n.icon,n.number}) do w:SetVisibility(visible and 3 or 2) end end
      if visible then
       local d=group.spells[b.first+i-1];local a=b.center-b.span/2+b.step*(i-.5)
-      n.base:SetRenderTransformAngle(math.deg(a));n.highlight:SetRenderTransformAngle(math.deg(a))
-       n.active=state.spell==b.first+i-1;n.unlocked=d.unlocked
-       n.remaining=cooldowns and cooldowns:remaining(d,now) or 0
-       n.cooldown=n.remaining>0
-      local iconBox=L.icon(model,a,model.geometry.spellRadius,64)
-      n.icon.Slot:SetPosition({X=iconBox.x,Y=iconBox.y})
-       local x,y=model.point(a,385);n.number.Slot:SetPosition({X=L.cx+x-36,Y=L.cy+y-14})
-      local t=u.texture(icons.spells[d.id]) or u.texture(icons.skills[group.id]);if E.valid(t) then n.icon:SetBrushFromTexture(t,false) end
-       set(n.number,n.cooldown and cooldowns:format(n.remaining) or tostring(i),n.cooldown and RED or (n.active and GOLD or MUTED))
-       fit(row.title,d.name,row.titleBox,16,12,d.unlocked and WHITE or MUTED)
+       n.active=state.spell==b.first+i-1
+       if branchChanged then
+        n.base:SetRenderTransformAngle(math.deg(a));n.highlight:SetRenderTransformAngle(math.deg(a))
+        n.unlocked=d.unlocked
+        n.remaining=cooldowns and cooldowns:remaining(d,now) or 0
+        n.cooldown=n.remaining>0
+        local iconBox=L.icon(model,a,model.geometry.spellRadius,64)
+        n.icon.Slot:SetPosition({X=iconBox.x,Y=iconBox.y})
+        local x,y=model.point(a,385);n.number.Slot:SetPosition({X=L.cx+x-36,Y=L.cy+y-14})
+        local t=u.texture(icons.spells[d.id]) or u.texture(icons.skills[group.id]);if E.valid(t) then n.icon:SetBrushFromTexture(t,false) end
+        set(n.number,n.cooldown and cooldowns:format(n.remaining) or tostring(i),n.cooldown and RED or (n.active and GOLD or MUTED))
+        fit(row.title,d.name,row.titleBox,16,12,d.unlocked and WHITE or MUTED)
         fit(row.level,n.cooldown and ('CD '..cooldowns:format(n.remaining)) or ('Lv '..d.level),row.levelBox,11,8,n.cooldown and RED or (d.unlocked and MUTED or GOLD))
+       else
+        set(n.number,n.cooldown and cooldowns:format(n.remaining) or tostring(i),n.cooldown and RED or (n.active and GOLD or MUTED))
+       end
      end
     end
-    set(u.empty,pad and 'Point the stick at a skill, or browse with the D-pad.\n\nPress '..accept..' to explore its spells.' or 'Hover an inner icon to explore a skill.\n\nIts spells appear in the outer ring.\nThe numbers match this list.')
+    set(u.empty,pad and 'Move the right stick onto a skill, then out to a spell.\n\nPress '..cast..' to cast it.' or 'Hover an inner icon to explore a skill.\n\nIts spells appear in the outer ring.\nThe numbers match this list.')
      if group then
         local t=u.texture(icons.skills[group.id]);if E.valid(t) then u.centerIcon:SetBrushFromTexture(t,false) end
      fit(u.centerTitle,group.label,centerTitleBox,20,16,GOLD)
@@ -181,19 +214,19 @@ return function(E, model, L)
      fit(u.heading,group.label,L.heading,24,20,WHITE)
      set(u.meta,#group.spells..' spells  /  '..group.available..' unlocked')
      fit(u.title,spell and spell.name or 'Choose a spell',L.title,25,20,GOLD)
-     fit(u.body,spell and spell.description or (pad and ('Press '..accept..' to browse these spells. '..back..' closes the wheel.') or 'Move to a numbered outer icon. Return to the inner ring to change skills.'),L.body,16,12,WHITE)
+     fit(u.body,spell and spell.description or (pad and ('Move the cursor to an outer spell. '..cast..' casts it; '..back..' returns to skills.') or 'Move to a numbered outer icon. Return to the inner ring to change skills.'),L.body,16,12,WHITE)
      fit(u.cost,cost or '',L.cost,13,11,MUTED)
      local remaining=cooldowns and spell and cooldowns:remaining(spell,now) or 0
-     local spellStatus=remaining>0 and ('On cooldown  ·  ready in '..cooldowns:format(remaining)) or (spell and (spell.unlocked and (pad and accept..'  Select spell' or 'LMB  Select spell') or 'Unlock at level '..spell.level) or (pad and accept..'  Choose skill' or 'Move outward to explore'))
+     local spellStatus=remaining>0 and ('On cooldown  ·  ready in '..cooldowns:format(remaining)) or (spell and (spell.unlocked and (pad and cast..'  Cast spell' or 'LMB  Select spell') or 'Unlock at level '..spell.level) or (pad and accept..'  Choose skill' or 'Move outward to explore'))
      fit(u.status,message or status or spellStatus,L.status,13,11,message and RED or (remaining>0 and RED or GOLD))
     else
     fit(u.centerTitle,'Choose a skill',centerTitleBox,20,16,GOLD);set(u.centerMeta,pad and 'Stick / D-pad' or 'Move onto an icon')
      fit(u.heading,'YOUR SPELLBOOK',L.heading,24,20,WHITE);set(u.meta,'Twelve skills. One gesture.')
      fit(u.title,'Find your next spell.',L.title,25,20,GOLD)
-     fit(u.body,pad and ('Choose a skill, then a spell. Press '..accept..' to use the game\'s normal casting controls.') or 'Move outward to select a spell. Click to use the game\'s normal casting controls.',L.body,16,12,WHITE)
+    fit(u.body,pad and ('Move the cursor onto a spell, then press '..cast..' to cast it.') or 'Move outward to select a spell. Click to use the game\'s normal casting controls.',L.body,16,12,WHITE)
      set(u.cost,'');fit(u.status,message or '',L.status,13,11,RED)
     end
-    set(u.hint,pad and ('Stick / D-pad  Browse     '..accept..(browsing and '  Cast     ' or '  Choose     ')..back..(browsing and '  Back' or '  Close')..(model.pages(state)>1 and (state.padStyle=='playstation' and '     L1 / R1  Page' or '     LB / RB  Page') or '')) or ('LMB  Select     RMB  Back     Q / ESC  Close'..(model.pages(state)>1 and '     F / G  Page '..state.page..' / '..model.pages(state) or '')))
+    set(u.hint,pad and ('Stick / D-pad  Browse     '..accept..(browsing and '  Select' or '  Choose')..(browsing and ('     '..cast..'  Cast') or '')..'     '..back..(browsing and '  Back' or '  Close')..(model.pages(state)>1 and (state.padStyle=='playstation' and '     L1 / R1  Page' or '     LB / RB  Page') or '')) or ('LMB  Select     RMB  Back     Q / ESC  Close'..(model.pages(state)>1 and '     F / G  Page '..state.page..' / '..model.pages(state) or '')))
    end
    for _,n in ipairs(u.spells) do
     n.base:SetRenderOpacity(u.branchFade);n.number:SetRenderOpacity(u.branchFade)
