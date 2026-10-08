@@ -3,7 +3,7 @@
 local M = {}
 local TAU = math.pi * 2
 M.geometry = { dead = 112, inner = 132, outer = 264, branchInner = 282,
-    branchOuter = 408, skillRadius = 202, spellRadius = 344, dwell = 0.055,
+    branchOuter = 408, skillRadius = 202, spellRadius = 344, dwell = 0.022,
     hysteresis = math.rad(3), maxBranch = 6 }
 
 -- Stable positions: a level-up must never rearrange a player's muscle memory.
@@ -68,8 +68,10 @@ function M.catalogue(records)
 end
 
 function M.new(groups)
-    return { groups = groups, group = nil, spell = nil, candidate = nil,
-        candidateSince = 0, page = 1, zone = "center", opened = true }
+ return { groups = groups, group = nil, spell = nil, candidate = nil,
+        candidateSince = 0, page = 1, zone = "center", opened = true,
+        cursorVisible = false, cursorX = nil, cursorY = nil, cursorAngle = nil,
+        cursorRadius = 0 }
 end
 
 function M.pages(state)
@@ -85,6 +87,20 @@ function M.branch(state)
     local step = math.rad(20)
     return { center = M.skillAngle(state.group, #state.groups), first = first,
         count = count, step = step, span = step * count }
+end
+
+function M.nearestSpell(state, x, y)
+    local b = M.branch(state)
+    if not b or b.count == 0 then return nil end
+    local best, distance = nil, math.huge
+    for i = 1, b.count do
+        local angle = b.center - b.span / 2 + b.step * (i - .5)
+        local px, py = M.point(angle, M.geometry.spellRadius)
+        local dx, dy = x - px, y - py
+        local current = dx * dx + dy * dy
+        if current < distance then best, distance = i, current end
+    end
+    return best and b.first + best - 1 or nil
 end
 
 function M.setGroup(state, index)
@@ -118,6 +134,9 @@ function M.update(state, x, y, now)
         end
         state.zone = "skill"
         if index ~= state.group then
+            -- Reveal the first submenu immediately. Keep a short debounce
+            -- only when switching between already selected skills.
+            if not state.group then M.setGroup(state, index); return end
             if state.candidate ~= index then state.candidate, state.candidateSince = index, now end
             if now - state.candidateSince >= g.dwell then M.setGroup(state, index) end
         else state.candidate = nil end
