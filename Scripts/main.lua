@@ -26,6 +26,7 @@ E.lib=StaticFindObject('/Script/UMG.Default__WidgetBlueprintLibrary')
 E.layout=StaticFindObject('/Script/UMG.Default__WidgetLayoutLibrary')
 E.render=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
 E.clock=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
+local costItemsClass
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
@@ -36,9 +37,12 @@ local file=io.open(folder..'/config.txt','r')
 if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() end end;file:close() end
 local pc,radial,panel,input,component,ui,state,pending,device,pad
 local cachedGroups,lastCatalogueRefresh= nil,nil
+local costCache={}
 local uiBuildErrorLogged=false
 local pointerX,pointerY
 local lastTime,frame,elapsed,renderDt=0,0,0,0
+local padActivityKeys={'accept','back','close','previous','next','up','down','left','right'}
+local nextWorldProbe=0
 M.cooldowns=cooldowns
 function M.auditLayout() return ui and ui.audit() or {'wheel not built'} end
 local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
@@ -78,7 +82,7 @@ local function cacheCatalogue()
   if not uiBuildErrorLogged then log('Waiting to cache spell catalogue: '..tostring(groups));uiBuildErrorLogged=true end
   return false
  end
- cachedGroups=groups
+ cachedGroups=groups;costCache={}
  lastCatalogueRefresh=elapsed
  if #errors>0 then log('Catalogue skipped '..#errors..' unavailable records') end
  return true
@@ -144,7 +148,7 @@ local function bindWorld()
   if M.open then M.close() end
   restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;return false
  end
-  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then
+  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) and E.valid(input) and E.valid(component) then
    if not M.open and not pending then
     if not ensureUi() or not cacheCatalogue() then return false end
     refreshCatalogue()
@@ -152,7 +156,7 @@ local function bindWorld()
   end
   return true
  end
-  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;cachedGroups=nil;lastCatalogueRefresh=nil
+ M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;cachedGroups=nil;lastCatalogueRefresh=nil;costCache={};nextWorldProbe=elapsed+1
  for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
   if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
  end
@@ -187,14 +191,20 @@ local function open()
 end
 local function costText(spell,now)
  if not spell then return '' end
- local parts={}
- for _,v in ipairs(spell.data:GetModulesOfType(E.class('/Script/Dominion.SpellModule_CostItems'))) do
-  v:get().ItemsCostInfo:ForEach(function(_,p)
-   local c=p:get()
-   if E.valid(c.ItemData) then parts[#parts+1]=c.Count..' '..c.ItemData.Name:ToString() end
-  end)
+ local cached=costCache[spell.id]
+ if not cached then
+  costItemsClass=costItemsClass or E.class('/Script/Dominion.SpellModule_CostItems')
+  local parts={}
+  for _,v in ipairs(spell.data:GetModulesOfType(costItemsClass)) do
+   v:get().ItemsCostInfo:ForEach(function(_,p)
+    local c=p:get()
+    if E.valid(c.ItemData) then parts[#parts+1]=c.Count..' '..c.ItemData.Name:ToString() end
+   end)
+  end
+  cached={base=#parts>0 and ('BASE COST  '..table.concat(parts,'  ·  ')) or 'No rune cost'}
+  costCache[spell.id]=cached
  end
- local s=#parts>0 and ('BASE COST  '..table.concat(parts,'  ·  ')) or 'No rune cost'
+ local s=cached.base
  local duration=cooldowns:duration(spell)
  if duration>0 then
   local remaining=cooldowns:remaining(spell,now)
@@ -209,16 +219,10 @@ local function selectSpell()
   return
  end
  if not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
- local remaining=cooldowns:remaining(spell,gameTime())
- if remaining>0 then
-  M.message='On cooldown. Ready in '..cooldowns:format(remaining)..'.'
-  radial:InvalidSelectAudioTrigger()
-  return
- end
  local slot=radial.RadialSlice_0.SpellSlotNum
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
- pending={component=component,original=component.SelectedSpells[index],spell=spell.data,slot=slot,index=index,book=book,since=elapsed}
+ pending={component=component,original=component.SelectedSpells[index],spell=spell.data,slot=slot,index=index,book=book,since=elapsed,instantAt=elapsed+.15}
  M.pending=pending
  component:Client_NotifySelectedSpell(spell.data,slot)
  radial.CachedSectionId=0;radial:HighlightSlice(0)
@@ -228,20 +232,21 @@ local function selectSpell()
   local requirement=radial.RequirementText:GetText():ToString()
     M.message='Unable to cast. Check runes, equipment and cooldown.'
   if requirement~='' and requirement~='-' then M.message='Requires '..requirement end
-  restore();radial:StopRadialSelection();controls(true)
-  else
-   -- Start a provisional timer immediately so the wheel can show feedback
-   -- while native targeting is active. A cancellation removes it below.
+ restore();radial:StopRadialSelection();controls(true)
+ else
+   -- Start a display timer once native selection accepts the spell. This is
+   -- never used to block another attempt; cancellation clears it and a real
+   -- confirm restarts it from the full duration below.
    cooldowns:start(spell,gameTime())
+   pending.cooldownStarted=true
    local modeName=inputModeName()
    if isCastingMode(modeName) then
     pending.awaitingConfirm=true
-    pending.cooldownStarted=true
     local sample=device.sample()
     pending.confirmArmed=not (sample.confirm or sample.mouseConfirm)
     pending.cancelArmed=not (sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close)
    else
-    -- Instant spells have already been accepted and cast by native selection.
+    pending.instantPending=true
    end
    -- Aimed/placed spells reread the slot on confirmation. Restore only after
   -- the native casting/placement mode has ended, including cancellation.
@@ -251,32 +256,69 @@ end
 local function tick()
  frame=frame+1;elapsed=elapsed+.016
  if not cfg.Enabled or M.disabled then return end
- -- The replacement is already built and hidden natively. Poll idle state at
- -- roughly frame rate; input and UI work run faster only while the wheel is open.
- if not M.open and not pending and not (device and device.draining) and frame%2~=0 then return end
- if not bindWorld() then return end
+ -- The replacement is already built and hidden natively. Poll the closed
+ -- state at a lower rate; input and UI work run at full rate only while open.
+ local idle=not M.open and not pending and not (device and device.draining)
+ if idle and frame%4~=0 then return end
+ -- While the wheel is closed, keep the controller/radial references cached and
+ -- only rediscover them periodically. FindFirstOf plus native widget writes on
+ -- every idle tick were unnecessary background work.
+ local bound=E.valid(pc) and E.valid(pc.Pawn) and E.valid(radial) and E.valid(input) and E.valid(component)
+ if not bound or elapsed>=nextWorldProbe then
+  if not bindWorld() then nextWorldProbe=elapsed+.25;return end
+  nextWorldProbe=elapsed+(M.open and .5 or 1)
+ end
  if device.draining then device.release() end
  if pending then
+   local name=inputModeName()
+   -- The input mode can become Spellcasting one frame after SelectSlice().
+   if pending.instantPending and not pending.awaitingConfirm and not pending.confirmed and isCastingMode(name) then
+    pending.instantPending=false
+    pending.awaitingConfirm=true
+    local sample=device.sample()
+    pending.confirmArmed=not (sample.confirm or sample.mouseConfirm)
+    pending.cancelArmed=not (sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close)
+   elseif pending.instantPending and elapsed>=pending.instantAt then
+    -- Native selection completed without entering targeting: the instant
+    -- spell was accepted, so start/restart the display timer now.
+    cooldowns:start(pending.spell,gameTime())
+    pending.cooldownStarted=true
+    pending.confirmed=true
+    pending.instantPending=false
+   elseif not pending.instantPending and not pending.awaitingConfirm and not pending.confirmed and isCastingMode(name) then
+    pending.awaitingConfirm=true
+    local sample=device.sample()
+    pending.confirmArmed=not (sample.confirm or sample.mouseConfirm)
+    pending.cancelArmed=not (sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close)
+   end
    if pending.awaitingConfirm then
     local sample=device.sample()
     if not pending.confirmArmed then
      pending.confirmArmed=not (sample.confirm or sample.mouseConfirm)
     elseif sample.confirm or sample.mouseConfirm then
      pending.confirmed=true
+     cooldowns:start(pending.spell,gameTime())
+     pending.cooldownStarted=true
     end
     if not pending.cancelArmed then
      pending.cancelArmed=not (sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close)
     elseif sample.cancel or sample.mouseCancel or sample.escape or sample.back or sample.close then
      pending.cancelled=true
+     if not pending.confirmed then cooldowns:clear(pending.spell) end
     end
-    if M.cancelRequested then pending.cancelled=true;M.cancelRequested=nil end
+    if M.cancelRequested then
+     pending.cancelled=true
+     if not pending.confirmed then cooldowns:clear(pending.spell) end
+     M.cancelRequested=nil
+    end
    end
-   local name=inputModeName()
    if elapsed-pending.since>.15 and not isCastingMode(name) then
-    if pending.awaitingConfirm and pending.cancelled then cooldowns:clear(pending.spell) end
+    -- The timer is provisional while native targeting is active. Clear it
+    -- unconditionally if no confirm input was observed.
+    if pending.awaitingConfirm and not pending.confirmed then cooldowns:clear(pending.spell) end
     restore()
    end
- end
+  end
  if not M.open then
   if M.nativeSuppressedUntil then
    if nativeOpen() and not M.suppressQUntilRelease then input:CloseWidgetIfOpen(pc,21,false,false) end
@@ -318,7 +360,7 @@ local function tick()
  local moved=(pointerX and ((x-pointerX)^2+(y-pointerY)^2)>9) or math.abs(sample.mx or 0)>.5 or math.abs(sample.my or 0)>.5
  pointerX,pointerY=x,y
  local padActivity=sample.x*sample.x+sample.y*sample.y>=controller.deadzone^2
- for _,k in ipairs({'accept','back','close','previous','next','up','down','left','right'}) do if sample[k] then padActivity=true end end
+ for _,k in ipairs(padActivityKeys) do if sample[k] then padActivity=true end end
  if padActivity and state.input~='controller' then
   state.input='controller';pad=controller.new();state.spell=nil;M.back=false
   local _,style=device.device();state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
@@ -353,9 +395,9 @@ local function tick()
   elseif action=='select' and elapsed-M.since>.15 then selectSpell();if not M.open then return end end
  end
  -- Game HUD activation can restore game input underneath custom UI.
+ if frame%12==0 then suppressNativeWheel() end
  if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
  if frame%2==0 then
-  panel:SetVisibility(2);panel:SetRenderOpacity(0)
   ui.resize()
   ui.draw(state,renderDt,M.message,M.cost,nil,now,cooldowns)
   renderDt=0

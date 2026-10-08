@@ -53,13 +53,16 @@ return function(E, model, L)
     local f=tb.Font;f.Size=cached;tb:SetFont(f)
     return
    end
-   -- Measure actual Slate font metrics instead of estimating text by length.
-   for n=size,minimum or size,-1 do
-    local f=tb.Font;f.Size=n;tb:SetFont(f);tb:ForceLayoutPrepass()
-    local d=tb:GetDesiredSize()
-    if d.X<=b.w+.5 and d.Y<=b.h+.5 then u.fitCache[cacheKey]=n;break end
-   end
-   if not u.fitCache[cacheKey] then u.fitCache[cacheKey]=minimum or size end
+   -- Measure once. The old decrementing loop could force several Slate
+   -- layout passes for every title and description when changing skills.
+   -- Scale from the measured bounds instead of synchronously remeasuring at
+   -- every candidate font size.
+   local f=tb.Font;f.Size=size;tb:SetFont(f);tb:ForceLayoutPrepass()
+   local d=tb:GetDesiredSize();local fitted=size
+   if d.X>b.w+.5 and d.X>0 then fitted=math.floor(size*b.w/d.X) end
+   if d.Y>b.h+.5 and d.Y>0 then fitted=math.min(fitted,math.floor(size*b.h/d.Y)) end
+   u.fitCache[cacheKey]=math.max(minimum or size,math.min(size,fitted))
+   f=tb.Font;f.Size=u.fitCache[cacheKey];tb:SetFont(f)
   end
   function u.texture(path)
    if not path or path=='' then return nil end
@@ -136,8 +139,17 @@ return function(E, model, L)
    local m=E.layout:GetMousePositionOnViewport(pc)
    return (m.X-u.width/2)/u.scale+L.width/2-L.cx,(m.Y-u.height/2)/u.scale+L.height/2-L.cy
   end
-  function u.hide() u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2);u.root:SetVisibility(2);u.last='' end
-  function u.show() u.resize();u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2);u.root:SetVisibility(3);u.root:SetRenderOpacity(0);u.fade=0;u.last='';u.branchKey='' end
+  function u.hide()
+   u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2);u.root:SetVisibility(2)
+   u.last='';u.branchKey='';u.branchDataKey=nil;u.visualGroup=nil;u.visualSpell=nil;u.visualCooldownTick=nil;u.cursorShown=false
+  end
+  function u.show()
+   u.resize();u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2);u.root:SetVisibility(3)
+   -- The wheel is already fully laid out. Avoid fading every widget on the
+   -- first frames after opening, which causes a burst of Slate invalidation.
+   u.root:SetRenderOpacity(1);u.last='';u.branchKey='';u.branchDataKey=nil
+   u.visualGroup=nil;u.visualSpell=nil;u.visualCooldownTick=nil;u.cursorShown=false
+  end
   function u.audit()
    u.root:ForceLayoutPrepass()
    local errors={}
@@ -155,23 +167,35 @@ return function(E, model, L)
    local accept=state.padStyle=='playstation' and 'Cross' or 'A'
    local cast=state.padStyle=='playstation' and 'R2' or 'RT'
    local back=state.padStyle=='playstation' and 'Circle' or 'B'
-   u.fade=math.min(1,(u.fade or 0)+dt/.07);u.root:SetRenderOpacity(u.fade)
    local cursor=pad and state.cursorVisible and state.cursorX and state.cursorY
    if cursor then
-    u.cursorSlot:SetPosition({X=L.cx+state.cursorX-11,Y=L.cy+state.cursorY-11})
-    u.cursorCoreSlot:SetPosition({X=L.cx+state.cursorX-4,Y=L.cy+state.cursorY-4})
-    u.cursor:SetVisibility(3);u.cursorCore:SetVisibility(3)
-   else
+    local cursorX,cursorY=L.cx+state.cursorX-11,L.cy+state.cursorY-11
+    if u.cursorX~=cursorX or u.cursorY~=cursorY then
+     u.cursorX,u.cursorY=cursorX,cursorY
+     u.cursorSlot:SetPosition({X=cursorX,Y=cursorY})
+     u.cursorCoreSlot:SetPosition({X=cursorX+7,Y=cursorY+7})
+    end
+    if not u.cursorShown then
+     u.cursorShown=true;u.cursor:SetVisibility(3);u.cursorCore:SetVisibility(3)
+    end
+   elseif u.cursorShown then
+    u.cursorShown=false
     u.cursor:SetVisibility(2);u.cursorCore:SetVisibility(2)
    end
    local group=state.groups[state.group];local spell=group and group.spells[state.spell]
-   for i,n in ipairs(u.skills) do
-    local target=i==state.group and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*36);n.highlight:SetRenderOpacity(n.alpha)
-    n.icon:SetRenderOpacity((not group or i==state.group) and 1 or .65)
+   local groupChanged=state.group~=u.visualGroup
+   if groupChanged then
+    u.visualGroup=state.group
+    for i,n in ipairs(u.skills) do
+     local selected=i==state.group
+     n.alpha=selected and 1 or 0
+     n.highlight:SetRenderOpacity(n.alpha)
+     n.icon:SetRenderOpacity((not group or selected) and 1 or .65)
+    end
    end
    local branchKey=tostring(state.group)..':'..state.page
-   if branchKey~=u.branchKey then u.branchKey=branchKey;u.branchFade=0 end
-   u.branchFade=math.min(1,(u.branchFade or 0)+dt/.045)
+   local branchChanged=branchKey~=u.branchKey
+   if branchChanged then u.branchKey=branchKey end
    -- Cooldowns change without changing the selected spell. Rebuild the text
    -- once per second so the list and detail panel stay readable without
    -- invalidating the whole widget tree every frame.
@@ -180,7 +204,7 @@ return function(E, model, L)
    local key=branchKey..':'..tostring(state.spell)..':'..tostring(message)..':'..tostring(cost)..':'..tostring(status)..':'..tostring(cooldownTick)..':'..tostring(pad)..':'..tostring(browsing)..':'..accept..':'..cast
    if key~=u.last then
     u.last=key
-    local branchChanged=branchDataKey~=u.branchDataKey
+    branchChanged=branchDataKey~=u.branchDataKey
     if branchChanged then u.branchDataKey=branchDataKey end
     local b=model.branch(state)
     for i,n in ipairs(u.spells) do
@@ -228,10 +252,15 @@ return function(E, model, L)
     end
     set(u.hint,pad and ('Stick / D-pad  Browse     '..accept..(browsing and '  Select' or '  Choose')..(browsing and ('     '..cast..'  Cast') or '')..'     '..back..(browsing and '  Back' or '  Close')..(model.pages(state)>1 and (state.padStyle=='playstation' and '     L1 / R1  Page' or '     LB / RB  Page') or '')) or ('LMB  Select     RMB  Back     Q / ESC  Close'..(model.pages(state)>1 and '     F / G  Page '..state.page..' / '..model.pages(state) or '')))
    end
-   for _,n in ipairs(u.spells) do
-    n.base:SetRenderOpacity(u.branchFade);n.number:SetRenderOpacity(u.branchFade)
-     n.icon:SetRenderOpacity(u.branchFade*(n.unlocked and (n.cooldown and .55 or 1) or .3))
-    local target=n.active and 1 or 0;n.alpha=n.alpha+(target-n.alpha)*math.min(1,dt*36);n.highlight:SetRenderOpacity(n.alpha*u.branchFade)
+   local spellVisualChanged=state.spell~=u.visualSpell or branchChanged or cooldownTick~=u.visualCooldownTick
+   if spellVisualChanged then
+    u.visualSpell=state.spell;u.visualCooldownTick=cooldownTick
+    for _,n in ipairs(u.spells) do
+     n.base:SetRenderOpacity(1);n.number:SetRenderOpacity(1)
+     n.icon:SetRenderOpacity(n.unlocked and (n.cooldown and .55 or 1) or .3)
+     n.alpha=n.active and 1 or 0
+     n.highlight:SetRenderOpacity(n.alpha)
+    end
    end
   end
   return u

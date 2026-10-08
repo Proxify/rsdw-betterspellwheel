@@ -55,10 +55,12 @@ return function(model)
  function C.step(c,state,s,now)
   local dt=c.lastTime and math.max(0,math.min(.1,now-c.lastTime)) or .016
   c.lastTime=now
-  local pressed={}
-  for _,k in ipairs({'accept','confirm','back','close','previous','next'}) do
-   pressed[k]=s[k] and not c.buttons[k]
-  end
+  local pressedAccept=s.accept and not c.buttons.accept
+  local pressedConfirm=s.confirm and not c.buttons.confirm
+  local pressedBack=s.back and not c.buttons.back
+  local pressedClose=s.close and not c.buttons.close
+  local pressedPrevious=s.previous and not c.buttons.previous
+  local pressedNext=s.next and not c.buttons.next
   c.buttons=s
   local x,y=s.x or 0,s.y or 0
   local r=math.sqrt(x*x+y*y)
@@ -78,8 +80,8 @@ return function(model)
    c.neutral=true
   end
   c.stage=state.zone=='spell' and 'spells' or 'skills'
-  if pressed.close then return 'close' end
-  if pressed.back then
+  if pressedClose then return 'close' end
+  if pressedBack then
    if c.stage=='spells' or state.group then
     clear(state);c.stage='skills';c.neutral=false
     return 'back'
@@ -94,13 +96,13 @@ return function(model)
    c.nextRepeat=now+(direction~=c.direction and C.repeatDelay or C.repeatInterval)
    c.direction=direction
   end
-  if c.stage=='spells' and (pressed.previous or pressed.next) then
-   model.turnPage(state,pressed.previous and -1 or 1)
+  if c.stage=='spells' and (pressedPrevious or pressedNext) then
+   model.turnPage(state,pressedPrevious and -1 or 1)
    local b=model.branch(state)
    state.spell=b and b.count>0 and b.first or nil
    state.zone=state.spell and 'spell' or 'skill'
   end
-  if pressed.accept or pressed.confirm then
+  if pressedAccept or pressedConfirm then
    if c.stage=='spells' and state.zone=='spell' then
     return 'select'
    end

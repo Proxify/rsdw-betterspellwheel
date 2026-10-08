@@ -5,7 +5,7 @@
 local M = {}
 
 function M.new()
-    return setmetatable({ untilById = {} }, { __index = M })
+    return setmetatable({ untilById = {}, durationById = {} }, { __index = M })
 end
 
 local function key(spell)
@@ -13,6 +13,8 @@ local function key(spell)
 end
 
 function M:duration(spell)
+    local observed = spell and self.durationById[key(spell)]
+    if observed then return observed end
     local value = spell and spell.cooldown
     if type(value) == 'number' then return value end
     local ok, result = pcall(function() return value + 0 end)
@@ -37,7 +39,24 @@ function M:start(spell, now)
     local duration = self:duration(spell)
     if not id or duration <= 0 then return end
     local untilAt = (tonumber(now) or 0) + duration
-    self.untilById[id] = math.max(self.untilById[id] or 0, untilAt)
+    -- A successful cast starts a fresh cooldown, even if the old local
+    -- estimate was still running.
+    self.untilById[id] = untilAt
+end
+
+-- Replace the local estimate with the remaining value reported by the native
+-- cooldown widget. This lets equipment/perks and server-authoritative timing
+-- win over UtilitySpellData.CooldownDuration.
+function M:sync(spell, now, remaining, startedAt)
+    local id = key(spell)
+    local value = tonumber(remaining)
+    if not id or not value or value <= 0 then return false end
+    local current = tonumber(now) or 0
+    self.untilById[id] = current + value
+    if startedAt then
+        self.durationById[id] = value + math.max(0, current - (tonumber(startedAt) or current))
+    end
+    return true
 end
 
 function M:clear(spell)
