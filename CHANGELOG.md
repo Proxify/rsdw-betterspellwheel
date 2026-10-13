@@ -7,8 +7,11 @@ PR #1 and its later 1.x builds), reviewed and adapted:
   spell's name, tool requirement and rune costs appear in the middle of the wheel;
   each rune count is green when you carry enough and red when you don't. Its
   description appears in a tooltip bar under the wheel.
-- Cooldown timers on the outer ring after a confirmed or instant cast. They are an
-  estimate from the spell's base cooldown and never block a cast: the game decides.
+- Live cooldown timers on the outer ring. They come from the game itself: the last
+  cast time of every spell (so cooldowns started before loading in or outside the
+  wheel show correctly), the server's "on cooldown" notices, and the perk-adjusted
+  duration (a spell's cooldown modifier perk, once unlocked). A spell still on
+  cooldown can't be selected; the wheel says when it's ready.
 - Keep walking while the wheel is open (WASD / left stick). Only the wheel's own
   buttons and the right stick are captured; the camera doesn't turn while the right
   stick drives the wheel.

@@ -9,13 +9,15 @@ browse its spells, and cast without reaching for the mouse.
 ## Your skills. Your magic.
 
 - **39 spells across 12 skills**, grouped using the game's actual progression data.
-- **Controller navigation:** stick or D-pad browsing, confirm/back, and matching button hints.
-- **Large native icons and numbered spell slots**, with full names in a matching side list.
-- **Spell details at a glance:** descriptions, unlock levels, base rune costs and cooldowns.
-- **Normal game rules:** your unlocks, rune requirements, cooldowns and targeting still apply.
+- **A clean, centred wheel:** the hovered spell's name, tool requirement and rune costs
+  appear in the middle, with each rune count **green** when you carry enough and **red**
+  when you don't. Its description sits in a tooltip bar under the wheel.
+- **Live cooldowns** synced from the game, including cooldowns started before you loaded
+  in and perks that shorten them. Spells on cooldown can't be selected.
+- **Keep moving:** walk while the wheel is open.
+- **Controller navigation:** right stick or D-pad, with matching button hints.
+- **Normal game rules:** your unlocks, rune requirements and targeting still apply.
   Saved spellbook assignments are preserved.
-
-[View the full interface](docs/preview.jpg)
 
 ## Download and install
 
@@ -43,35 +45,39 @@ Keep only one wheel enabled.
 | Input | Action |
 | --- | --- |
 | Q / your normal spell-wheel binding | Open the wheel |
+| Q / Escape | Close without selecting |
 | Hover an inner skill icon | Reveal that skill's spells |
 | Move outward + left-click | Select a spell, then use the game's normal casting controls |
 | Return to the inner ring | Change skills |
 | Right-click | Go back to skill selection |
-| Q / Escape | Close without selecting |
+| WASD | Keep walking while the wheel is open |
 
 With a controller:
 
 | Input | Action |
 | --- | --- |
 | Y / Triangle (or your normal binding) | Open or close |
-| Either stick | Point at a skill; after choosing it, tilt to browse spells |
+| Right stick | Point at a skill; after choosing it, point straight at a spell |
+| Left stick | Keep walking |
 | D-pad | Browse skills or spells, with hold-to-repeat |
 | A / Cross | Choose the skill, then select its highlighted spell |
 | B / Circle | Back to skills; press again to close |
+| X / Square | Switch to the game's emote wheel |
 | LB / RB or L1 / R1 | Change pages when a skill has more than six spells |
 
-Release the stick after choosing a skill before browsing its spells. Selection
-stays highlighted when the stick returns to center. Once a spell is selected,
-use the game's normal targeting controls (RT / R2 to confirm, LT / L2 to cancel).
-Moving the mouse switches back to mouse navigation. Button hints follow the
-controller reported by the game; `ControllerPrompts=PlayStation` in `config.txt`
-overrides Xbox hints when using Steam Input.
+Release the stick after choosing a skill before pointing at its spells. Once a spell
+is selected, use the game's normal targeting controls (RT / R2 to confirm, LT / L2 to
+cancel). Moving the mouse switches back to mouse navigation. `ControllerPrompts=PlayStation`
+in `config.txt` overrides Xbox hints when using Steam Input.
 
-Locked spells remain visible with their required level. Costs and cooldowns shown
-in the panel are base values; equipment and perks can change the actual values.
-Hovering alone never casts a spell.
-
+Locked spells remain visible with their required level. Hovering alone never casts.
 To disable the mod, set `Enabled=false` in `config.txt` and restart the game.
+
+## Credits
+
+Version 0.4.0 brings in improvements first made in a community fork by jackisace
+(centred layout, rune counts, cooldown timers, movement while open, right-stick
+navigation), reviewed and adapted here.
 
 ## Compatibility
 
