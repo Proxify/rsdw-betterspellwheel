@@ -2,7 +2,7 @@ BetterSpellWheel 0.4.1 (2026-10-13)
 In-game (SudoBlade, solo Creative world, throwaway character): first launch drew the 6 wheel
 textures ("Drew 6 wheel textures", ~2.2 s at mod load); the wheel rendered correctly from them;
 Windstep cast recorded natively; all 48 SelectedSpells unchanged. Everything restored afterwards.
-Windows installer suite: not re-run for 0.4.1 (nJoyDesk unavailable). The installer code
-(installer/setup.c, build.py) is unchanged since the CurseForge-compliant build that passed the
-suite 10/10 on 2026-10-12 (c7e50de); 0.4.1 changes only version strings and docs.
+Windows installer suite on the exact released 0.4.1 setup EXE (sha256 8863f828...c611), run by
+the release session on nJoyDesk after the release: 10/10 PASS
+(evidence D:\rsdw-mods\repl\bsw-installer-tests-aefe0f709802480c90359285a5a05614).
 release_test: PASS (17 production files, ZIP only CurseForge-allowed extensions).
