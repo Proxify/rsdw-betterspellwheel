@@ -1,0 +1,9 @@
+$ git log -1 --oneline
+db39faf Add Apache-2.0 LICENSE and NOTICE requiring credit in derivative works
+$ python tests/run.py   (each suite run separately)
+OK   model_test
+OK   catalogue_test
+OK   layout_test
+OK   controller_test
+OK   input_test
+OK   runtime_test

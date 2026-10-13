@@ -1,0 +1,9 @@
+$ git log -1 --oneline
+0152411 controller support improved
+$ python tests/run.py   (each suite run separately)
+FAIL model_test [string "<python>"]:5: hover dwell filters motion noise: expected nil, got 1
+OK   catalogue_test
+FAIL layout_test [string "<python>"]:31: panel crowds outer wheel
+FAIL controller_test [string "<python>"]:9: assertion failed!
+FAIL input_test [string "<python>"]:8: assertion failed!
+FAIL runtime_test [string "<python>"]:71: assertion failed!
