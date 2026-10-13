@@ -1,13 +1,14 @@
--- BetterSpellWheel 0.3.0. Client UI; casting remains entirely native.
+-- BetterSpellWheel 0.4.0. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.3.0',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.4.0',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
 local catalogue=dofile(folder..'/Scripts/catalogue.lua')(model)
+local cooldowns=dofile(folder..'/Scripts/cooldowns.lua').new()
 local icons=dofile(folder..'/Scripts/icons.lua')
 local E={}
 function E.valid(x) return x~=nil and x:IsValid() end
@@ -29,24 +30,82 @@ function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
 local view=dofile(folder..'/Scripts/view.lua')(E,model,layout)
-local function log(s) print('[BetterSpellWheel] '..s..'\n') end
-local cfg={Enabled=true,ControllerPrompts="auto"}
+local function log(s) print('[BetterSpellWheel] '..s..'\n') end -- errors and one-off warnings only
+local cfg={Enabled=true,ControllerPrompts="auto",KeepNativeHidden=true}
 local file=io.open(folder..'/config.txt','r')
-if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() end end;file:close() end
+if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' end end;file:close() end
 local pc,radial,panel,input,component,ui,state,pending,device,pad
+local nativeWasOpen=false
+-- The native spell selector appears to need one complete open/close lifecycle
+-- before the custom handoff casts reliably. Prime that lifecycle once, when
+-- the native open has already been intercepted and hidden.
+local nativeSpellStatePrimed=false
+-- The native slice only tracks slot-0 changes after one full notify/highlight
+-- pass, so the first cast of a session could fire the previously bound spell.
+local castHandoffWarmed=false
+M.radial=nil
+local openWasDown=false
 local pointerX,pointerY
+-- Gamepad X / Square while the wheel is open hands over to the game's emote wheel.
+local emoteWasDown=false
+local emoteHandoffAt=nil
+local emoteWheelActive=false
+local emoteWheelSeen=false -- native emote mode has been observed since the handoff
 local lastTime,frame,elapsed=0,0,0
-function M.auditLayout() return ui and ui.audit() or {'wheel not built'} end
+M.cooldowns=cooldowns
 local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
+local function sameObject(a,b)
+ if not E.valid(a) or not E.valid(b) then return false end
+ local oka,aa=pcall(function() return a:GetAddress() end)
+ local okb,bb=pcall(function() return b:GetAddress() end)
+ return oka and okb and aa==bb
+end
+
+-- The native selector is suppressed at its visibility request, before it renders.
+-- Hide the radial's grandparent panel, exactly like 0.3.0. The radial itself is
+-- left live so its slices keep processing notify/highlight/select normally.
+-- The game can animate/reset the panel's opacity and visibility on open and close,
+-- so also park it far off-screen with a render translation (the game doesn't
+-- animate that), and re-assert both every tick.
+local function keepNativeOffscreen()
+ if not (cfg.KeepNativeHidden and E.valid(panel)) then return end
+ pcall(function() panel:SetRenderOpacity(0) end)
+ pcall(function() panel:SetRenderTranslation({X=-20000,Y=-20000}) end)
+end
+local function hideNativeWheel()
+ if not E.valid(panel) and E.valid(radial) then pcall(function() panel=radial:GetOuter():GetOuter() end) end
+ if not E.valid(panel) then return end
+ pcall(function() panel:SetVisibility(2) end)
+ pcall(function() panel:SetRenderOpacity(0) end)
+ keepNativeOffscreen()
+end
+-- KeepNativeHidden (default on): the native panel stays at opacity 0 permanently,
+-- so neither the open nor the close of the native wheel can ever flash on screen.
+-- Set KeepNativeHidden=false in config.txt to restore opacity after each cast/close.
+local function restoreNativePanel()
+ if E.valid(panel) then
+  pcall(function() panel:SetRenderOpacity(1) end)
+  pcall(function() panel:SetRenderTranslation({X=0,Y=0}) end)
+ end
+end
+local function showNativePanel()
+ if cfg.KeepNativeHidden then return end
+ restoreNativePanel()
+end
 local function controls(on)
  pc.bShowMouseCursor=on
  if on then
-  device.capture()
+  if device then device.capture() end
   E.lib:SetInputMode_GameAndUIEx(pc,nil,0,false,false)
   pc.bShowMouseCursor=state.input~='controller'
  else
   if device then device.release() end
-  E.lib:SetInputMode_GameOnly(pc,not (device and device.draining));pc:RefreshInputMode()
+  -- Preserve the original, working handoff. The native spell selector must
+  -- receive input after the custom wheel releases ownership.
+  -- Never flush held gameplay keys on handoff; flushing can leave movement
+  -- appearing paused until the player taps the movement key again.
+  E.lib:SetInputMode_GameOnly(pc,false)
+  pc:RefreshInputMode()
  end
 end
 local function restore()
@@ -58,6 +117,12 @@ local function restore()
   if E.valid(current) and E.valid(p.spell) and current:GetAddress()==p.spell:GetAddress() then
    if E.valid(radial) and radial.SpellbookSelector.RadioGroup:GetSelectedValue()==p.book then
     p.component:Client_NotifySelectedSpell(E.valid(p.original) and p.original or nil,p.slot)
+    -- The notify can silently fail to take; if our spell is still in the slot,
+    -- write the original back directly so the next cast starts from a clean slot.
+    local after=p.component.SelectedSpells[p.index]
+    if E.valid(after) and sameObject(after,p.spell) then
+     pcall(function() p.component.SelectedSpells[p.index]=p.original end)
+    end
    else
     -- A native book switch changes the notification's relative offset. Repair
     -- only our old absolute array entry; the visible book is left untouched.
@@ -68,11 +133,19 @@ local function restore()
 end
 function M.close()
  if ui and E.valid(ui.root) then ui.hide() end
- if E.valid(panel) then panel:SetRenderOpacity(1);if nativeOpen() then panel:SetVisibility(0) end end
+ nativeWasOpen=false
+ if E.valid(panel) then
+  if cfg.KeepNativeHidden then keepNativeOffscreen() else restoreNativePanel() end
+  if nativeOpen() then pcall(function() panel:SetVisibility(0) end) end
+ end
  if M.open then
   M.open=false
   if state then model.close(state) end
-  if nativeOpen() then input:CloseWidgetIfOpen(pc,21,false,false) end
+  -- This is the important part of the original close lifecycle: close the
+  -- native widget first, then hand input/mouse ownership back to the game.
+  if E.valid(input) and E.valid(pc) then
+   pcall(function() input:CloseWidgetIfOpen(pc,21,false,false) end)
+  end
   if E.valid(pc) then controls(false) end
  end
  M.queue={};M.message=nil
@@ -81,47 +154,121 @@ local function bindWorld()
  local found=FindFirstOf('BP_PlayerController_C')
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
-  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;return false
+  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;return false
  end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
- M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil
+ M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false;castHandoffWarmed=false;nativeSpellStatePrimed=false
  for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
   if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
  end
+ M.radial=radial
  if not E.valid(radial) then return false end
  panel=radial:GetOuter():GetOuter();input=FindFirstOf('InputManagerUIAPI');component=pc:GetSpellcastingComponent()
  if not (E.valid(panel) and E.valid(input) and E.valid(component)) then return false end
+ -- Pre-hide at opacity 0 so the first native open never renders a visible frame.
+ keepNativeOffscreen()
+ -- Do not hide or detach the native radial during world binding. It is only
+ -- suppressed in response to the spell-wheel open lifecycle.
  return true
 end
+ local function gameTime()
+  return E.clock:GetGameTimeInSeconds(pc)
+ end
+
+local function warmCastHandoff(force)
+ if (castHandoffWarmed and not force) or not (E.valid(radial) and E.valid(component)) then return end
+ local ok=pcall(function()
+  local slot=radial.RadialSlice_0.SpellSlotNum
+  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
+  local current=component.SelectedSpells[book*component.NumSpellSlotsPerRadial+slot+1]
+  -- Re-assert the spell already in slot 0: same state, but it runs the notify,
+  -- section and highlight path without casting anything.
+  if E.valid(current) then component:Client_NotifySelectedSpell(current,slot) end
+  radial.CachedSectionId=0;radial:HighlightSlice(0)
+  radial:StopRadialSelection()
+ end)
+ if ok then castHandoffWarmed=true end
+end
+
+-- Success sound: the native selector plays its SelectSFX property from the
+-- SelectedAudioTrigger event. Blank it only around SelectSlice() so successful
+-- casts are silent. Failure audio uses StaminaFailedSFX (InvalidSelectAudioTrigger)
+-- and is untouched. The original asset is always put back.
+local mutedRadial,mutedSFX,mutedAt
+local function unmuteSelectSound()
+ if mutedSFX~=nil and E.valid(mutedRadial) and E.valid(mutedSFX) then
+  pcall(function() mutedRadial.SelectSFX=mutedSFX end)
+ end
+ mutedRadial,mutedSFX,mutedAt=nil,nil,nil
+end
+local function muteSelectSound()
+ unmuteSelectSound()
+ if not E.valid(radial) then return end
+ local ok,cur=pcall(function() return radial.SelectSFX end)
+ if ok and E.valid(cur) then
+  mutedRadial,mutedSFX,mutedAt=radial,cur,elapsed
+  pcall(function() radial.SelectSFX=nil end)
+ end
+end
+
+local slotWarnings=0
+local function slotName(x)
+ if not E.valid(x) then return 'nil' end
+ local ok,n=pcall(function() return x:GetFName():ToString() end)
+ return ok and n or '?'
+end
+-- Bind spell into native slot 0 and verify it took. If the component array does
+-- not hold the spell after notify+highlight, force-write it and rebuild the slice.
+local function bindSlot(spell,slot,index)
+ component:Client_NotifySelectedSpell(spell.data,slot)
+ radial.CachedSectionId=0;radial:HighlightSlice(0)
+ if sameObject(component.SelectedSpells[index],spell.data) then return end
+ if slotWarnings<5 then
+  slotWarnings=slotWarnings+1
+  log('slot mismatch after notify: wanted '..tostring(spell.id)..', slot holds '..slotName(component.SelectedSpells[index]))
+ end
+ pcall(function() component.SelectedSpells[index]=spell.data end)
+ pcall(function() radial:StopRadialSelection() end)
+ component:Client_NotifySelectedSpell(spell.data,slot)
+ radial.CachedSectionId=0;radial:HighlightSlice(0)
+ if slotWarnings<5 and not sameObject(component.SelectedSpells[index],spell.data) then
+  slotWarnings=slotWarnings+1
+  log('slot mismatch persists after forced write: '..tostring(spell.id))
+ end
+end
+
 local function open()
+ unmuteSelectSound()
+ -- This is called from the native spell-wheel open lifecycle (or its
+ -- state-transition fallback). Replace only the spell selector's visuals; keep
+ -- the game-owned selector object alive for spell selection/casting internals.
+ hideNativeWheel()
+ openWasDown=device and device.sample().open==true or false
  restore()
  local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
- if #errors>0 then log('Catalogue skipped '..#errors..' unavailable records') end
+  -- Refresh the session cooldown cache as the wheel opens. Expired entries are
+  -- cleared and active entries are recalculated against the game's clock.
+  local openedAt=gameTime()
+  for _,group in ipairs(groups) do
+   for _,spell in ipairs(group.spells) do cooldowns:remaining(spell,openedAt) end
+  end
  state=model.new(groups);M.state=state
  pad=controller.new()
  local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
  controller.prime(pad,device.sample());state.controllerStage=pad.stage
- -- Build before suppressing the native wheel, so a missing asset fails open.
+ -- Build the custom view after the native wheel has been suppressed.
  if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons) end
- radial:StopRadialSelection();panel:SetVisibility(2);panel:SetRenderOpacity(0)
+ -- Native wheel suppression already happened at the very start of open().
+ radial:StopRadialSelection();hideNativeWheel()
  M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed
+ if ui then ui.last='' end
  ui.show();controls(true)
+ emoteHandoffAt=nil;emoteWheelActive=false;emoteWheelSeen=false
+ emoteWasDown=device.sample().emote==true
  local dpi=E.layout:GetViewportScale(pc)
- pc:SetMouseLocation(math.floor((ui.width/2-220*ui.scale)*dpi),math.floor(ui.height/2*dpi))
+ -- Start at the wheel's centre (the dead zone), so opening never pre-selects a skill.
+ pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor((ui.height/2+ui.offsetY)*dpi))
  pointerX,pointerY=ui.pointer()
-end
-local function costText(spell)
- if not spell then return '' end
- local parts={}
- for _,v in ipairs(spell.data:GetModulesOfType(E.class('/Script/Dominion.SpellModule_CostItems'))) do
-  v:get().ItemsCostInfo:ForEach(function(_,p)
-   local c=p:get()
-   if E.valid(c.ItemData) then parts[#parts+1]=c.Count..' '..c.ItemData.Name:ToString() end
-  end)
- end
- local s=#parts>0 and ('BASE COST  '..table.concat(parts,'  ·  ')) or 'No rune cost'
- if spell.cooldown>0 then s=s..'\nCOOLDOWN  '..string.format('%gs',spell.cooldown) end
- return s
 end
 local function selectSpell()
  local spell,reason=model.selection(state)
@@ -130,44 +277,212 @@ local function selectSpell()
   return
  end
  if not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
+ -- Preserve the proven 0.3.2 casting handoff: write the custom-selected spell
+ -- into native slot 0, select native slice 0, then let the game's normal
+ -- selector/casting path run. Mapping the custom wheel index to a native slice
+ -- here reintroduced dependence on the native wheel's scroll/section state.
  local slot=radial.RadialSlice_0.SpellSlotNum
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
- pending={component=component,original=component.SelectedSpells[index],spell=spell.data,slot=slot,index=index,book=book,since=elapsed}
- component:Client_NotifySelectedSpell(spell.data,slot)
- radial.CachedSectionId=0;radial:HighlightSlice(0)
- -- Use native selection: requirements, cooldowns, rune costs and targeting.
- controls(false);radial:SelectSlice()
- if nativeOpen() then
-  local requirement=radial.RequirementText:GetText():ToString()
-    M.message='Unable to cast. Check runes, equipment and cooldown.'
-  if requirement~='' and requirement~='-' then M.message='Requires '..requirement end
+ pending={component=component,original=component.SelectedSpells[index],spell=spell.data,spellId=spell.id,cooldown=spell.cooldown,slot=slot,index=index,book=book,since=elapsed}
+ bindSlot(spell,slot,index)
+ -- Keep the original ordering: release wheel input before native selection.
+ controls(false)
+ muteSelectSound()
+ local selOk,selErr=pcall(function() radial:SelectSlice() end)
+ if not selOk then unmuteSelectSound();error(selErr) end
+ local requirement=radial.RequirementText:GetText():ToString()
+ -- Some failed casts close the native wheel rather than leaving it open. The
+ -- requirement label is the game's own reason for rejecting a spell (e.g. runes).
+ local requirementFailed=requirement~='' and requirement~='-'
+ if nativeOpen() or requirementFailed then
+  M.message='Unable to cast. Check runes, equipment and cooldown.'
+  if requirementFailed then M.message='Requires '..requirement end
+  local remaining=cooldowns:remaining({id=pending.spellId},gameTime())
+  if not requirementFailed and remaining>0 then M.message='On cooldown. Ready in '..cooldowns:format(remaining)..'.' end
+  local reqLower=requirement:lower()
+  if reqLower:find('cooldown',1,true) or reqLower:find('cool down',1,true) or reqLower:find('ready in',1,true) then
+   cooldowns:start({id=pending.spellId,cooldown=pending.cooldown},gameTime())
+  end
   restore();radial:StopRadialSelection();controls(true)
  else
-  -- Aimed/placed spells reread the slot on confirmation. Restore only after
-  -- the native casting/placement mode has ended, including cancellation.
-  M.open=false;model.close(state);ui.hide();panel:SetRenderOpacity(1);M.queue={}
+  -- The native selection has been accepted. Close only the custom wheel and
+  -- return mouse/input ownership to gameplay; keep `pending` alive so targeted
+  -- spells can finish/cancel and cooldown handling can still run in tick().
+  -- Do not call M.close(): it closes the native widget and would disrupt aiming.
+  M.open=false
+  if ui and E.valid(ui.root) then ui.hide() end
+  if state then model.close(state) end
+  -- Do not call controls(false) here: SelectSlice may already have entered
+  -- the native SpellPlacement/Spellcasting mode, which must retain ownership.
+  local mode=pc.CurrentInputMode
+  local name=E.valid(mode) and mode:GetFName():ToString() or ''
+  if name:find('SpellPlacement') or name:find('Spellcasting') then
+   -- Aim/placement spells are only successful after the native confirm input.
+   pending.awaitingConfirm=true
+   local sample=device.sample()
+   pending.confirmArmed=not (sample.accept or sample.mouseLeft)
+   pending.cancelArmed=not (sample.back or sample.close)
+  else
+   -- On the first spell use after launch, SelectSlice can return before the
+   -- native targeting input mode has finished initializing. Don't classify
+   -- that one early mode sample as an instant cast; let tick() observe the
+   -- resulting mode before deciding whether a cooldown is warranted.
+   pending.detectingMode=true
+  end
+  M.open=false
+  model.close(state)
+  if ui and E.valid(ui.root) then ui.hide() end
+  showNativePanel()
+  M.queue={}
  end
 end
 local function tick()
  frame=frame+1;elapsed=elapsed+.016
  if not cfg.Enabled or M.disabled then return end
- if not M.open and not pending and not (device and device.draining) and frame%2~=0 then return end
+ -- Bind objects without modifying visibility. The lifecycle hook below is
+ -- responsible for replacing the spell selector only when the game opens it.
  if not bindWorld() then return end
+ keepNativeOffscreen()
+ -- The emote wheel is a separate native UI. If the player opens it while
+ -- BetterSpellWheel is active, yield input ownership without resetting the
+ -- game's input mode (controls(false) would force GameOnly and dismiss emotes).
+ if M.open and E.valid(pc) and sameObject(pc.CurrentInputMode,pc.EmotesInputMode) then
+  M.open=false
+  if state then model.close(state) end
+  if ui and E.valid(ui.root) then ui.hide() end
+  if device then device.release(true,true) end
+  M.queue={}
+  return
+ end
+ -- Once the native open lifecycle has handed ownership to BetterSpellWheel,
+ -- the native IsOpen flag is no longer authoritative: the game's input mode
+ -- can clear it during takeover. Closing is handled by the replacement's own
+ -- close input or by an explicit mod shutdown, not by that transient flag.
  if device.draining then device.release() end
+ -- Put the select sound back shortly after the cast, in case the native audio
+ -- event fires a frame or two after SelectSlice() returns.
+ if mutedSFX~=nil and elapsed-(mutedAt or 0)>.3 then unmuteSelectSound() end
  if pending then
   local mode=pc.CurrentInputMode
   local name=E.valid(mode) and mode:GetFName():ToString() or ''
-  if elapsed-pending.since>.15 and not name:find('SpellPlacement') and not name:find('Spellcasting') then restore() end
+  local targetingMode=name:find('SpellPlacement') or name:find('Spellcasting')
+  if pending.detectingMode and targetingMode then
+   -- Targeting can become visible one or more frames after SelectSlice().
+   pending.detectingMode=false
+   pending.awaitingConfirm=true
+   local initialSample=device.sample()
+   pending.confirmArmed=not (initialSample.accept or initialSample.mouseLeft)
+   pending.cancelArmed=not (initialSample.back or initialSample.close)
+  end
+  if pending.awaitingConfirm then
+   local sample=device.sample()
+   -- Native targeting can be cancelled with keyboard Escape or mouse-right
+   -- as well as the controller back/close buttons. These two inputs are not
+   -- part of the wheel's navigation mapping, so sample them directly here.
+   local cancelNow=sample.back or sample.close
+   pcall(function() cancelNow=cancelNow or pc:IsInputKeyDown({KeyName=FName('Escape')}) end)
+   pcall(function() cancelNow=cancelNow or pc:IsInputKeyDown({KeyName=FName('RightMouseButton')}) end)
+   if cancelNow then
+    pending.cancelled=true
+   elseif not pending.cancelArmed then
+    pending.cancelArmed=true
+   end
+   if not pending.cancelled then
+    if not pending.confirmArmed then
+     pending.confirmArmed=not (sample.accept or sample.mouseLeft)
+    elseif sample.accept or sample.mouseLeft then
+     pending.confirmed=true
+     pending.confirmedAt=pending.confirmedAt or elapsed
+    end
+   end
+  end
+  if elapsed-pending.since>.15 and not targetingMode then
+   -- The native mode can briefly report Spellcasting for an instant cast as
+   -- well as for a targeted spell. Once that mode has ended, treat the cast as
+   -- successful unless the player explicitly cancelled it. Requiring a sampled
+   -- confirm here missed instant casts, so their cooldown only appeared after
+   -- the next attempt was rejected by the game's native cooldown check.
+   -- Targeted spells only start a cooldown if we actually observed the
+   -- player's confirmation input. Leaving targeting mode alone is not proof
+   -- of a successful cast: the player may have cancelled it.
+   if pending.awaitingConfirm then
+    if pending.confirmed and not pending.cancelled then
+     cooldowns:start({id=pending.spellId,cooldown=pending.cooldown},gameTime())
+    end
+   elseif pending.detectingMode then
+    -- No targeting mode appeared during the initialization window, so this
+    -- was an instant cast. Start its cooldown after the mode has settled.
+    cooldowns:start({id=pending.spellId,cooldown=pending.cooldown},gameTime())
+   end
+   restore()
+  end
  end
- if not M.open then if nativeOpen() then open() end;return end
- if not nativeOpen() then M.close();return end
+ if not M.open then
+  local sample=device.sample()
+  local t=os.clock()
+  -- Switch back from the native emote wheel with a fresh X / Square press.
+  -- Don't rely solely on CurrentInputMode: some builds keep reporting the prior
+  -- mode while the native emote wheel is displayed. This flag is set only when
+  -- BetterSpellWheel hands off to emotes, so gameplay presses remain unaffected.
+  if emoteWheelActive and sample.emote and not emoteWasDown then
+   emoteWasDown=true
+   emoteWheelActive=false
+   emoteHandoffAt=nil
+   open()
+   return
+  end
+  emoteWasDown=sample.emote==true
+  -- Once the emote wheel has opened and then closed again, a later X press
+  -- belongs to the game and must not bring the spell wheel back.
+  if emoteWheelActive then
+   if E.valid(pc) and sameObject(pc.CurrentInputMode,pc.EmotesInputMode) then emoteWheelSeen=true
+   elseif emoteWheelSeen then emoteWheelActive=false;emoteWheelSeen=false end
+  end
+  -- A handed-over emote press: if the game did not switch to its emote mode,
+  -- give gameplay input back so we never leave the UI input mode behind.
+  if emoteHandoffAt then
+   if E.valid(pc) and sameObject(pc.CurrentInputMode,pc.EmotesInputMode) then emoteHandoffAt=nil
+   elseif t-emoteHandoffAt>.6 then emoteHandoffAt=nil;emoteWheelActive=false;controls(false) end
+  end
+  -- Native-input takeover: let the game's own Q / controller binding open the
+  -- spell wheel, then replace only its radial visuals. Do not synthesize a
+  -- separate Q toggle or interpret Y taps ourselves (Y may also mount).
+  local isNativeOpen=nativeOpen()
+  if isNativeOpen and not nativeWasOpen then
+   nativeWasOpen=true
+   open()
+   return
+  elseif not isNativeOpen and not M.open then
+   nativeWasOpen=false
+  end
+  -- Legacy keybind dispatchers can survive UE4SS script reloads. Ignore their
+  -- old 'toggle'/'open' queue entries; native state above is the only opener.
+  M.queue={}
+  return
+ end
  if not E.valid(ui.root) then M.close();return end
  local now=E.clock:GetGameTimeInSeconds(pc)
  local dt=math.min(.05,math.max(.001,now-lastTime));lastTime=now
  ui.resize()
  local x,y=ui.pointer()
  local sample=device.sample()
+ -- Q is the native keyboard toggle. Once the open press has been released,
+ -- a fresh Q press closes the replacement without depending on IsOpen(pc,21).
+ if sample.open and not openWasDown then openWasDown=true;M.close();return end
+ openWasDown=sample.open==true
+ -- X / Square: hand over to the game's native emote wheel (its binding is not
+ -- consumed by our input context, so it receives the press itself).
+ if sample.emote and not emoteWasDown then
+  emoteWasDown=true;emoteHandoffAt=os.clock();emoteWheelActive=true;emoteWheelSeen=false
+  M.open=false
+  if state then model.close(state) end
+  if ui and E.valid(ui.root) then ui.hide() end
+  if device then device.release(true,true) end
+  M.queue={}
+  return
+ end
+ emoteWasDown=sample.emote==true
  local moved=(pointerX and ((x-pointerX)^2+(y-pointerY)^2)>9) or math.abs(sample.mx or 0)>.5 or math.abs(sample.my or 0)>.5
  pointerX,pointerY=x,y
  local padActivity=sample.x*sample.x+sample.y*sample.y>=controller.deadzone^2
@@ -190,10 +505,10 @@ local function tick()
  end
  local group=state.groups[state.group];local spell=group and group.spells[state.spell]
  local hover=spell and spell.id or tostring(state.group)
- if hover~=M.hover then M.hover=hover;M.message=nil;M.cost=costText(spell) end
+ if hover~=M.hover then M.hover=hover;M.message=nil end
  local queue=M.queue;M.queue={}
  for _,action in ipairs(queue) do
-  if action=='close' then M.close();return
+  if action=='toggle' or action=='close' then M.close();return
   elseif action=='back' then state.group=nil;state.spell=nil;state.candidate=nil;state.page=1;M.message=nil;M.back=true
   elseif action=='previous' then model.turnPage(state,-1)
   elseif action=='next' then model.turnPage(state,1)
@@ -201,22 +516,31 @@ local function tick()
  end
  -- Game HUD activation can restore game input underneath custom UI.
  if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
- panel:SetVisibility(2);panel:SetRenderOpacity(0)
- ui.draw(state,dt,M.message,M.cost)
+ hideNativeWheel()
+ ui.draw(state,dt,M.message,now,cooldowns,spell)
 end
 function M.shutdown()
+ unmuteSelectSound()
  M.close()
+ restoreNativePanel()
+ M.radial=nil
  if pending and E.valid(component) then component:CancelSpellcasting() end
  restore()
  if device then device.shutdown() end
  if M.handle then CancelDelayedAction(M.handle);M.handle=nil end
 end
--- Key callbacks only queue plain data; every UObject operation runs on game thread.
-if not _G.BetterSpellWheelKeys then
- _G.BetterSpellWheelKeys=true
- for key,action in pairs({[1]='select',[2]='back',[0x51]='close',[0x1B]='close',[0x46]='previous',[0x47]='next'}) do
-  RegisterKeyBind(key,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]=action end end)
- end
+-- Q is a mod-level toggle. Register the dispatcher once so script reloads
+-- do not leave an old Q callback behind; the callback always resolves the
+-- current BetterSpellWheel instance from _G.
+if not _G.BetterSpellWheelKeyDispatcher then
+ _G.BetterSpellWheelKeyDispatcher=true
+ -- Q toggles only the custom wheel; it never opens or restores the native wheel.
+ -- Q is intentionally not rebound: the game's native spell-wheel action owns it.
+ RegisterKeyBind(0x1B,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='close' end end)
+ RegisterKeyBind(1,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='select' end end)
+ RegisterKeyBind(2,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='back' end end)
+ RegisterKeyBind(0x46,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='previous' end end)
+ RegisterKeyBind(0x47,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='next' end end)
 end
 -- Opt-in development console; dev.txt is never included in release archives.
 local devPoll
@@ -240,7 +564,7 @@ M.handle=LoopInGameThreadWithDelay(16,function()
  local ok,err=pcall(tick)
  if not ok then
   log('Disabled after error; restoring native controls: '..tostring(err));M.disabled=true
-  pcall(M.close);pcall(restore);if device then pcall(device.shutdown) end
+  pcall(M.close);pcall(restoreNativePanel);pcall(restore);if device then pcall(device.shutdown) end
  end
 end)
 log('Loaded '..M.version..'. Open the spell wheel with your normal key (Q).')

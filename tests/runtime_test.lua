@@ -3,7 +3,7 @@
 local realDofile=dofile
 local root=arg[1]:gsub('/Scripts/model.lua$','')
 local model=realDofile(root..'/Scripts/model.lua')
-local clock,book,native,aim,denied=0,0,false,false,false
+local clock,book,native,aim,denied,instant=0,0,false,false,false,false
 local x,y=0,0
 local padSample,usingPad={},false
 local captured=false
@@ -36,6 +36,7 @@ function radial:InvalidSelectAudioTrigger()end
 function radial:SelectSlice()
  if denied then return end
  native=false
+ if instant then return end
  pc.CurrentInputMode=obj(aim and 'DIM_SpellPlacementMode' or 'DIM_SpellcastingMode')
 end
 local input=obj('input');function input:IsOpen()return native end
@@ -61,7 +62,7 @@ function dofile(path)
  if path:find('/catalogue.lua',1,true)then return function()return {scan=function()return model.catalogue({record}),{}end}end end
  if path:find('/view.lua',1,true)then return function()return {new=function()
   assert(not failView,'test missing artwork')
-  return {root=obj('root'),width=1920,height=1080,scale=1,show=function()end,hide=function()end,resize=function()end,pointer=function()return x,y end,draw=function()end}
+  return {root=obj("root"),width=1920,height=1080,scale=1,offsetY=0,show=function()end,hide=function()end,resize=function()end,pointer=function()return x,y end,draw=function()end}
  end}end end
  return realDofile(path)
 end
@@ -93,23 +94,34 @@ book=1;open();select();sameSlots(13,spell);book=2;finish();sameSlots();book=0
 -- Locked entries and non-target areas never start a temporary selection.
 record.unlocked=false;open();local before=calls;select();assert(calls==before and mod.open)
 record.unlocked=true;x,y=0,0;ticks();select();assert(calls==before)
-keys[0x51]();ticks();assert(not mod.open)
+padSample={open=true};ticks();assert(not mod.open);padSample={}
 -- Reload/shutdown during targeting cancels and restores before stopping.
 open();select();sameSlots(1,spell);mod.shutdown();sameSlots()
+-- Cooldown timers: only a confirmed aimed cast or an instant cast starts one;
+-- a cancelled aim does not. The timer is display-only and never blocks a cast.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+record.cooldown=30;aim=true;book=0
+local function cd()return mod.cooldowns:remaining(record,clock)end
+open();select();ticks(3);component:CancelSpellcasting();ticks(25);assert(cd()==0,'cancelled aim starts no cooldown');sameSlots()
+open();select();ticks(3);padSample={mouseLeft=true};ticks(2);padSample={};finish();assert(cd()>25,'confirmed aim starts cooldown');sameSlots()
+mod.cooldowns:clear(record);aim=false;instant=true
+open();select();ticks(25);assert(cd()>25,'instant cast starts cooldown');sameSlots()
+before=calls;open();select();assert(calls>before,'local cooldown never blocks the native attempt');ticks(25);sameSlots()
+instant=false;record.cooldown=0;mod.shutdown()
 -- Controller opens via native wheel, selects a skill, enters, and casts once.
 mod=realDofile(root..'/Scripts/main.lua');usingPad=true;padSample={};native=true;x,y=0,0;ticks(20)
 assert(mod.open and captured and mod.state.input=='controller')
-padSample={x=0,y=1};ticks(2);assert(mod.state.group==1 and not mod.state.spell)
+padSample={x=0,y=-1};ticks(2);assert(mod.state.group==1 and not mod.state.spell)
 padSample={accept=true};ticks();assert(mod.open and mod.state.spell==1)
 ticks(20);sameSlots() -- a held A must not cast the highlighted first spell
 padSample={};ticks();padSample={accept=true};ticks();assert(not mod.open);sameSlots(1,spell)
 padSample={};finish();sameSlots()
 -- B first backs out of spells, then closes; held B cannot do both.
-native=true;ticks(20);padSample={x=0,y=1};ticks();padSample={accept=true};ticks()
+native=true;ticks(20);padSample={x=0,y=-1};ticks();padSample={accept=true};ticks()
 padSample={};ticks();padSample={back=true};ticks();assert(mod.open and not mod.state.spell)
 ticks(20);assert(mod.open);padSample={};ticks();padSample={back=true};ticks();assert(not mod.open)
 -- Mouse takes over only after real movement, not its stationary cached location.
-padSample={};native=true;ticks(20);padSample={x=0,y=1};ticks();padSample={};ticks()
+padSample={};native=true;ticks(20);padSample={x=0,y=-1};ticks();padSample={};ticks()
 assert(mod.state.input=='controller');x,y=0,-202;ticks(20);assert(mod.state.input=='mouse')
 x,y=0,-344;ticks();select();assert(not mod.open);padSample={};finish();sameSlots()
 -- Hidden-cursor handoff also works from raw MouseX without position change.

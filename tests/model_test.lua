@@ -37,8 +37,10 @@ eq(s.group,1,"hover opens branch")
 eq(model.selection(s),nil,"skill hover never selects a spell")
 local branch=model.branch(s)
 eq(branch.count,3)
+-- Mouse angle smoothing converges over a few ticks; settle like a still pointer.
 local function at(angle,radius,time)
-    local x,y=model.point(angle,radius); model.update(s,x,y,time or 1)
+    local x,y=model.point(angle,radius)
+    for _=1,6 do model.update(s,x,y,time or 1) end
 end
 at(-branch.step,344)
 eq(model.selection(s).id,"first","left side of north-crossing fan")
@@ -49,18 +51,19 @@ eq(reason,"locked","locked feedback")
 eq(s.group,1,"outer fan stays latched across other skill angles")
 at(0,344)
 eq(model.selection(s).id,"second")
-at(0,280)
-eq(model.selection(s),nil,"bridge does not reuse last spell")
-at(0,409)
+at(0,240)
+eq(model.selection(s),nil,"inner ring does not reuse last spell")
+at(0,433)
 eq(model.selection(s),nil,"outside wheel does not reuse last spell")
 at(0,0)
 eq(model.selection(s),nil,"center does not reuse last spell")
 eq(s.group,1,"center keeps branch available")
 at(branch.span/2,344)
 eq(model.selection(s),nil,"fan boundary is not a target")
-at(math.pi/12+math.rad(2),202,2)
-at(math.pi/12+math.rad(2),202,2.1)
+at(math.pi/12+math.rad(4),202,2)
+at(math.pi/12+math.rad(4),202,2.1)
 eq(s.group,1,"hysteresis at skill border")
+eq(model.geometry.outer,model.geometry.branchInner,"no dead band between the rings")
 at(math.pi/6,202,3)
 at(math.pi/6,202,3.1)
 eq(s.group,2,"return to inner ring switches branch")
@@ -92,9 +95,10 @@ eq(model.selection(empty),nil,"empty catalogue is safe")
 -- A pointer that jumps directly outside must dwell on a skill first, and
 -- cannot click a stale spell from the previous open.
 s=model.new(groups)
-at(0,344,0)
+local nx,ny=model.point(0,344)
+model.update(s,nx,ny,0)
 eq(s.group,nil)
-at(0,344,0.06)
+model.update(s,nx,ny,0.06)
 eq(s.group,1)
 eq(model.selection(s),nil)
 at(0,344,0.08)
@@ -106,6 +110,12 @@ for i=1,#groups do
     for j=1,b.count do
         at(b.center-b.span/2+b.step*(j-0.5),344)
         eq(s.spell,j,"fan hit test "..i..":"..j)
+    end
+    -- Spell hysteresis: a pointer just past a slice edge keeps the previous spell.
+    if b.count>1 then
+        at(b.center-b.span/2+b.step*0.5,344)
+        at(b.center-b.span/2+b.step+math.rad(2),344)
+        eq(s.spell,1,"spell hysteresis "..i)
     end
 end
 print("PASS: "..checks.." radial and catalogue checks")
