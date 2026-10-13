@@ -1,0 +1,24 @@
+BetterSpellWheel 0.4.2 cooldown checks (2026-10-13, SudoBlade 2560x1600, solo worlds, throwaway characters)
+Other mod: Utility Spells - No Cooldowns (CurseForge file 8913570, "v2.1"). It does not change
+UtilitySpellData.CooldownDuration; every 500 ms it rewrites PlayerUtilityMagicComponent.LastCastTimeBySpellData
+to -1e9 for 31 utility spell assets. Casts were driven through the wheel (pointer moved on the game thread,
+'select' queued exactly like the left-click key bind); casting itself is native.
+
+With the mod (Creative world):
+- A1 Phase Dash cast; native stamp rewritten to -1e9 by the other mod; no timer shown.
+- A2 Windstep with a wheel estimate of 35 s and no native entry (what a joined client has after a cast): 0.4.1
+  refuses here ("On cooldown"). 0.4.2 hands it to the game, the game casts it, the estimate is dropped (waived).
+- A3 Windstep cast twice more in a row: both cast, nothing shown, nothing blocked.
+Found: Creative worlds do not enforce utility-spell cooldowns at all (Tempest Shield and Surge re-cast at 41 s
+remaining, no Client_NotifySpellOnCooldown). 0.4.0/0.4.1 blocked those casts on their own estimate.
+
+Without the mod (Standard world, spells unlocked with the test-only UnlockSpells, runes added):
+- B1 Tempest Shield cast: native stamp 123.5.
+- B2 re-cast at once: the game refused it (stamp unchanged, native wheel still open); the wheel stayed open with
+  "On cooldown. Ready in 41s." and a 34s timer on the slot. No Client_NotifySpellOnCooldown on a solo host.
+- B4 close and reopen: 11.7 s remaining = native stamp + 45 - now, exactly.
+- B3 Windstep (3 s) cast twice 4.5 s apart: both cast.
+- B5 ShowCooldowns=false at runtime: no timer; the game's refusal still reported ("Unable to cast...").
+Cleanup: test worlds and characters deleted in-game, their .backup saves removed, mods.txt and the PlayerTrading
+client restored and hash-verified (31 files), game closed, machine locked.
+Not tested live: joining a dedicated server as a client (the reported setup); covered by the offline tests.

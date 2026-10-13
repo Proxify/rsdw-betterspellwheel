@@ -113,13 +113,52 @@ open();select();ticks(3);component:CancelSpellcasting();ticks(25);assert(cd()==0
 open();select();ticks(3);padSample={mouseLeft=true};ticks(2);padSample={};finish();assert(cd()>25,'confirmed aim starts cooldown');sameSlots()
 mod.cooldowns:clear(record);aim=false;instant=true
 open();select();ticks(25);assert(cd()>25,'instant cast starts cooldown');sameSlots()
-before=calls;open();select();assert(calls==before and mod.open,'a spell on cooldown is blocked before the native attempt')
-assert(mod.message:find('On cooldown'),'cooldown message');keys[0x1B]();ticks()
+-- The game decides: a spell the estimate shows on cooldown is still attempted.
+-- When the game refuses it, the wheel stays open and says when it's ready.
+denied=true;before=calls;open();select();assert(calls>before and mod.open,'the native attempt is made, not blocked by the estimate')
+assert(mod.message:find('On cooldown'),'cooldown message after the game refused');assert(cd()>20,'a refusal keeps the timer');keys[0x1B]();ticks();denied=false
 -- Native sync: a cast stamped in the game's LastCastTimeBySpellData (e.g. before
 -- loading in) shows its remaining time when the wheel opens; expired ones clear.
 mod.cooldowns:clear(record);castTimes[spell]=clock-10
 open();assert(math.abs(cd()-20)<1,'synced from the native cast time');keys[0x1B]();ticks()
 castTimes[spell]=clock-40;open();assert(cd()==0,'expired native cooldown is clear');keys[0x1B]();ticks()
+castTimes={};instant=false;record.cooldown=0;mod.shutdown()
+-- 0.4.2 (report: cooldowns shown and casts refused with UtilitySpellsNoCooldown on
+-- a client). That mod rewrites LastCastTimeBySpellData to -1e9 every 500 ms, so the
+-- game accepts every cast; on a joined client the map may hold no entry at all.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+record.cooldown=30;instant=true;aim=false;book=0
+-- (a) No native entry (joined client): the first cast starts the estimate...
+open();select();ticks(25);assert(cd()>25,'first cast starts the estimate')
+-- ...but the game accepts the next cast: it must be attempted, and the estimate dropped.
+before=calls;open();select();assert(calls>before and not mod.open,'game-accepted cast goes through');ticks(25)
+assert(cd()==0,'accepted while the estimate ran: estimate dropped, no new timer')
+open();assert(cd()==0,'still nothing shown on the next open');select();ticks(25);assert(cd()==0,'no timer on later casts');sameSlots()
+-- (b) A real refusal from the game (its cooldown notice) shows the game's time again.
+denied=true;open();select();assert(mod.open)
+mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=10};ticks()
+assert(math.abs(cd()-20)<1,'the notice sets the remaining time');assert(mod.message:find('On cooldown'),'notice message');keys[0x1B]();ticks();denied=false
+mod.cooldowns:clear(record);open();select();ticks(25);assert(cd()>25,'after a refusal the estimate is trusted again')
+-- (b2) Once waived, the game's own cast times don't bring the timer back (Creative
+-- worlds and no-cooldown setups record casts but don't enforce them)...
+mod.cooldowns:waive(record);castTimes[spell]=clock-1;open();assert(cd()==0,'waived: native stamp ignored');keys[0x1B]();ticks()
+-- ...until the game refuses the spell: then its cast time shows again.
+denied=true;open();select();assert(mod.open and cd()>25,'refusal: native time trusted again');assert(mod.message:find('On cooldown'),'refusal message with time')
+keys[0x1B]();ticks();denied=false;castTimes={};mod.cooldowns:clear(record)
+-- (c) Solo/host with the mod: the native stamp is rewritten to -1e9: nothing shown.
+castTimes[spell]=-1e9;open();assert(cd()==0,'rewritten native stamp clears the estimate');select();assert(not mod.open);ticks(25)
+castTimes={};mod.cooldowns:clear(record)
+-- (d) The duration is read live from the data asset: zero (another mod) = no cooldown.
+spell.CooldownDuration=0;open();select();ticks(25);assert(cd()==0,'live duration 0 starts no timer')
+castTimes[spell]=clock-1;open();assert(cd()==0,'live duration 0 ignores native stamps');keys[0x1B]();ticks();castTimes={}
+spell.CooldownDuration=40;open();select();ticks(25);assert(cd()>35 and cd()<=40,'live duration used, not the catalogue value')
+spell.CooldownDuration=nil;mod.cooldowns:clear(record)
+-- (e) ShowCooldowns=false: no timers, no cooldown text; casts still go to the game.
+mod.cfg.ShowCooldowns=false;open();select();ticks(25);assert(cd()==0,'overlay off: no timer')
+castTimes[spell]=clock-1;open();assert(cd()==0,'overlay off: no native sync');keys[0x1B]();ticks();castTimes={}
+denied=true;open();select();mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=1};ticks()
+assert(cd()==0 and not (mod.message or ''):find('Ready in'),'overlay off: no countdown text');keys[0x1B]();ticks();denied=false
+mod.cfg.ShowCooldowns=true
 castTimes={};instant=false;record.cooldown=0;mod.shutdown()
 -- A destroyed native panel is never written to again (native fault, 0.4.0
 -- crash dump 2026-10-12), the mod stays enabled, and a live panel is used again.

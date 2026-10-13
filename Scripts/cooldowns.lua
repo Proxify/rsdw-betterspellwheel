@@ -1,10 +1,14 @@
--- Spell cooldowns for the custom wheel. Synced from the game's last cast
--- times when the wheel opens, and from the server's cooldown notices; casts
--- seen through the wheel start a timer straight away.
+-- Spell cooldowns for the custom wheel: DISPLAY ONLY. The game decides whether
+-- a spell can be cast; these timers never block a cast. Synced from the game's
+-- last cast times while the wheel is open and from the server's cooldown
+-- notices; casts seen through the wheel start a timer straight away.
+-- A spell is "waived" when the game accepted a cast while its timer was still
+-- running (e.g. a no-cooldown mod): no local timer is started for it until the
+-- game refuses it with a cooldown notice again.
 local M = {}
 
 function M.new()
-    return setmetatable({ untilById = {} }, { __index = M })
+    return setmetatable({ untilById = {}, waived = {} }, { __index = M })
 end
 
 local function key(spell)
@@ -34,7 +38,8 @@ end
 function M:start(spell, now)
     local id = key(spell)
     local duration = self:duration(spell)
-    if not id or duration <= 0 then return end
+    if not id or self.waived[id] then return end
+    if duration <= 0 then self.untilById[id] = nil; return end
     local untilAt = (tonumber(now) or 0) + duration
     self.untilById[id] = math.max(self.untilById[id] or 0, untilAt)
 end
@@ -52,6 +57,29 @@ end
 function M:clear(spell)
     local id = key(spell)
     if id then self.untilById[id] = nil end
+end
+
+function M:reset()
+    self.untilById = {}
+end
+
+-- The game accepted a cast the timer said was on cooldown: drop the estimate.
+function M:waive(spell)
+    local id = key(spell)
+    if not id then return end
+    self.untilById[id] = nil
+    self.waived[id] = true
+end
+
+-- The game refused the spell with a cooldown notice: estimates apply again.
+function M:trust(spell)
+    local id = key(spell)
+    if id then self.waived[id] = nil end
+end
+
+function M:isWaived(spell)
+    local id = key(spell)
+    return id ~= nil and self.waived[id] == true
 end
 
 function M:format(seconds)

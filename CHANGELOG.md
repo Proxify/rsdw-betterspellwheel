@@ -1,3 +1,23 @@
+# 0.4.2 — Cooldowns follow the game (no-cooldown mods work again)
+
+- Fixed: with a mod that removes spell cooldowns (e.g. Utility Spells - No Cooldowns),
+  the wheel still showed cooldown timers and refused to cast those spells, mostly when
+  playing on someone else's server. The wheel ran its own timer after each cast and
+  blocked the spell until it ran out, even though the game would have allowed it.
+- The game now always decides. The wheel never refuses a cast because of its own timer:
+  it hands the spell to the game, and only says "On cooldown" when the game refuses it.
+- When the game accepts a spell the timer thought was on cooldown, the timer is dropped
+  and no new one is started for that spell until the game itself reports a cooldown.
+- Cooldown lengths are read live from the game's spell data on every cast and while the
+  wheel is open; a cooldown of 0 shows nothing. Timers re-sync with the game every second
+  while the wheel is open.
+- New `ShowCooldowns` setting in `config.txt` (default `true`): set `false` to hide the
+  timers entirely. Updating keeps your existing `config.txt`; add the line to use it.
+- Creative worlds don't enforce spell cooldowns; the wheel no longer blocks casts there either.
+- Cooldowns still show and count down as before for players without such a mod.
+
+Tested in-game with and without Utility Spells - No Cooldowns (`tests/live-cooldowns-0.4.2.txt`).
+
 # 0.4.1 — CurseForge-ready packages
 
 - The release ZIP now contains only `.lua` and `.txt` files, as CurseForge requires for

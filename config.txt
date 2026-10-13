@@ -8,3 +8,8 @@ ControllerPrompts=Auto
 # Keep the game's own spell wheel invisible at all times (no flash when it
 # opens or closes). Set false to restore it after each cast.
 KeepNativeHidden=true
+
+# Show spell cooldown timers on the wheel. Set false to hide them entirely.
+# The game always decides whether a spell can be cast; the wheel never blocks
+# a cast because of its own timer, so no-cooldown mods keep working either way.
+ShowCooldowns=true

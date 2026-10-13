@@ -1,9 +1,9 @@
--- BetterSpellWheel 0.4.1. Client UI; casting remains entirely native.
+-- BetterSpellWheel 0.4.2. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.4.1',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.4.2',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
@@ -39,9 +39,10 @@ do
  elseif drawn>0 then print('[BetterSpellWheel] Drew '..drawn..' wheel textures\n') end
 end
 local function log(s) print('[BetterSpellWheel] '..s..'\n') end -- errors and one-off warnings only
-local cfg={Enabled=true,ControllerPrompts="auto",KeepNativeHidden=true}
+local cfg={Enabled=true,ControllerPrompts="auto",KeepNativeHidden=true,ShowCooldowns=true}
 local file=io.open(folder..'/config.txt','r')
-if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' end end;file:close() end
+if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' elseif k=='ShowCooldowns' then cfg.ShowCooldowns=v:lower()~='false' end end;file:close() end
+M.cfg=cfg
 local pc,radial,panel,input,component,ui,state,pending,device,pad
 local nativeWasOpen=false
 M.radial=nil
@@ -52,7 +53,7 @@ local emoteWasDown=false
 local emoteHandoffAt=nil
 local emoteWheelActive=false
 local emoteWheelSeen=false -- native emote mode has been observed since the handoff
-local lastTime,frame,elapsed=0,0,0
+local lastTime,frame,elapsed,lastSync=0,0,0,0
 M.cooldowns=cooldowns
 local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
 local function sameObject(a,b)
@@ -235,15 +236,39 @@ local function serverTime()
  local ok,t=pcall(function() return FindFirstOf('GameStateBase'):GetServerWorldTimeSeconds() end)
  return ok and tonumber(t) or nil
 end
+-- The spell's cooldown, read LIVE from its data asset (other mods may change
+-- UUtilitySpellData.CooldownDuration at any time), adjusted by its modifier
+-- perk. Falls back to the catalogue value. 0 means no cooldown.
+local function liveCooldown(spell)
+ local value=spell and spell.cooldown
+ local data=spell and spell.data
+ if E.valid(data) then
+  pcall(function()
+   local base=data.CooldownDuration
+   if type(base)~='number' then return end
+   value=base
+   if base<=0 then return end
+   local perk=data.CooldownModifierPerk.CooldownPerk
+   local perks=E.valid(pc) and pc:GetSkillPerkComponent()
+   if E.valid(perk) and E.valid(perks) and perks:IsPerkUnlocked(perk) then value=data.CooldownModifierPerk.ModifiedCooldown end
+  end)
+ end
+ return cooldowns:duration({cooldown=value})
+end
+M.liveCooldown=liveCooldown
 function M.syncNativeCooldowns(groups,now)
+ if not cfg.ShowCooldowns then cooldowns:reset();return 0 end
  local times=nativeCastTimes()
  local server=nil
  local synced=0
  for _,group in ipairs(groups or {}) do
   for _,spell in ipairs(group.spells) do
    local cast=E.valid(spell.data) and times[spell.data:GetAddress()]
-   local duration=cooldowns:duration(spell)
-   if cast and duration>0 then
+   local duration=liveCooldown(spell)
+   -- A waived spell: the game accepted it while a cooldown was shown, so it
+   -- doesn't enforce one here (a no-cooldown mod, Creative worlds).
+   if duration<=0 or cooldowns:isWaived(spell) then cooldowns:clear(spell)
+   elseif cast then
     local since=now-cast
     if since<-1 then server=server or serverTime();if server then since=server-cast end end
     if since>=-1 then
@@ -254,7 +279,8 @@ function M.syncNativeCooldowns(groups,now)
  end
  return synced
 end
--- The server tells the client how long ago a refused spell was cast.
+-- The server tells the client how long ago a refused spell was cast. This is
+-- the game's own refusal: the spell's estimates are trusted again.
 -- The hook only records the notice; tick() applies it on the game thread.
 M.cooldownNotices={}
 if not _G.BetterSpellWheelCooldownHook then
@@ -267,6 +293,7 @@ if not _G.BetterSpellWheelCooldownHook then
   end)
  end)
 end
+local refusedId -- the spell the game last refused through the wheel
 local function applyCooldownNotices(groups,now)
  if #M.cooldownNotices==0 then return end
  local notices=M.cooldownNotices;M.cooldownNotices={}
@@ -274,11 +301,24 @@ local function applyCooldownNotices(groups,now)
   for _,group in ipairs(groups or {}) do
    for _,spell in ipairs(group.spells) do
     if E.valid(spell.data) and spell.data:GetAddress()==n.address then
-     cooldowns:sync(spell,now,cooldowns:duration(spell)-(tonumber(n.since) or 0))
+     cooldowns:trust(spell)
+     local remaining=liveCooldown(spell)-(tonumber(n.since) or 0)
+     if cfg.ShowCooldowns then cooldowns:sync(spell,now,remaining) end
+     if M.open and refusedId==spell.id then
+      M.message=(cfg.ShowCooldowns and remaining>.5) and 'On cooldown. Ready in '..cooldowns:format(remaining)..'.' or 'On cooldown.'
+     end
     end
    end
   end
  end
+end
+-- Start the display timer for a cast the game accepted (never for a spell
+-- whose live cooldown is 0, or one the game has shown it doesn't enforce).
+local function startCooldown(spell)
+ if not cfg.ShowCooldowns or not spell then return end
+ local duration=liveCooldown(spell)
+ if duration<=0 then cooldowns:clear(spell);return end
+ cooldowns:start({id=spell.id,cooldown=duration},gameTime())
 end
 
 -- Success sound: the native selector plays its SelectSFX property from the
@@ -343,6 +383,7 @@ local function open()
   local openedAt=gameTime()
   pcall(M.syncNativeCooldowns,groups,openedAt)
   applyCooldownNotices(groups,openedAt)
+  lastSync=elapsed;refusedId=nil
  state=model.new(groups);M.state=state
  pad=controller.new()
  local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
@@ -369,15 +410,10 @@ local function selectSpell()
   return
  end
  if not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
- -- Cooldowns come from the game's cast times and the perk-adjusted duration,
- -- so a cast the game would refuse is blocked here with the time left.
- -- A half-second slack keeps clock rounding from blocking a ready spell.
- local remaining=cooldowns:remaining(spell,gameTime())
- if remaining>.5 then
-  M.message='On cooldown. Ready in '..cooldowns:format(remaining)..'.'
-  radial:InvalidSelectAudioTrigger()
-  return
- end
+ -- The game is authoritative for cooldowns: never refuse a cast on the wheel's
+ -- own estimate (other mods, e.g. UtilitySpellsNoCooldown, change the game's
+ -- cast times). Always attempt it; the game refuses it if it must.
+ local estimate=cooldowns:remaining(spell,gameTime())
  -- Preserve the proven 0.3.2 casting handoff: write the custom-selected spell
  -- into native slot 0, select native slice 0, then let the game's normal
  -- selector/casting path run. Mapping the custom wheel index to a native slice
@@ -385,7 +421,7 @@ local function selectSpell()
  local slot=radial.RadialSlice_0.SpellSlotNum
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
- pending={component=component,original=component.SelectedSpells[index],spell=spell.data,spellId=spell.id,cooldown=spell.cooldown,slot=slot,index=index,book=book,since=elapsed}
+ pending={component=component,original=component.SelectedSpells[index],spell=spell.data,spellId=spell.id,record=spell,slot=slot,index=index,book=book,since=elapsed}
  bindSlot(spell,slot,index)
  -- Keep the original ordering: release wheel input before native selection.
  controls(false)
@@ -397,16 +433,26 @@ local function selectSpell()
  -- requirement label is the game's own reason for rejecting a spell (e.g. runes).
  local requirementFailed=requirement~='' and requirement~='-'
  if nativeOpen() or requirementFailed then
+  -- The game refused the cast: its reason, with our time left if we have one.
+  refusedId=spell.id
   M.message='Unable to cast. Check runes, equipment and cooldown.'
-  if requirementFailed then M.message='Requires '..requirement end
-  local remaining=cooldowns:remaining({id=pending.spellId},gameTime())
-  if not requirementFailed and remaining>0 then M.message='On cooldown. Ready in '..cooldowns:format(remaining)..'.' end
+  if requirementFailed then M.message='Requires '..requirement
+  else
+   -- No stated reason: it may be a cooldown, so the game's cast times count again.
+   cooldowns:trust(spell);pcall(M.syncNativeCooldowns,{{spells={spell}}},gameTime())
+  end
+  local remaining=cooldowns:remaining(spell,gameTime())
+  if not requirementFailed and remaining>.5 then M.message='On cooldown. Ready in '..cooldowns:format(remaining)..'.' end
   local reqLower=requirement:lower()
   if reqLower:find('cooldown',1,true) or reqLower:find('cool down',1,true) or reqLower:find('ready in',1,true) then
-   cooldowns:start({id=pending.spellId,cooldown=pending.cooldown},gameTime())
+   cooldowns:trust(spell)
+   if remaining<=0 then startCooldown(spell) end
   end
   restore();radial:StopRadialSelection();controls(true)
  else
+  -- The game accepted a spell our timer said was on cooldown: the timer was
+  -- wrong (e.g. a no-cooldown mod). Drop it and stop estimating this spell.
+  if estimate>.5 then cooldowns:waive(spell) end
   -- The native selection has been accepted. Close only the custom wheel and
   -- return mouse/input ownership to gameplay; keep `pending` alive so targeted
   -- spells can finish/cancel and cooldown handling can still run in tick().
@@ -508,12 +554,12 @@ local function tick()
    -- of a successful cast: the player may have cancelled it.
    if pending.awaitingConfirm then
     if pending.confirmed and not pending.cancelled then
-     cooldowns:start({id=pending.spellId,cooldown=pending.cooldown},gameTime())
+     startCooldown(pending.record)
     end
    elseif pending.detectingMode then
     -- No targeting mode appeared during the initialization window, so this
     -- was an instant cast. Start its cooldown after the mode has settled.
-    cooldowns:start({id=pending.spellId,cooldown=pending.cooldown},gameTime())
+    startCooldown(pending.record)
    end
    restore()
   end
@@ -564,6 +610,8 @@ local function tick()
  if not E.valid(ui.root) then M.close();return end
  local now=E.clock:GetGameTimeInSeconds(pc)
  applyCooldownNotices(state.groups,now)
+ -- Follow the game's cast times while the wheel is open (once a second).
+ if elapsed-lastSync>=1 then lastSync=elapsed;pcall(M.syncNativeCooldowns,state.groups,now) end
  local dt=math.min(.05,math.max(.001,now-lastTime));lastTime=now
  ui.resize()
  local x,y=ui.pointer()

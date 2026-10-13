@@ -1,13 +1,13 @@
-BETTERSPELLWHEEL 0.4.1 - INSTALLATION (WINDOWS / STEAM)
+BETTERSPELLWHEEL 0.4.2 - INSTALLATION (WINDOWS / STEAM)
 ====================================================
 
 Choose ONE installation method below. The setup EXE is a separate download;
 it is not inside this ZIP. PlayerTrading and RuneSchema are not required.
 
-EASY INSTALL - BetterSpellWheel-0.4.1-setup.exe
+EASY INSTALL - BetterSpellWheel-0.4.2-setup.exe
 ---------------------------------------------
 1. Close RuneScape: Dragonwilds.
-2. Run BetterSpellWheel-0.4.1-setup.exe. It finds the game through Steam,
+2. Run BetterSpellWheel-0.4.2-setup.exe. It finds the game through Steam,
    or asks you to choose the game folder if it cannot find it.
 3. The installer adds BetterSpellWheel and enables it. It includes the tested
    Dragonwilds UE4SS loader and installs it only if UE4SS is not already present.
