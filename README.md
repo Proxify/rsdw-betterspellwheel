@@ -92,8 +92,8 @@ mods. 0.3.0's controller flow was tested with a virtual Xbox controller.
 
 ## Development
 
-Run `python tests/run.py` with Python and `lupa` installed. Artwork is generated
-with `python tools/build_art.py` (Pillow). Game icons load from your installed game;
+Run `python tests/run.py` with Python and `lupa` installed. The wheel artwork is drawn
+by the mod itself on first launch (`Scripts/art.lua`), so releases ship no image files. Game icons load from your installed game;
 no game textures are redistributed.
 
 Build the manual ZIP with `python tools/package.py`. Follow the

@@ -6,3 +6,7 @@ __pycache__/
 *.pyc
 *.zip
 *.exe
+
+# Wheel artwork is drawn at runtime by Scripts/art.lua
+Assets/*.png
+Assets/art-version.txt

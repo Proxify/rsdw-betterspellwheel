@@ -7,7 +7,7 @@ import hashlib
 import sys
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root/'tools'))
-from release_manifest import production_files, version
+from release_manifest import production_files, version, check_allowed
 spec=importlib.util.spec_from_file_location('installer_build',root/'installer/build.py')
 build=importlib.util.module_from_spec(spec);spec.loader.exec_module(build)
 archive, exe=map(Path,sys.argv[1:3])
@@ -18,6 +18,7 @@ with ZipFile(archive) as z:
     assert z.read('INSTALL.txt')==(root/'INSTALL.txt').read_bytes()
     for name, body in expected.items(): assert z.read(name)==body,name
     assert not any(n.lower().endswith('.exe') for n in z.namelist())
+    check_allowed(z.namelist())  # CurseForge extension rule
 payload=build.unpack(exe.read_bytes())
 assert payload['VERSION'].decode()==version()
 assert {n:b for n,b in payload.items() if n.startswith('BetterSpellWheel/')}==expected
@@ -27,4 +28,4 @@ try: build.unpack(exe.read_bytes()[:-1])
 except (AssertionError,ValueError): pass
 else: raise AssertionError('truncated installer accepted')
 for p in [archive,exe]: print(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name)
-print(f'PASS: {len(expected)} production files match source in ZIP and EXE; root INSTALL.txt present; EXE separate')
+print(f'PASS: {len(expected)} production files match source in ZIP and EXE; root INSTALL.txt present; EXE separate; ZIP has only CurseForge-allowed extensions')
