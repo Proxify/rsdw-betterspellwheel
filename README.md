@@ -94,3 +94,11 @@ Build the manual ZIP with `python tools/package.py`. Follow the
 [installer build guide](installer/README.md) for the separate setup EXE and Windows
 validation. Every release includes both files; developer consoles, tests and
 runtime data are excluded from the downloads.
+
+## License
+
+BetterSpellWheel is © 2026 Proxify, licensed under the [Apache License 2.0](LICENSE).
+You may use, modify and share it, but any redistribution or derivative work
+(forks, ports, modified builds, mods that include its code or artwork) must keep
+the [NOTICE](NOTICE) file and credit the original:
+"Based on BetterSpellWheel by Proxify — https://github.com/Proxify/rsdw-betterspellwheel".

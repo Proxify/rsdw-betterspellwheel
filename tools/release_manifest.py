@@ -9,7 +9,7 @@ def version():
 
 def production_files():
     files = sorted((ROOT / 'Scripts').rglob('*.lua')) + sorted((ROOT / 'Assets').rglob('*.png'))
-    files += [ROOT / name for name in ('config.txt', 'README.md', 'enabled.txt', 'INSTALL.txt')]
+    files += [ROOT / name for name in ('config.txt', 'README.md', 'enabled.txt', 'INSTALL.txt', 'LICENSE', 'NOTICE')]
     for p in files:
         assert p.is_file() and not p.is_symlink(), p
     return {f'{MOD}/{p.relative_to(ROOT).as_posix()}': p.read_bytes() for p in files}

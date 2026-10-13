@@ -1,0 +1,24 @@
+BetterSpellWheel
+Copyright 2026 Proxify
+https://github.com/Proxify/rsdw-betterspellwheel
+
+This product is the original BetterSpellWheel mod for RuneScape: Dragonwilds,
+created by Proxify. It is licensed under the Apache License, Version 2.0 (see
+LICENSE).
+
+If you redistribute this work or any work derived from it (a fork, port, modified
+build, or a mod that includes any of its code or artwork), you must keep this
+NOTICE file and give visible credit to the original, for example:
+
+    Based on BetterSpellWheel by Proxify
+    https://github.com/Proxify/rsdw-betterspellwheel
+
+in your README and on every page where you publish or distribute it (CurseForge,
+Nexus Mods, GitHub releases).
+
+RuneScape and Dragonwilds are trademarks of Jagex Ltd. This is an unofficial fan
+mod; it distributes no game assets. Game icons are loaded from the player's own
+installation at runtime.
+
+The installer bundles UE4SS (https://github.com/UE4SS-RE/RE-UE4SS), which is
+licensed under the MIT License (installer/UE4SS-LICENSE.txt).
