@@ -1,3 +1,31 @@
+# 0.4.0 — Centred radial, cooldowns, move while choosing
+
+Brings in the improvements from the community fork (jackisace/rsdw-betterspellwheel,
+PR #1 and its later 1.x builds), reviewed and adapted:
+
+- The wheel is centred on screen with no background or side list. The hovered
+  spell's name, tool requirement and rune costs appear in the middle of the wheel;
+  each rune count is green when you carry enough and red when you don't. Its
+  description appears in a tooltip bar under the wheel.
+- Live cooldown timers on the outer ring. They come from the game itself: the last
+  cast time of every spell (so cooldowns started before loading in or outside the
+  wheel show correctly), the server's "on cooldown" notices, and the perk-adjusted
+  duration (a spell's cooldown modifier perk, once unlocked). A spell still on
+  cooldown can't be selected; the wheel says when it's ready.
+- Keep walking while the wheel is open (WASD / left stick). Only the wheel's own
+  buttons and the right stick are captured; the camera doesn't turn while the right
+  stick drives the wheel.
+- Controller: the right stick picks skills and, after choosing one, points straight
+  at a spell (wider slices than the mouse). X / Square hands over to the game's emote wheel.
+- Mouse: smoother pointing (light angular smoothing, wider rings with no gap, and
+  hysteresis so slices don't flicker at their edges).
+- The native wheel no longer flashes for a frame when the custom wheel opens or closes
+  (`KeepNativeHidden`, on by default). The game's select sound is muted for the cast.
+- The click or button that casts must be released for a moment before gameplay sees
+  input again, so it can't also swing a tool or confirm targeting.
+- If the game ignores the slot hand-off, the selected spell is written directly and
+  re-checked, so the first cast after launch fires the spell you chose.
+
 # 0.3.0 — Controller navigation
 
 - Open using the native controller binding and browse skills with either stick or D-pad.

@@ -50,4 +50,24 @@ for r,alpha in [(124,165),(119,75),(112,40)]:
 for a in range(0,360,30):
     d.line([point(a,125,c),point(a,128,c)],fill=(*GOLD,145),width=S)
 im.resize((side,side),Image.Resampling.LANCZOS).save(OUT/'center.png')
-print('Built five wheel textures')
+
+# Tooltip bar under the wheel (layout.lua: 1560x192 image, artwork spans
+# x=245..1314, text frame x=335..1225 / y=48..152). Beveled ends, gold double
+# border and three small diamonds, drawn procedurally like the wheel.
+W,H=1560,192
+im=Image.new('RGBA',(W*S,H*S)); d=ImageDraw.Draw(im)
+def bar(inset):
+    l,r,t,b=245+inset,1314-inset,18+inset,174-inset
+    m=(t+b)/2; k=28-inset*.4
+    return [((l+k)*S,t*S),((r-k)*S,t*S),(r*S,m*S),((r-k)*S,b*S),((l+k)*S,b*S),(l*S,m*S)]
+d.polygon(bar(0),fill=(30,28,22,250))
+for i in range(1,26):
+    t=i/26
+    d.polygon(bar(i*1.6),fill=(int(34-14*t),int(36-12*t),int(32-10*t),250))
+d.line(bar(3)+[bar(3)[0]],fill=(*GOLD,235),width=3*S,joint='curve')
+d.line(bar(10)+[bar(10)[0]],fill=(*GOLD,120),width=S,joint='curve')
+def diamond(x,y,r):
+    d.polygon([(x*S,(y-r)*S),((x+r)*S,y*S),(x*S,(y+r)*S),((x-r)*S,y*S)],fill=(*GOLD,240),outline=(70,56,30,255))
+diamond(779.5,20,13); diamond(280,96,9); diamond(1279,96,9)
+im.resize((W,H),Image.Resampling.LANCZOS).save(OUT/'tooltip.png')
+print('Built six wheel textures')

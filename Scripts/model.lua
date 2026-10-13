@@ -2,9 +2,10 @@
 -- o'clock and increase clockwise. No spell is selected by hovering alone.
 local M = {}
 local TAU = math.pi * 2
-M.geometry = { dead = 112, inner = 132, outer = 264, branchInner = 282,
-    branchOuter = 408, skillRadius = 202, spellRadius = 344, dwell = 0.022,
-    hysteresis = math.rad(3), maxBranch = 6 }
+M.geometry = { inner = 132, outer = 248, branchInner = 248,
+    branchOuter = 432, skillRadius = 202, spellRadius = 344, dwell = 0.030,
+    hysteresis = math.rad(5), spellHysteresis = math.rad(5),
+    mouseSmoothing = 0.008, maxBranch = 6 }
 
 -- Stable positions: a level-up must never rearrange a player's muscle memory.
 M.skills = {
@@ -21,9 +22,6 @@ M.skills = {
     { id = "Ranged", label = "Ranged", tint = {0.60, 0.78, 0.53} },
     { id = "Agility", label = "Agility", tint = {0.72, 0.80, 0.83} },
 }
-local skillById = {}
-for i, skill in ipairs(M.skills) do skillById[skill.id] = i end
-
 function M.angle(x, y) return math.atan(x, -y) % TAU end
 function M.delta(a, b) return (a - b + math.pi) % TAU - math.pi end
 function M.point(angle, radius) return math.sin(angle)*radius, -math.cos(angle)*radius end
@@ -68,10 +66,9 @@ function M.catalogue(records)
 end
 
 function M.new(groups)
- return { groups = groups, group = nil, spell = nil, candidate = nil,
+    return { groups = groups, group = nil, spell = nil, candidate = nil,
         candidateSince = 0, page = 1, zone = "center", opened = true,
-        cursorVisible = false, cursorX = nil, cursorY = nil, cursorAngle = nil,
-        cursorRadius = 0 }
+        mouseAngle = nil }
 end
 
 function M.pages(state)
@@ -89,20 +86,6 @@ function M.branch(state)
         count = count, step = step, span = step * count }
 end
 
-function M.nearestSpell(state, x, y)
-    local b = M.branch(state)
-    if not b or b.count == 0 then return nil end
-    local best, distance = nil, math.huge
-    for i = 1, b.count do
-        local angle = b.center - b.span / 2 + b.step * (i - .5)
-        local px, py = M.point(angle, M.geometry.spellRadius)
-        local dx, dy = x - px, y - py
-        local current = dx * dx + dy * dy
-        if current < distance then best, distance = i, current end
-    end
-    return best and b.first + best - 1 or nil
-end
-
 function M.setGroup(state, index)
     if not state.groups[index] then return false end
     if state.group ~= index then state.group, state.page = index, 1 end
@@ -118,7 +101,20 @@ end
 
 function M.update(state, x, y, now)
     if not state.opened then return end
-    local g, r, angle = M.geometry, math.sqrt(x*x+y*y), M.angle(x,y)
+    local g, r, rawAngle = M.geometry, math.sqrt(x*x+y*y), M.angle(x,y)
+
+    -- Light angular smoothing for mouse movement only. This damps tiny
+    -- hand jitter without making the wheel feel laggy or changing radius.
+    local angle = rawAngle
+    if state.mouseAngle ~= nil then
+        local d = M.delta(rawAngle, state.mouseAngle)
+        local alpha = 1 - math.exp(-1 / (g.mouseSmoothing * 60))
+        alpha = math.max(0.80, math.min(0.98, alpha))
+        angle = (state.mouseAngle + d * alpha) % TAU
+    end
+    state.mouseAngle = angle
+
+    local previousSpell = state.spell
     state.spell = nil -- outside the actual target can never cast a stale spell
     if r < g.inner then
         state.zone, state.candidate = "center", nil
@@ -134,9 +130,6 @@ function M.update(state, x, y, now)
         end
         state.zone = "skill"
         if index ~= state.group then
-            -- Reveal the first submenu immediately. Keep a short debounce
-            -- only when switching between already selected skills.
-            if not state.group then M.setGroup(state, index); return end
             if state.candidate ~= index then state.candidate, state.candidateSince = index, now end
             if now - state.candidateSince >= g.dwell then M.setGroup(state, index) end
         else state.candidate = nil end
@@ -152,7 +145,23 @@ function M.update(state, x, y, now)
     local d = M.delta(angle, branch.center)
     if math.abs(d) >= branch.span/2 then return end
     local index = math.floor((d + branch.span/2) / branch.step)
-    state.spell = branch.first + index
+    local candidate = branch.first + index
+
+    -- Keep the current spell selected until the pointer has clearly crossed
+    -- the neighbouring slice boundary. This prevents rapid flicker near edges.
+    if previousSpell and candidate ~= previousSpell then
+        local oldIndex = previousSpell - branch.first
+        if oldIndex >= 0 and oldIndex < branch.count then
+            local oldCenter = branch.center - branch.span/2
+                + branch.step * (oldIndex + 0.5)
+            if math.abs(M.delta(angle, oldCenter))
+                < branch.step/2 + g.spellHysteresis then
+                candidate = previousSpell
+            end
+        end
+    end
+
+    state.spell = candidate
     state.zone = "spell"
 end
 

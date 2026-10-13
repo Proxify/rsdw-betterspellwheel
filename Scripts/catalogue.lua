@@ -30,9 +30,18 @@ return function(model)
                 local skill = owners[perk:GetFullName()]
                 local name = data.SpellDisplayName:ToString()
                 if not skill or name == "" then return nil end
+                -- A spell's cooldown drops to ModifiedCooldown once its modifier
+                -- perk is unlocked (UUtilitySpellData.CooldownModifierPerk).
+                local cooldown = data.CooldownDuration
+                pcall(function()
+                    local mod = data.CooldownModifierPerk
+                    if mod.CooldownPerk:IsValid() and component:IsPerkUnlocked(mod.CooldownPerk) then
+                        cooldown = mod.ModifiedCooldown
+                    end
+                end)
                 return { id = data:GetFName():ToString(), name = name, skill = skill,
                     perk = perk:GetFullName(), level = perk.PerkUnlockInfo.RequiredSkillLevel,
-                    description = perk.PerkDescription:ToString(), cooldown = data.CooldownDuration,
+                    description = perk.PerkDescription:ToString(), cooldown = cooldown, baseCooldown = data.CooldownDuration,
                     unlocked = isUnlocked ~= nil and isUnlocked(perk, data) == true or false,
                     data = data }
             end)

@@ -1,11 +1,10 @@
--- Session cooldowns for spells selected through BetterSpellWheel.
--- The game remains authoritative: this only gives the custom wheel a fast
--- local view and avoids sending an obviously unavailable selection back to
--- the native spellcasting UI.
+-- Spell cooldowns for the custom wheel. Synced from the game's last cast
+-- times when the wheel opens, and from the server's cooldown notices; casts
+-- seen through the wheel start a timer straight away.
 local M = {}
 
 function M.new()
-    return setmetatable({ untilById = {}, durationById = {} }, { __index = M })
+    return setmetatable({ untilById = {} }, { __index = M })
 end
 
 local function key(spell)
@@ -13,8 +12,6 @@ local function key(spell)
 end
 
 function M:duration(spell)
-    local observed = spell and self.durationById[key(spell)]
-    if observed then return observed end
     local value = spell and spell.cooldown
     if type(value) == 'number' then return value end
     local ok, result = pcall(function() return value + 0 end)
@@ -39,24 +36,17 @@ function M:start(spell, now)
     local duration = self:duration(spell)
     if not id or duration <= 0 then return end
     local untilAt = (tonumber(now) or 0) + duration
-    -- A successful cast starts a fresh cooldown, even if the old local
-    -- estimate was still running.
-    self.untilById[id] = untilAt
+    self.untilById[id] = math.max(self.untilById[id] or 0, untilAt)
 end
 
--- Replace the local estimate with the remaining value reported by the native
--- cooldown widget. This lets equipment/perks and server-authoritative timing
--- win over UtilitySpellData.CooldownDuration.
-function M:sync(spell, now, remaining, startedAt)
+-- Replace the estimate with the game's own timing (last cast time read from
+-- PlayerUtilityMagicComponent, or the server's "on cooldown" notice).
+function M:sync(spell, now, remaining)
     local id = key(spell)
-    local value = tonumber(remaining)
-    if not id or not value or value <= 0 then return false end
-    local current = tonumber(now) or 0
-    self.untilById[id] = current + value
-    if startedAt then
-        self.durationById[id] = value + math.max(0, current - (tonumber(startedAt) or current))
-    end
-    return true
+    if not id then return end
+    remaining = tonumber(remaining) or 0
+    if remaining <= 0 then self.untilById[id] = nil; return end
+    self.untilById[id] = (tonumber(now) or 0) + remaining
 end
 
 function M:clear(spell)

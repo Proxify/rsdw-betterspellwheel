@@ -3,7 +3,7 @@
 local realDofile=dofile
 local root=arg[1]:gsub('/Scripts/model.lua$','')
 local model=realDofile(root..'/Scripts/model.lua')
-local clock,book,native,aim,denied=0,0,false,false,false
+local clock,book,native,aim,denied,instant=0,0,false,false,false,false
 local x,y=0,0
 local padSample,usingPad={},false
 local captured=false
@@ -25,7 +25,11 @@ for i=1,48 do component.SelectedSpells[i]=original end
 function component:Client_NotifySelectedSpell(d,slot) calls=calls+1;self.SelectedSpells[book*12+slot+1]=d or empty end
 function component:CancelSpellcasting()pc.CurrentInputMode=obj('DIM_Gameplay')end
 function pc:GetSpellcastingComponent()return component end
-local panel=obj('panel');function panel:SetRenderOpacity()end;function panel:SetVisibility()end
+local panel=obj('panel');local panelAlive,panelWrites=true,0
+function panel:SetRenderOpacity()panelWrites=panelWrites+1 end;function panel:SetVisibility()panelWrites=panelWrites+1 end
+function panel:SetRenderTranslation()panelWrites=panelWrites+1 end
+function panel:GetClass()return {GetFName=function()return {ToString=function()return 'WBP_Spellcasting_MainPanel_C' end}end}end
+function panel:GetFullName()return 'WBP_Spellcasting_MainPanel_C /Engine/Transient.Panel_0' end
 local radial=obj('radial');radial.Slices={GetArrayNum=function()return 12 end};radial.RadialSlice_0={SpellSlotNum=0}
 radial.SpellbookSelector={RadioGroup={GetSelectedValue=function()return book end}}
 radial.RequirementText={GetText=function()return {ToString=function()return '-'end}end}
@@ -36,6 +40,7 @@ function radial:InvalidSelectAudioTrigger()end
 function radial:SelectSlice()
  if denied then return end
  native=false
+ if instant then return end
  pc.CurrentInputMode=obj(aim and 'DIM_SpellPlacementMode' or 'DIM_SpellcastingMode')
 end
 local input=obj('input');function input:IsOpen()return native end
@@ -44,10 +49,13 @@ local lib=obj('lib');function lib:SetInputMode_UIOnlyEx()end;function lib:SetInp
 function lib:SetInputMode_GameAndUIEx()end
 function lib:GetGameTimeInSeconds()return clock end
 function lib:GetViewportScale()return 1 end
-function StaticFindObject()return lib end
+function StaticFindObject(path)if path=='/Engine/Transient.Panel_0' then return panelAlive and panel or nil end;return lib end
 function LoadAsset()return lib end
 function FindFirstOf(name)if name=='BP_PlayerController_C' then return pc else return input end end
-function FindAllOf()return {radial}end
+local castTimes={}
+local magic=obj('magic');function magic:GetOwner()return pc.Pawn end
+magic.LastCastTimeBySpellData={ForEach=function(_,fn)for d,t in pairs(castTimes)do fn({get=function()return d end},{get=function()return t end})end end}
+function FindAllOf(name)if name=='PlayerUtilityMagicComponent' then return {magic} end;return {radial}end
 local failView=false
 local callback,keys
 keys={};function RegisterKeyBind(key,fn)keys[key]=fn end
@@ -61,7 +69,7 @@ function dofile(path)
  if path:find('/catalogue.lua',1,true)then return function()return {scan=function()return model.catalogue({record}),{}end}end end
  if path:find('/view.lua',1,true)then return function()return {new=function()
   assert(not failView,'test missing artwork')
-  return {root=obj('root'),width=1920,height=1080,scale=1,show=function()end,hide=function()end,resize=function()end,pointer=function()return x,y end,draw=function()end}
+  return {root=obj("root"),width=1920,height=1080,scale=1,offsetY=0,show=function()end,hide=function()end,resize=function()end,pointer=function()return x,y end,draw=function()end}
  end}end end
  return realDofile(path)
 end
@@ -93,23 +101,49 @@ book=1;open();select();sameSlots(13,spell);book=2;finish();sameSlots();book=0
 -- Locked entries and non-target areas never start a temporary selection.
 record.unlocked=false;open();local before=calls;select();assert(calls==before and mod.open)
 record.unlocked=true;x,y=0,0;ticks();select();assert(calls==before)
-keys[0x51]();ticks();assert(not mod.open)
+padSample={open=true};ticks();assert(not mod.open);padSample={}
 -- Reload/shutdown during targeting cancels and restores before stopping.
 open();select();sameSlots(1,spell);mod.shutdown();sameSlots()
+-- Cooldown timers: only a confirmed aimed cast or an instant cast starts one;
+-- a cancelled aim does not. The timer is display-only and never blocks a cast.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+record.cooldown=30;aim=true;book=0
+local function cd()return mod.cooldowns:remaining(record,clock)end
+open();select();ticks(3);component:CancelSpellcasting();ticks(25);assert(cd()==0,'cancelled aim starts no cooldown');sameSlots()
+open();select();ticks(3);padSample={mouseLeft=true};ticks(2);padSample={};finish();assert(cd()>25,'confirmed aim starts cooldown');sameSlots()
+mod.cooldowns:clear(record);aim=false;instant=true
+open();select();ticks(25);assert(cd()>25,'instant cast starts cooldown');sameSlots()
+before=calls;open();select();assert(calls==before and mod.open,'a spell on cooldown is blocked before the native attempt')
+assert(mod.message:find('On cooldown'),'cooldown message');keys[0x1B]();ticks()
+-- Native sync: a cast stamped in the game's LastCastTimeBySpellData (e.g. before
+-- loading in) shows its remaining time when the wheel opens; expired ones clear.
+mod.cooldowns:clear(record);castTimes[spell]=clock-10
+open();assert(math.abs(cd()-20)<1,'synced from the native cast time');keys[0x1B]();ticks()
+castTimes[spell]=clock-40;open();assert(cd()==0,'expired native cooldown is clear');keys[0x1B]();ticks()
+castTimes={};instant=false;record.cooldown=0;mod.shutdown()
+-- A destroyed native panel is never written to again (native fault, 0.4.0
+-- crash dump 2026-10-12), the mod stays enabled, and a live panel is used again.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+open();assert(mod.open)
+panelAlive=false;local writes=panelWrites
+ticks(60);assert(panelWrites==writes,'no writes to a dead panel');assert(not mod.disabled)
+select();assert(panelWrites==writes and not mod.disabled,'selecting with a dead panel is safe')
+native=false;ticks(30)
+panelAlive=true;native=true;ticks(30);assert(mod.open,'reopens once the panel is live again');keys[0x1B]();ticks();mod.shutdown()
 -- Controller opens via native wheel, selects a skill, enters, and casts once.
 mod=realDofile(root..'/Scripts/main.lua');usingPad=true;padSample={};native=true;x,y=0,0;ticks(20)
 assert(mod.open and captured and mod.state.input=='controller')
-padSample={x=0,y=1};ticks(2);assert(mod.state.group==1 and not mod.state.spell)
+padSample={x=0,y=-1};ticks(2);assert(mod.state.group==1 and not mod.state.spell)
 padSample={accept=true};ticks();assert(mod.open and mod.state.spell==1)
 ticks(20);sameSlots() -- a held A must not cast the highlighted first spell
 padSample={};ticks();padSample={accept=true};ticks();assert(not mod.open);sameSlots(1,spell)
 padSample={};finish();sameSlots()
 -- B first backs out of spells, then closes; held B cannot do both.
-native=true;ticks(20);padSample={x=0,y=1};ticks();padSample={accept=true};ticks()
+native=true;ticks(20);padSample={x=0,y=-1};ticks();padSample={accept=true};ticks()
 padSample={};ticks();padSample={back=true};ticks();assert(mod.open and not mod.state.spell)
 ticks(20);assert(mod.open);padSample={};ticks();padSample={back=true};ticks();assert(not mod.open)
 -- Mouse takes over only after real movement, not its stationary cached location.
-padSample={};native=true;ticks(20);padSample={x=0,y=1};ticks();padSample={};ticks()
+padSample={};native=true;ticks(20);padSample={x=0,y=-1};ticks();padSample={};ticks()
 assert(mod.state.input=='controller');x,y=0,-202;ticks(20);assert(mod.state.input=='mouse')
 x,y=0,-344;ticks();select();assert(not mod.open);padSample={};finish();sameSlots()
 -- Hidden-cursor handoff also works from raw MouseX without position change.
