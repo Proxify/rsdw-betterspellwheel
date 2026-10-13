@@ -1,3 +1,11 @@
+# 0.4.1 — CurseForge-ready packages
+
+- The release ZIP now contains only `.lua` and `.txt` files, as CurseForge requires for
+  Dragonwilds UE4SS mods. The wheel artwork is no longer shipped as images: the mod draws
+  it on first launch (about a second, once) and keeps it in its `Assets` folder.
+- README, LICENSE and NOTICE ship as `README.txt`, `LICENSE.txt` and `NOTICE.txt`.
+- No change to the wheel, casting or cooldowns since 0.4.0.
+
 # 0.4.0 — Centred radial, cooldowns, move while choosing
 
 Brings in the improvements from the community fork (jackisace/rsdw-betterspellwheel,
