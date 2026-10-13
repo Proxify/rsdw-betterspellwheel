@@ -25,6 +25,15 @@ PR #1 and its later 1.x builds), reviewed and adapted:
   input again, so it can't also swing a tool or confirm targeting.
 - If the game ignores the slot hand-off, the selected spell is written directly and
   re-checked, so the first cast after launch fires the spell you chose.
+- A refused selection (on cooldown, missing runes or a tool) says why, in red, in the
+  tooltip bar.
+- Fixed a crash in the fork's code: it re-hid the game's own wheel every frame and could
+  call into it after the game had rebuilt it. The mod now leaves it alone while closed
+  and checks it still exists before touching it.
+
+Tested in-game with mouse and keyboard (instant and aimed casts, cancel, cooldowns,
+rune colours, walking while open). The new controller behaviour (right stick, emote
+hand-off) has not been tested on a gamepad yet.
 
 # 0.3.0 — Controller navigation
 

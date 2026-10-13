@@ -21,12 +21,12 @@ browse its spells, and cast without reaching for the mouse.
 
 ## Download and install
 
-**0.3.0 · Windows · Keyboard, mouse and controller beta**
+**0.4.0 · Windows · Keyboard and mouse (controller: beta)**
 
 | Download | Installation |
 | --- | --- |
-| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.3.0/BetterSpellWheel-0.3.0-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
-| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.3.0/BetterSpellWheel-0.3.0.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
+| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.0/BetterSpellWheel-0.4.0-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
+| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.0/BetterSpellWheel-0.4.0.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
 
 The EXE is a separate download. Setup preserves other mods and your existing
 settings on update; run it again to update or uninstall. The installer is unsigned.
@@ -81,14 +81,14 @@ navigation), reviewed and adapted here.
 
 ## Compatibility
 
-Tested on **Dragonwilds 1.0 / UE 5.6**, Windows, at **1920×1080**. Controller input is tested with a virtual Xbox controller through the native
-Windows input path. Physical controllers and native PlayStation input remain
-unverified; PlayStation button labels can be selected in the config.
+Tested on **Dragonwilds 1.0 / UE 5.6**, Windows. 0.4.0 was tested in-game at
+2560×1600 with mouse and keyboard in a solo world: instant and aimed casts, cancel,
+cooldowns (including ones started before loading in), rune colours, walking while
+open, and saved spellbook slots.
 
-The controller flow was exercised on a client connected to a local dedicated
-MODTEST server. Ultrawide/high-DPI displays, death or disconnect
-while targeting, every individual spell effect, and other spell-wheel mods remain
-unverified. See the [test report](tests/TEST-REPORT.md) for exact coverage.
+Not yet verified for 0.4.0: gamepads (the new right-stick and emote hand-off
+behaviour), playing on a dedicated server, ultrawide displays and other spell-wheel
+mods. 0.3.0's controller flow was tested with a virtual Xbox controller.
 
 ## Development
 
