@@ -60,23 +60,53 @@ end
 -- The game can animate/reset the panel's opacity and visibility on open and close,
 -- so also park it far off-screen with a render translation (the game doesn't
 -- animate that), and re-assert both every tick.
+-- The native panel is a game-owned widget that can be destroyed and rebuilt
+-- (HUD changes, casting modes). Calling a UFunction on a freed widget is a
+-- native fault pcall can't catch: a 0.4.0 test build crashed in
+-- panel:SetVisibility while re-hiding it every tick. So: touch it only while
+-- the wheel is open (and once on bind/close), and confirm it is still a live
+-- object right before each write. The cheap check is a hash lookup of its
+-- own object path; a class scan is the fallback if that form doesn't resolve.
+local panelPath,panelClass,panelAddr,panelFast
+local function rememberPanel()
+ panelPath,panelClass,panelAddr,panelFast=nil,nil,nil,nil
+ pcall(function()
+  panelAddr=panel:GetAddress()
+  panelClass=panel:GetClass():GetFName():ToString()
+  panelPath=panel:GetFullName():match('^%S+%s+(.+)$')
+ end)
+end
+local function panelAlive()
+ if not panelAddr then return false end
+ if panelFast~=false and panelPath then
+  local ok,o=pcall(StaticFindObject,panelPath)
+  if ok and o and o:IsValid() and o:GetAddress()==panelAddr then panelFast=true;return true end
+  if panelFast then panel,radial,panelAddr=nil,nil,nil;return false end
+ end
+ local ok,list=pcall(FindAllOf,panelClass)
+ if ok and type(list)=='table' then
+  for _,w in ipairs(list) do if w:GetAddress()==panelAddr then panelFast=false;return true end end
+ end
+ -- Gone: drop the cached widgets so bindWorld finds the new ones.
+ panel,radial,panelAddr=nil,nil,nil
+ return false
+end
 local function keepNativeOffscreen()
- if not (cfg.KeepNativeHidden and E.valid(panel)) then return end
+ if not (cfg.KeepNativeHidden and panelAlive()) then return end
  pcall(function() panel:SetRenderOpacity(0) end)
  pcall(function() panel:SetRenderTranslation({X=-20000,Y=-20000}) end)
 end
 local function hideNativeWheel()
- if not E.valid(panel) and E.valid(radial) then pcall(function() panel=radial:GetOuter():GetOuter() end) end
- if not E.valid(panel) then return end
+ if not panelAlive() then return end
  pcall(function() panel:SetVisibility(2) end)
  pcall(function() panel:SetRenderOpacity(0) end)
- keepNativeOffscreen()
+ if cfg.KeepNativeHidden then pcall(function() panel:SetRenderTranslation({X=-20000,Y=-20000}) end) end
 end
 -- KeepNativeHidden (default on): the native panel stays at opacity 0 permanently,
 -- so neither the open nor the close of the native wheel can ever flash on screen.
 -- Set KeepNativeHidden=false in config.txt to restore opacity after each cast/close.
 local function restoreNativePanel()
- if E.valid(panel) then
+ if panelAlive() then
   pcall(function() panel:SetRenderOpacity(1) end)
   pcall(function() panel:SetRenderTranslation({X=0,Y=0}) end)
  end
@@ -127,9 +157,9 @@ end
 function M.close()
  if ui and E.valid(ui.root) then ui.hide() end
  nativeWasOpen=false
- if E.valid(panel) then
+ if panelAlive() then
   if cfg.KeepNativeHidden then keepNativeOffscreen() else restoreNativePanel() end
-  if nativeOpen() then pcall(function() panel:SetVisibility(0) end) end
+  if nativeOpen() and panelAlive() then pcall(function() panel:SetVisibility(0) end) end
  end
  if M.open then
   M.open=false
@@ -157,6 +187,7 @@ local function bindWorld()
  M.radial=radial
  if not E.valid(radial) then return false end
  panel=radial:GetOuter():GetOuter();input=FindFirstOf('InputManagerUIAPI');component=pc:GetSpellcastingComponent()
+ if E.valid(panel) then rememberPanel() end
  if not (E.valid(panel) and E.valid(input) and E.valid(component)) then return false end
  -- Pre-hide at opacity 0 so the first native open never renders a visible frame.
  keepNativeOffscreen()
@@ -294,6 +325,8 @@ local function open()
  -- This is called from the native spell-wheel open lifecycle (or its
  -- state-transition fallback). Replace only the spell selector's visuals; keep
  -- the game-owned selector object alive for spell selection/casting internals.
+ -- If the native panel was rebuilt, rebind first instead of using stale widgets.
+ if not panelAlive() then return end
  hideNativeWheel()
  openWasDown=device and device.sample().open==true or false
  restore()
@@ -321,6 +354,7 @@ local function open()
  pointerX,pointerY=ui.pointer()
 end
 local function selectSpell()
+ if not panelAlive() then M.close();return end
  local spell,reason=model.selection(state)
  if not spell then
   if reason=='locked' then M.message='This spell has not been unlocked yet.';radial:InvalidSelectAudioTrigger() end
@@ -402,7 +436,6 @@ local function tick()
  -- Bind objects without modifying visibility. The lifecycle hook below is
  -- responsible for replacing the spell selector only when the game opens it.
  if not bindWorld() then return end
- keepNativeOffscreen()
  -- The emote wheel is a separate native UI. If the player opens it while
  -- BetterSpellWheel is active, yield input ownership without resetting the
  -- game's input mode (controls(false) would force GameOnly and dismiss emotes).
@@ -576,7 +609,8 @@ local function tick()
  end
  -- Game HUD activation can restore game input underneath custom UI.
  if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
- hideNativeWheel()
+ -- The game's open animation can reset the panel: re-hide it a few times a second.
+ if frame%12==0 then hideNativeWheel() end
  ui.draw(state,dt,M.message,now,cooldowns,spell)
 end
 function M.shutdown()

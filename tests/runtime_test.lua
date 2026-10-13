@@ -25,7 +25,11 @@ for i=1,48 do component.SelectedSpells[i]=original end
 function component:Client_NotifySelectedSpell(d,slot) calls=calls+1;self.SelectedSpells[book*12+slot+1]=d or empty end
 function component:CancelSpellcasting()pc.CurrentInputMode=obj('DIM_Gameplay')end
 function pc:GetSpellcastingComponent()return component end
-local panel=obj('panel');function panel:SetRenderOpacity()end;function panel:SetVisibility()end
+local panel=obj('panel');local panelAlive,panelWrites=true,0
+function panel:SetRenderOpacity()panelWrites=panelWrites+1 end;function panel:SetVisibility()panelWrites=panelWrites+1 end
+function panel:SetRenderTranslation()panelWrites=panelWrites+1 end
+function panel:GetClass()return {GetFName=function()return {ToString=function()return 'WBP_Spellcasting_MainPanel_C' end}end}end
+function panel:GetFullName()return 'WBP_Spellcasting_MainPanel_C /Engine/Transient.Panel_0' end
 local radial=obj('radial');radial.Slices={GetArrayNum=function()return 12 end};radial.RadialSlice_0={SpellSlotNum=0}
 radial.SpellbookSelector={RadioGroup={GetSelectedValue=function()return book end}}
 radial.RequirementText={GetText=function()return {ToString=function()return '-'end}end}
@@ -45,7 +49,7 @@ local lib=obj('lib');function lib:SetInputMode_UIOnlyEx()end;function lib:SetInp
 function lib:SetInputMode_GameAndUIEx()end
 function lib:GetGameTimeInSeconds()return clock end
 function lib:GetViewportScale()return 1 end
-function StaticFindObject()return lib end
+function StaticFindObject(path)if path=='/Engine/Transient.Panel_0' then return panelAlive and panel or nil end;return lib end
 function LoadAsset()return lib end
 function FindFirstOf(name)if name=='BP_PlayerController_C' then return pc else return input end end
 local castTimes={}
@@ -117,6 +121,15 @@ mod.cooldowns:clear(record);castTimes[spell]=clock-10
 open();assert(math.abs(cd()-20)<1,'synced from the native cast time');keys[0x1B]();ticks()
 castTimes[spell]=clock-40;open();assert(cd()==0,'expired native cooldown is clear');keys[0x1B]();ticks()
 castTimes={};instant=false;record.cooldown=0;mod.shutdown()
+-- A destroyed native panel is never written to again (native fault, 0.4.0
+-- crash dump 2026-10-12), the mod stays enabled, and a live panel is used again.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+open();assert(mod.open)
+panelAlive=false;local writes=panelWrites
+ticks(60);assert(panelWrites==writes,'no writes to a dead panel');assert(not mod.disabled)
+select();assert(panelWrites==writes and not mod.disabled,'selecting with a dead panel is safe')
+native=false;ticks(30)
+panelAlive=true;native=true;ticks(30);assert(mod.open,'reopens once the panel is live again');keys[0x1B]();ticks();mod.shutdown()
 -- Controller opens via native wheel, selects a skill, enters, and casts once.
 mod=realDofile(root..'/Scripts/main.lua');usingPad=true;padSample={};native=true;x,y=0,0;ticks(20)
 assert(mod.open and captured and mod.state.input=='controller')
