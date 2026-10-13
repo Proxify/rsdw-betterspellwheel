@@ -36,13 +36,6 @@ local file=io.open(folder..'/config.txt','r')
 if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' end end;file:close() end
 local pc,radial,panel,input,component,ui,state,pending,device,pad
 local nativeWasOpen=false
--- The native spell selector appears to need one complete open/close lifecycle
--- before the custom handoff casts reliably. Prime that lifecycle once, when
--- the native open has already been intercepted and hidden.
-local nativeSpellStatePrimed=false
--- The native slice only tracks slot-0 changes after one full notify/highlight
--- pass, so the first cast of a session could fire the previously bound spell.
-local castHandoffWarmed=false
 M.radial=nil
 local openWasDown=false
 local pointerX,pointerY
@@ -157,7 +150,7 @@ local function bindWorld()
   restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;return false
  end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
- M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false;castHandoffWarmed=false;nativeSpellStatePrimed=false
+ M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
  for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
   if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
  end
@@ -175,19 +168,78 @@ end
   return E.clock:GetGameTimeInSeconds(pc)
  end
 
-local function warmCastHandoff(force)
- if (castHandoffWarmed and not force) or not (E.valid(radial) and E.valid(component)) then return end
- local ok=pcall(function()
-  local slot=radial.RadialSlice_0.SpellSlotNum
-  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
-  local current=component.SelectedSpells[book*component.NumSpellSlotsPerRadial+slot+1]
-  -- Re-assert the spell already in slot 0: same state, but it runs the notify,
-  -- section and highlight path without casting anything.
-  if E.valid(current) then component:Client_NotifySelectedSpell(current,slot) end
-  radial.CachedSectionId=0;radial:HighlightSlice(0)
-  radial:StopRadialSelection()
+-- Native cooldown sync. PlayerUtilityMagicComponent.LastCastTimeBySpellData
+-- (TMap<UtilitySpellData*,float>) holds the time each spell was last cast, so
+-- cooldowns started before loading in, or outside this wheel, show correctly.
+-- Its clock is the world time; GameState:GetServerWorldTimeSeconds() is the
+-- fallback when a stamp lies in the client's future (server-stamped casts).
+local function magicComponent()
+ local pawn=pc and pc.Pawn
+ if not E.valid(pawn) then return nil end
+ for _,c in ipairs(FindAllOf('PlayerUtilityMagicComponent') or {}) do
+  if E.valid(c) and sameObject(c:GetOwner(),pawn) then return c end
+ end
+end
+local function nativeCastTimes()
+ local times={}
+ local magic=magicComponent()
+ if not magic then return times end
+ pcall(function()
+  magic.LastCastTimeBySpellData:ForEach(function(k,v)
+   local data=k:get()
+   if E.valid(data) then times[data:GetAddress()]=v:get() end
+  end)
  end)
- if ok then castHandoffWarmed=true end
+ return times
+end
+local function serverTime()
+ local ok,t=pcall(function() return FindFirstOf('GameStateBase'):GetServerWorldTimeSeconds() end)
+ return ok and tonumber(t) or nil
+end
+function M.syncNativeCooldowns(groups,now)
+ local times=nativeCastTimes()
+ local server=nil
+ local synced=0
+ for _,group in ipairs(groups or {}) do
+  for _,spell in ipairs(group.spells) do
+   local cast=E.valid(spell.data) and times[spell.data:GetAddress()]
+   local duration=cooldowns:duration(spell)
+   if cast and duration>0 then
+    local since=now-cast
+    if since<-1 then server=server or serverTime();if server then since=server-cast end end
+    if since>=-1 then
+     cooldowns:sync(spell,now,duration-math.max(0,since));synced=synced+1
+    end
+   end
+  end
+ end
+ return synced
+end
+-- The server tells the client how long ago a refused spell was cast.
+-- The hook only records the notice; tick() applies it on the game thread.
+M.cooldownNotices={}
+if not _G.BetterSpellWheelCooldownHook then
+ _G.BetterSpellWheelCooldownHook=pcall(RegisterHook,'/Script/Dominion.PlayerUtilityMagicComponent:Client_NotifySpellOnCooldown',function(_,data,since)
+  local m=_G.BetterSpellWheel
+  if not m or not m.cooldownNotices then return end
+  pcall(function()
+   local d=data:get()
+   if d and d:IsValid() then m.cooldownNotices[#m.cooldownNotices+1]={address=d:GetAddress(),since=since:get()} end
+  end)
+ end)
+end
+local function applyCooldownNotices(groups,now)
+ if #M.cooldownNotices==0 then return end
+ local notices=M.cooldownNotices;M.cooldownNotices={}
+ for _,n in ipairs(notices) do
+  for _,group in ipairs(groups or {}) do
+   for _,spell in ipairs(group.spells) do
+    if E.valid(spell.data) and spell.data:GetAddress()==n.address then
+     cooldowns:sync(spell,now,cooldowns:duration(spell)-(tonumber(n.since) or 0))
+    end
+   end
+  end
+ end
 end
 
 -- Success sound: the native selector plays its SelectSFX property from the
@@ -246,12 +298,10 @@ local function open()
  openWasDown=device and device.sample().open==true or false
  restore()
  local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
-  -- Refresh the session cooldown cache as the wheel opens. Expired entries are
-  -- cleared and active entries are recalculated against the game's clock.
+  -- Sync cooldowns from the game's own last-cast times as the wheel opens.
   local openedAt=gameTime()
-  for _,group in ipairs(groups) do
-   for _,spell in ipairs(group.spells) do cooldowns:remaining(spell,openedAt) end
-  end
+  pcall(M.syncNativeCooldowns,groups,openedAt)
+  applyCooldownNotices(groups,openedAt)
  state=model.new(groups);M.state=state
  pad=controller.new()
  local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
@@ -277,6 +327,15 @@ local function selectSpell()
   return
  end
  if not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
+ -- Cooldowns come from the game's cast times and the perk-adjusted duration,
+ -- so a cast the game would refuse is blocked here with the time left.
+ -- A half-second slack keeps clock rounding from blocking a ready spell.
+ local remaining=cooldowns:remaining(spell,gameTime())
+ if remaining>.5 then
+  M.message='On cooldown. Ready in '..cooldowns:format(remaining)..'.'
+  radial:InvalidSelectAudioTrigger()
+  return
+ end
  -- Preserve the proven 0.3.2 casting handoff: write the custom-selected spell
  -- into native slot 0, select native slice 0, then let the game's normal
  -- selector/casting path run. Mapping the custom wheel index to a native slice
@@ -463,6 +522,7 @@ local function tick()
  end
  if not E.valid(ui.root) then M.close();return end
  local now=E.clock:GetGameTimeInSeconds(pc)
+ applyCooldownNotices(state.groups,now)
  local dt=math.min(.05,math.max(.001,now-lastTime));lastTime=now
  ui.resize()
  local x,y=ui.pointer()

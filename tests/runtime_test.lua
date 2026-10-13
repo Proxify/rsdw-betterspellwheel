@@ -48,7 +48,10 @@ function lib:GetViewportScale()return 1 end
 function StaticFindObject()return lib end
 function LoadAsset()return lib end
 function FindFirstOf(name)if name=='BP_PlayerController_C' then return pc else return input end end
-function FindAllOf()return {radial}end
+local castTimes={}
+local magic=obj('magic');function magic:GetOwner()return pc.Pawn end
+magic.LastCastTimeBySpellData={ForEach=function(_,fn)for d,t in pairs(castTimes)do fn({get=function()return d end},{get=function()return t end})end end}
+function FindAllOf(name)if name=='PlayerUtilityMagicComponent' then return {magic} end;return {radial}end
 local failView=false
 local callback,keys
 keys={};function RegisterKeyBind(key,fn)keys[key]=fn end
@@ -106,8 +109,14 @@ open();select();ticks(3);component:CancelSpellcasting();ticks(25);assert(cd()==0
 open();select();ticks(3);padSample={mouseLeft=true};ticks(2);padSample={};finish();assert(cd()>25,'confirmed aim starts cooldown');sameSlots()
 mod.cooldowns:clear(record);aim=false;instant=true
 open();select();ticks(25);assert(cd()>25,'instant cast starts cooldown');sameSlots()
-before=calls;open();select();assert(calls>before,'local cooldown never blocks the native attempt');ticks(25);sameSlots()
-instant=false;record.cooldown=0;mod.shutdown()
+before=calls;open();select();assert(calls==before and mod.open,'a spell on cooldown is blocked before the native attempt')
+assert(mod.message:find('On cooldown'),'cooldown message');keys[0x1B]();ticks()
+-- Native sync: a cast stamped in the game's LastCastTimeBySpellData (e.g. before
+-- loading in) shows its remaining time when the wheel opens; expired ones clear.
+mod.cooldowns:clear(record);castTimes[spell]=clock-10
+open();assert(math.abs(cd()-20)<1,'synced from the native cast time');keys[0x1B]();ticks()
+castTimes[spell]=clock-40;open();assert(cd()==0,'expired native cooldown is clear');keys[0x1B]();ticks()
+castTimes={};instant=false;record.cooldown=0;mod.shutdown()
 -- Controller opens via native wheel, selects a skill, enters, and casts once.
 mod=realDofile(root..'/Scripts/main.lua');usingPad=true;padSample={};native=true;x,y=0,0;ticks(20)
 assert(mod.open and captured and mod.state.input=='controller')
