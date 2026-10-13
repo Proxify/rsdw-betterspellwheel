@@ -13,7 +13,9 @@ browse its spells, and cast without reaching for the mouse.
   appear in the middle, with each rune count **green** when you carry enough and **red**
   when you don't. Its description sits in a tooltip bar under the wheel.
 - **Live cooldowns** synced from the game, including cooldowns started before you loaded
-  in and perks that shorten them. Spells on cooldown can't be selected.
+  in and perks that shorten them. The game always decides whether a spell can be cast,
+  so mods that remove cooldowns (such as Utility Spells - No Cooldowns) keep working.
+  `ShowCooldowns=false` in `config.txt` hides the timers.
 - **Keep moving:** walk while the wheel is open.
 - **Controller navigation:** right stick or D-pad, with matching button hints.
 - **Normal game rules:** your unlocks, rune requirements and targeting still apply.
@@ -21,12 +23,12 @@ browse its spells, and cast without reaching for the mouse.
 
 ## Download and install
 
-**0.4.1 · Windows · Keyboard and mouse (controller: beta)**
+**0.4.2 · Windows · Keyboard and mouse (controller: beta)**
 
 | Download | Installation |
 | --- | --- |
-| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.1/BetterSpellWheel-0.4.1-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
-| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.1/BetterSpellWheel-0.4.1.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
+| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.2/BetterSpellWheel-0.4.2-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
+| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.2/BetterSpellWheel-0.4.2.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
 
 The EXE is a separate download. Setup preserves other mods and your existing
 settings on update; run it again to update or uninstall. The installer is unsigned.
@@ -71,6 +73,7 @@ cancel). Moving the mouse switches back to mouse navigation. `ControllerPrompts=
 in `config.txt` overrides Xbox hints when using Steam Input.
 
 Locked spells remain visible with their required level. Hovering alone never casts.
+To hide cooldown timers, set `ShowCooldowns=false` in `config.txt`.
 To disable the mod, set `Enabled=false` in `config.txt` and restart the game.
 
 ## Credits
@@ -86,6 +89,9 @@ Tested on **Dragonwilds 1.0 / UE 5.6**, Windows. 0.4.0 was tested in-game at
 checked in-game too): instant and aimed casts, cancel,
 cooldowns (including ones started before loading in), rune colours, walking while
 open, and saved spellbook slots.
+
+0.4.2 was checked in-game with and without Utility Spells - No Cooldowns (see
+`tests/live-cooldowns-0.4.2.txt`).
 
 Not yet verified for 0.4.0: gamepads (the new right-stick and emote hand-off
 behaviour), playing on a dedicated server, ultrawide displays and other spell-wheel

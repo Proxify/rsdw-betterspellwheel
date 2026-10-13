@@ -1,0 +1,8 @@
+BetterSpellWheel 0.4.2 (2026-10-13)
+In-game: see live-cooldowns-0.4.2.txt (SudoBlade, with and without Utility Spells - No Cooldowns).
+Windows installer suite on the exact released 0.4.2 setup EXE
+(sha256 cd7e0eb9379f686b8fb4de2992af3f3cc2877534bce6dabb34b852dbd36e6194), nJoyDesk: 10/10 PASS
+(evidence D:\rsdw-mods\repl\bsw-installer-tests-e9151dde6c1f44c39e3613f313614c92).
+Installer source unchanged since 0.4.1; running-game Guard and interactive UI not repeated.
+release_test: PASS (17 production files, ZIP only CurseForge-allowed extensions).
+tests/run.py: all suites pass, including the new no-cooldown-mod regressions in runtime_test.lua.

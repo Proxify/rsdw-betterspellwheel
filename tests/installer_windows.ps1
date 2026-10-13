@@ -1,6 +1,6 @@
 param([ValidateSet('Guard','Suite')][string]$Mode='Suite',
-      [string]$Installer='D:\rsdw-mods\dist\BetterSpellWheel-0.4.1-setup.exe',
-      [string]$Manifest='D:\rsdw-mods\dist\BetterSpellWheel-0.4.1-setup.manifest.json')
+      [string]$Installer='D:\rsdw-mods\dist\BetterSpellWheel-0.4.2-setup.exe',
+      [string]$Manifest='D:\rsdw-mods\dist\BetterSpellWheel-0.4.2-setup.manifest.json')
 $ErrorActionPreference='Stop'
 $root=Join-Path 'D:\rsdw-mods\repl' ('bsw-installer-tests-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root | Out-Null
