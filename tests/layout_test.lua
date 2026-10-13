@@ -27,7 +27,7 @@ for i=1,12 do
  for count=1,6 do for j=1,count do
   local b=a-math.rad(20)*count/2+math.rad(20)*(j-.5)
   local x,y=model.point(b,385)
-  inside({x=L.cx+x-26,y=L.cy+y-12,w=52,h=24},b,282,432,math.rad(10))
+  inside({x=L.cx+x-32,y=L.cy+y-13,w=64,h=26},b,282,432,math.rad(10))
  end end
 end
 -- Radial-only layout: the wheel is centred, lifted by shiftY, with the tooltip

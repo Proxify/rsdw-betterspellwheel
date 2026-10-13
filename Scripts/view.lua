@@ -103,7 +103,7 @@ return function(E, model, L)
    local number=text(tostring(i),{x=0,y=0,w=22,h=28},12,'DescriptionTextStyle',MUTED,true,false)
    -- Cooldown strings can be longer than the slot number (e.g. '1m 02s').
    -- Give them their own smaller, wider centred label so the normal index stays crisp.
-   local cooldownText=text('',{x=0,y=0,w=52,h=24},9,'DescriptionTextStyle',RED,true,false)
+   local cooldownText=text('',{x=0,y=0,w=64,h=26},12,'DescriptionTextStyle',RED,true,false)
    u.spells[i]={base=b,highlight=h,icon=icon,number=number,cooldownText=cooldownText,alpha=0}
    for _,w in ipairs({b,h,icon,number,cooldownText}) do w:SetVisibility(2) end
   end
@@ -397,7 +397,7 @@ return function(E, model, L)
    return lines
   end
 
-  local function layoutTip(tip)
+  local function layoutTip(tip,color)
    local box=L.tipText
    local height=box.h
    for _,size in ipairs({14,13,12,11,10,9,8}) do
@@ -405,7 +405,7 @@ return function(E, model, L)
     pcall(function()
      local font=u.tipText.Font;font.Size=size;u.tipText:SetFont(font)
     end)
-    set(u.tipText,table.concat(lines,'\n'),WHITE)
+    set(u.tipText,table.concat(lines,'\n'),color or WHITE)
     pcall(function() u.root:ForceLayoutPrepass() end)
     local ok,s=pcall(function() return u.tipText:GetDesiredSize() end)
     local w,h=0,#lines*size*1.6 -- estimate if measuring is unavailable
@@ -568,7 +568,14 @@ return function(E, model, L)
    u.branchFade=branchFade
 
    local detailKey=selectedSpell and (tostring(selectedSpell.id)..':'..tostring(selectedSpell.name)..':'..tostring(selectedSpell.skill)) or 'none'
-   if detailKey~=u.detailKey then u.detailKey=detailKey;drawDetails(selectedSpell) end
+   -- A refusal (on cooldown, missing runes or tool) replaces the description in
+   -- the tooltip bar, in red, until the pointer moves to another target.
+   local messageKey=detailKey..'|'..tostring(message)
+   if detailKey~=u.detailKey or messageKey~=u.messageKey then
+    u.detailKey=detailKey;u.messageKey=messageKey
+    drawDetails(selectedSpell)
+    if message and message~='' then layoutTip(message,RED);u.tipHas=true end
+   end
    -- Show the current skill name in the centre while navigating the OUTER
    -- skill ring. Once the player moves into the inner spell ring, hide it so
    -- the centre is reserved for the spell details. Do not alter outer-ring
@@ -615,8 +622,8 @@ return function(E, model, L)
       n.icon.Slot:SetPosition({X=iconBox.x,Y=iconBox.y})
       local x,y=model.point(a,385)
       n.number.Slot:SetPosition({X=L.cx+x-11,Y=L.cy+y-14})
-      n.cooldownText.Slot:SetPosition({X=L.cx+x-26,Y=L.cy+y-12})
-      n.cooldownText.Slot:SetSize({X=52,Y=24})
+      n.cooldownText.Slot:SetPosition({X=L.cx+x-32,Y=L.cy+y-13})
+      n.cooldownText.Slot:SetSize({X=64,Y=26})
 
       local t=u.texture(icons.spells[d.id]) or u.texture(icons.skills[group.id])
       if E.valid(t) then n.icon:SetBrushFromTexture(t,false) end
