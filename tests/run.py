@@ -33,3 +33,37 @@ lua.execute((root / "tests/layout_test.lua").read_text())
 lua.execute((root / "tests/controller_test.lua").read_text())
 lua.execute((root / "tests/input_test.lua").read_text())
 lua.execute((root / "tests/runtime_test.lua").read_text())
+
+# Wheel artwork: drawn by Scripts/art.lua into Assets/, valid PNGs, cached.
+import struct, tempfile, zlib
+def png_info(data):
+    assert data[:8] == b'\x89PNG\r\n\x1a\n'
+    pos, idat, ihdr = 8, b'', None
+    while pos < len(data):
+        n, kind = struct.unpack('>I4s', data[pos:pos + 8])
+        body = data[pos + 8:pos + 8 + n]
+        assert struct.unpack('>I', data[pos + 8 + n:pos + 12 + n])[0] == zlib.crc32(kind + body), kind
+        if kind == b'IHDR': ihdr = struct.unpack('>IIBBBBB', body)
+        if kind == b'IDAT': idat += body
+        pos += 12 + n
+    w, h = ihdr[0], ihdr[1]
+    raw = zlib.decompress(idat)
+    assert ihdr[2:5] == (8, 6, 0) and len(raw) == h * (w * 4 + 1)
+    return w, h, raw
+with tempfile.TemporaryDirectory() as tmp:
+    (Path(tmp) / 'Assets').mkdir()
+    art = lua.execute('return dofile(...)', str(root / 'Scripts/art.lua'))
+    ensure = lua.eval('function(A, d) return A.ensure(d) end')
+    assert ensure(art, tmp) == 6 and ensure(art, tmp) == 0
+    sizes = {'skill': (848, 848), 'skill_active': (848, 848), 'spell': (848, 848), 'spell_active': (848, 848),
+             'center': (848, 848), 'tooltip': (1560, 192)}
+    for name, size in sizes.items():
+        w, h, raw = png_info((Path(tmp) / 'Assets' / f'{name}.png').read_bytes())
+        assert (w, h) == size, name
+        def alpha(x, y): return raw[y * (w * 4 + 1) + 1 + x * 4 + 3]
+        assert alpha(0, 0) == 0, name  # corners stay transparent
+    w, h, raw = png_info((Path(tmp) / 'Assets' / 'skill.png').read_bytes())
+    assert raw[(424 - 200) * (w * 4 + 1) + 1 + 424 * 4 + 3] > 200  # inside the north skill sector
+    (Path(tmp) / 'Assets' / 'art-version.txt').write_text('0')
+    assert ensure(art, tmp) == 6  # a new art version redraws everything
+print('PASS: wheel artwork drawn as valid PNGs (6 textures), cached, redrawn on version change')

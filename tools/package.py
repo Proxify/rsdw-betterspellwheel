@@ -3,7 +3,7 @@
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 import argparse
-from release_manifest import ROOT, MOD, version, production_files
+from release_manifest import ROOT, MOD, version, production_files, check_allowed
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output-dir', type=Path, default=ROOT / 'dist')
 dist = parser.parse_args().output_dir
@@ -19,5 +19,6 @@ with ZipFile(archive) as z:
     assert set(z.namelist()) == set(files)
     for name, body in files.items():
         assert z.read(name) == body
+    check_allowed(z.namelist())
     assert not any(n.endswith(('.exe', 'dev.txt')) or '/tests/' in n or '/data/' in n for n in z.namelist())
 print(f'{archive} ({len(files)} files, {archive.stat().st_size:,} bytes)')
