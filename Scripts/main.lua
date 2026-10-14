@@ -190,6 +190,8 @@ local function bindWorld()
  end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
+ -- A previous world's catalogue must not be polled in the background.
+ state=nil;M.state=nil
  for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
   if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
  end
@@ -544,11 +546,6 @@ local function tick()
    end
   end
   if elapsed-pending.since>.15 and not targetingMode then
-   -- The native mode can briefly report Spellcasting for an instant cast as
-   -- well as for a targeted spell. Once that mode has ended, treat the cast as
-   -- successful unless the player explicitly cancelled it. Requiring a sampled
-   -- confirm here missed instant casts, so their cooldown only appeared after
-   -- the next attempt was rejected by the game's native cooldown check.
    -- Targeted spells only start a cooldown if we actually observed the
    -- player's confirmation input. Leaving targeting mode alone is not proof
    -- of a successful cast: the player may have cancelled it.
@@ -562,6 +559,17 @@ local function tick()
     startCooldown(pending.record)
    end
    restore()
+  end
+ end
+ -- Cast completion and server replies normally arrive AFTER the wheel closes.
+ -- Keep consuming authoritative cooldown data without requiring another open
+ -- or hover. Unconfirmed/cancelled targeting still creates no local estimate.
+ if state then
+  local now=gameTime()
+  applyCooldownNotices(state.groups,now)
+  if elapsed-lastSync>=1 then
+   lastSync=elapsed
+   pcall(M.syncNativeCooldowns,state.groups,now)
   end
  end
  if not M.open then
@@ -609,9 +617,6 @@ local function tick()
  end
  if not E.valid(ui.root) then M.close();return end
  local now=E.clock:GetGameTimeInSeconds(pc)
- applyCooldownNotices(state.groups,now)
- -- Follow the game's cast times while the wheel is open (once a second).
- if elapsed-lastSync>=1 then lastSync=elapsed;pcall(M.syncNativeCooldowns,state.groups,now) end
  local dt=math.min(.05,math.max(.001,now-lastTime));lastTime=now
  ui.resize()
  local x,y=ui.pointer()

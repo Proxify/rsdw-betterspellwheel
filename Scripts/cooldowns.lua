@@ -1,6 +1,6 @@
 -- Spell cooldowns for the custom wheel: DISPLAY ONLY. The game decides whether
 -- a spell can be cast; these timers never block a cast. Synced from the game's
--- last cast times while the wheel is open and from the server's cooldown
+-- last cast times even while the wheel is closed and from the server's cooldown
 -- notices; casts seen through the wheel start a timer straight away.
 -- A spell is "waived" when the game accepted a cast while its timer was still
 -- running (e.g. a no-cooldown mod): no local timer is started for it until the

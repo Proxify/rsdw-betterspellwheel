@@ -123,6 +123,17 @@ mod.cooldowns:clear(record);castTimes[spell]=clock-10
 open();assert(math.abs(cd()-20)<1,'synced from the native cast time');keys[0x1B]();ticks()
 castTimes[spell]=clock-40;open();assert(cd()==0,'expired native cooldown is clear');keys[0x1B]();ticks()
 castTimes={};instant=false;record.cooldown=0;mod.shutdown()
+-- A cast may complete without a second sampled click (animation or native
+-- input). The game's timestamp must reach the timer with the wheel CLOSED.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+record.cooldown=30;aim=false;instant=false
+open();select();ticks(3);castTimes[spell]=clock;finish();ticks(70)
+assert(not mod.open and cd()>27,'closed wheel observes completed native cast')
+-- Server cooldown notices can arrive after the wheel closes, too.
+mod.cooldowns:clear(record);castTimes={}
+mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=10};ticks()
+assert(not mod.open and math.abs(cd()-20)<.1,'closed wheel applies server notice')
+mod.shutdown();record.cooldown=0
 -- 0.4.2 (report: cooldowns shown and casts refused with UtilitySpellsNoCooldown on
 -- a client). That mod rewrites LastCastTimeBySpellData to -1e9 every 500 ms, so the
 -- game accepts every cast; on a joined client the map may hold no entry at all.
