@@ -1,0 +1,12 @@
+BetterSpellWheel 0.4.3 (2026-10-14)
+Combines work/l-bsw-cooldown (5fa58dc) and work/bsw-perf (65e4e99), fast-forward of main.
+In-game: tests/live-perf-0.4.3.txt (performance, SudoBlade) and docs/COOLDOWN-VALIDATION.md (cooldowns).
+tests/run.py: all 9 suites pass (incl. view equivalence with 0.4.2 over 1310 frames and the cooldown regressions).
+Windows installer suite on the exact released 0.4.3 setup EXE
+(sha256 71ab7fdc5d4d3df2cb6fffd61905fbe0c80c602a9f2ac01c66527e9d3a531fff), nJoyDesk: 10/10 PASS
+(evidence D:\rsdw-mods\repl\bsw-installer-tests-535b3419745145cd9d69f72ed6a0851e).
+Installer source unchanged since 0.4.1; running-game Guard and interactive UI not repeated.
+release_test: PASS (17 production files, ZIP only CurseForge-allowed extensions).
+RSence Installer package BetterSpellWheel-0.4.3.rspkg built with rsdw-together tools/rsence_package.py
+(origin/main f5c7445) from the release ZIP: 17 files byte-identical to the ZIP + VERSION/MOD, 141,886 bytes,
+sha256 62b6ab67a43c51fcda21c56f1b73d1612b3bb615f85d4d7e28f3e86d90d830cb; tests/rsence_package_test.py PASS.
