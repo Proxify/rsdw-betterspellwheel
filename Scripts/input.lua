@@ -10,13 +10,25 @@ return function(E)
   open='Q',mouseLeft='LeftMouseButton',emote='Gamepad_FaceButton_Left'}
  local keys={}
  for k,n in pairs(names) do keys[k]={KeyName=FName(n)} end
+ local analog={x=true,y=true,rx=true,ry=true,mx=true,my=true}
  function I.new(pc)
   local i={pc=pc,quiet=0}
-  function i.sample()
+  -- Each key query is a UFunction call (~10 us). 'only' limits the sample to
+  -- the keys a caller reads (e.g. confirm/cancel while a cast is pending).
+  -- The left stick is not queried: x/y are replaced by the right stick below.
+  function i.sample(only)
    local s={}
-   for k,key in pairs(keys) do
-    if k=='x' or k=='y' or k=='rx' or k=='ry' or k=='mx' or k=='my' then s[k]=pc:GetInputAnalogKeyState(key)
-    else s[k]=pc:IsInputKeyDown(key) end
+   if only then
+    for _,k in ipairs(only) do
+     local key=keys[k]
+     if analog[k] then s[k]=pc:GetInputAnalogKeyState(key) else s[k]=pc:IsInputKeyDown(key) end
+    end
+   else
+    for k,key in pairs(keys) do
+     if k=='x' or k=='y' then
+     elseif analog[k] then s[k]=pc:GetInputAnalogKeyState(key)
+     else s[k]=pc:IsInputKeyDown(key) end
+    end
    end
    -- Use the physical right stick for spell-wheel navigation.
   -- Raw left-stick input remains untouched for character movement.

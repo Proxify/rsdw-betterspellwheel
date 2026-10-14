@@ -29,6 +29,16 @@ assert(not mappings.Gamepad_LeftX and not mappings.Gamepad_LeftY and not mapping
 -- Only the right stick navigates; a pushed left stick (walking) is ignored.
 axes.Gamepad_LeftX=1;axes.Gamepad_RightX=.8;axes.Gamepad_RightY=.3
 local s=input.sample();assert(s.x==.8 and s.y==.3)
+-- Perf: a full sample makes 17 engine queries (the left stick isn't read),
+-- a pending cast's confirm/cancel sample only the keys it reads.
+local queries=0
+local isDown,analogState=pc.IsInputKeyDown,pc.GetInputAnalogKeyState
+pc.IsInputKeyDown=function(...)queries=queries+1;return isDown(...)end
+pc.GetInputAnalogKeyState=function(...)queries=queries+1;return analogState(...)end
+input.sample();assert(queries==17,'full sample queries '..queries)
+queries=0;down.Gamepad_Special_Right=true;local c=input.sample({'accept','mouseLeft','back','close','toggle'})
+assert(queries==5 and c.close and not c.accept,'subset sample');down.Gamepad_Special_Right=false
+pc.IsInputKeyDown,pc.GetInputAnalogKeyState=isDown,analogState
 -- The click/button that cast must be released and stay released 8 ticks.
 down.Gamepad_FaceButton_Bottom=true;input.release();assert(input.draining and mapRemoved==0 and disabled==0)
 down.Gamepad_FaceButton_Bottom=false

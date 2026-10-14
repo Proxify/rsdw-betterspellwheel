@@ -488,6 +488,9 @@ local function bindSlot(spell,slot,index)
  end
 end
 
+-- Keys read while a cast is pending (confirm / cancel), for emote hand-off and
+-- for the open key: each key query is an engine call, so only these are read.
+local CAST_KEYS,EMOTE_KEYS,OPEN_KEYS={'accept','mouseLeft','back','close','toggle'},{'emote'},{'open'}
 local function open()
  unmuteSelectSound()
  -- This is called from the native spell-wheel open lifecycle (or its
@@ -496,7 +499,7 @@ local function open()
  -- If the native panel was rebuilt, rebind first instead of using stale widgets.
  if not panelAlive() then return end
  hideNativeWheel()
- openWasDown=device and device.sample().open==true or false
+ openWasDown=device and device.sample(OPEN_KEYS).open==true or false
  restore()
  durations=setmetatable({},{__mode='k'}) -- read each spell's cooldown afresh
  local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
@@ -517,7 +520,7 @@ local function open()
  if ui then ui.last='' end
  ui.show();controls(true)
  emoteHandoffAt=nil;emoteWheelActive=false;emoteWheelSeen=false
- emoteWasDown=device.sample().emote==true
+ emoteWasDown=device.sample(EMOTE_KEYS).emote==true
  local dpi=E.layout:GetViewportScale(pc)
  -- Start at the wheel's centre (the dead zone), so opening never pre-selects a skill.
  pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor((ui.height/2+ui.offsetY)*dpi))
@@ -592,7 +595,7 @@ local function selectSpell()
   if name:find('SpellPlacement') or name:find('Spellcasting') then
    -- Aim/placement spells are only successful after the native confirm input.
    pending.awaitingConfirm=true
-   local sample=device.sample()
+   local sample=device.sample(CAST_KEYS)
    pending.confirmArmed=not (sample.accept or sample.mouseLeft)
    pending.cancelArmed=not (sample.back or sample.close)
   else
@@ -653,12 +656,12 @@ local function tick()
    -- Targeting can become visible one or more frames after SelectSlice().
    pending.detectingMode=false
    pending.awaitingConfirm=true
-   local initialSample=device.sample()
+   local initialSample=device.sample(CAST_KEYS)
    pending.confirmArmed=not (initialSample.accept or initialSample.mouseLeft)
    pending.cancelArmed=not (initialSample.back or initialSample.close)
   end
   if pending.awaitingConfirm then
-   local sample=device.sample()
+   local sample=device.sample(CAST_KEYS)
    -- Native targeting can be cancelled with keyboard Escape or mouse-right
    -- as well as the controller back/close buttons. These two inputs are not
    -- part of the wheel's navigation mapping, so sample them directly here.
@@ -717,7 +720,7 @@ local function tick()
  end
  if perf then mark('cooldown') end
  if not M.open and (emoteWheelActive or emoteHandoffAt) then
-  local sample=device.sample()
+  local sample=device.sample(EMOTE_KEYS)
   local t=os.clock()
   -- Switch back from the native emote wheel with a fresh X / Square press.
   -- Don't rely solely on CurrentInputMode: some builds keep reporting the prior

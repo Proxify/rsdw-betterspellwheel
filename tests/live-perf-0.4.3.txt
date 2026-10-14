@@ -1,0 +1,35 @@
+BetterSpellWheel performance pass (work/bsw-perf), live on SudoBlade 2026-10-14
+i9-13950HX / RTX 4080 Laptop, 2560x1600, Windows user sarah, Steam njoy. Worlds: Creative MODTEST
+(TradeTesterB) and Standard TRADE_TEST (BSWStdTest), both throwaway test characters.
+Method: PerfLog=true. The profiler logs the mod's game-thread time once a second ("busy", ms per second;
+os.clock has 1 ms resolution on Windows, so the per-second sums are averaged over 10-20 s), plus engine
+object-scan calls and the frame time (GameplayStatics:GetWorldDeltaSeconds). Builds were swapped by hot
+reload in the same session: 0.4.2 + profiler, the cooldown branch 98500dd + profiler, and this branch.
+"Off" means Enabled=false at runtime, with the loop and profiler still running. The tick loop ran about
+46 times a second at 90-140 fps.
+
+Busy time (ms of game thread per second), 0.4.2 -> this branch:
+                      Creative          Standard
+  wheel closed        34.6 -> 3.2       35.5 -> 2.4      (off: 0.1 / 0.3)
+  wheel open          44.7 -> 20.0      43.9 -> 18.4
+  open, hovering      45.3 -> 19.6      44.1 -> 18.6
+  casting (Recall)    45.0 -> 6.8       44.3 -> 5.9
+  after a cast        37.6 -> 2.9       36.6 -> 4.0
+  main menu           7.3 -> 0.6 (only 30 ticks a second there)
+Cooldown branch 98500dd (Creative): closed 36.1, open 44.6, casting 47.9, after cast 38.4.
+Scans: FindFirstOf 45-48 per second -> 0.3-0.4 per second; the cooldown branch's FindAllOf
+(about 0.8 per second, also with the wheel closed) -> 0 while closed.
+Engine call costs measured in game: FindFirstOf(BP_PlayerController_C) 250 us,
+FindAllOf(PlayerUtilityMagicComponent) 300 us, IsInputKeyDown 10 us, StaticFindObject(path) 3 us.
+The remaining open-wheel cost is the 17 key queries per tick (navigation needs them).
+
+Frame rate: on this machine the game is GPU/render bound and the 0.4.2 cost is about 4% of one core,
+so FPS differences sit inside run-to-run noise (uncapped, ScreenPercentage 10: off 139/131 fps,
+this branch 127/130, 0.4.2 131/135). The FPS drop needs a slower CPU or a bigger object array, where
+each FindFirstOf scan per tick costs proportionally more; this machine can't show it.
+
+Functional checks on this branch: rebinding after leaving a world and entering another; the wheel
+opens, hovers and casts; Tempest Shield cast through the wheel shows its timer while the wheel is
+closed (43.3 s at +3 s) and on the slot after reopening ("26s"); rune counts are coloured, and the
+tool requirement and tooltip display. No "Disabled after error", no crash dumps.
+Cleanup: ue4ss/Mods restored hash-identical (32 files), No-Intro paks untouched, runtime cvars restored.
