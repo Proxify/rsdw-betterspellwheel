@@ -26,6 +26,7 @@ E.lib=StaticFindObject('/Script/UMG.Default__WidgetBlueprintLibrary')
 E.layout=StaticFindObject('/Script/UMG.Default__WidgetLayoutLibrary')
 E.render=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
 E.clock=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
+E.stats=StaticFindObject('/Script/Engine.Default__GameplayStatics')
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
@@ -41,8 +42,29 @@ end
 local function log(s) print('[BetterSpellWheel] '..s..'\n') end -- errors and one-off warnings only
 local cfg={Enabled=true,ControllerPrompts="auto",KeepNativeHidden=true,ShowCooldowns=true}
 local file=io.open(folder..'/config.txt','r')
-if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' elseif k=='ShowCooldowns' then cfg.ShowCooldowns=v:lower()~='false' end end;file:close() end
+if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' elseif k=='ShowCooldowns' then cfg.ShowCooldowns=v:lower()~='false' elseif k=='PerfLog' then cfg.PerfLog=v:lower()=='true' end end;file:close() end
 M.cfg=cfg
+-- Opt-in profiler (PerfLog=true in config.txt): once a second, logs the time the
+-- mod spent on the game thread (total, worst tick, per section), the frame time,
+-- object-scan calls and the Lua heap. Off by default: no cost when off.
+local perf
+do
+ local original=_G.BetterSpellWheelOriginals or {FindAllOf=FindAllOf,FindFirstOf=FindFirstOf,StaticFindObject=StaticFindObject}
+ _G.BetterSpellWheelOriginals=original
+ for name,fn in pairs(original) do _G[name]=fn end
+ if cfg.PerfLog then
+  perf={since=os.clock(),ticks=0,total=0,max=0,sections={},calls={},frames=0,frameSum=0,frameMax=0}
+  for name,fn in pairs(original) do
+   _G[name]=function(...) perf.calls[name]=(perf.calls[name] or 0)+1;return fn(...) end
+  end
+ end
+end
+M.perf=perf
+local perfTick
+local function mark(name)
+ local now=os.clock()
+ perf.sections[name]=(perf.sections[name] or 0)+(now-perf.last);perf.last=now
+end
 local pc,radial,panel,input,component,ui,state,pending,device,pad
 local nativeWasOpen=false
 M.radial=nil
@@ -495,7 +517,9 @@ local function tick()
  if not cfg.Enabled or M.disabled then return end
  -- Bind objects without modifying visibility. The lifecycle hook below is
  -- responsible for replacing the spell selector only when the game opens it.
- if not bindWorld() then return end
+ local bound=bindWorld()
+ if perf then mark('bind') end
+ if not bound then return end
  -- The emote wheel is a separate native UI. If the player opens it while
  -- BetterSpellWheel is active, yield input ownership without resetting the
  -- game's input mode (controls(false) would force GameOnly and dismiss emotes).
@@ -565,6 +589,7 @@ local function tick()
    restore()
   end
  end
+ if perf then mark('pending') end
  -- Cast completion and server replies normally arrive AFTER the wheel closes.
  -- Keep consuming authoritative cooldown data without requiring another open
  -- or hover. Unconfirmed/cancelled targeting still creates no local estimate.
@@ -576,6 +601,7 @@ local function tick()
    pcall(M.syncNativeCooldowns,state.groups,now)
   end
  end
+ if perf then mark('cooldown') end
  if not M.open then
   local sample=device.sample()
   local t=os.clock()
@@ -587,7 +613,9 @@ local function tick()
    emoteWasDown=true
    emoteWheelActive=false
    emoteHandoffAt=nil
+   if perf then mark('closed') end
    open()
+   if perf then mark('openWheel') end
    return
   end
   emoteWasDown=sample.emote==true
@@ -609,7 +637,9 @@ local function tick()
   local isNativeOpen=nativeOpen()
   if isNativeOpen and not nativeWasOpen then
    nativeWasOpen=true
+   if perf then mark('closed') end
    open()
+   if perf then mark('openWheel') end
    return
   elseif not isNativeOpen and not M.open then
    nativeWasOpen=false
@@ -617,6 +647,7 @@ local function tick()
   -- Legacy keybind dispatchers can survive UE4SS script reloads. Ignore their
   -- old 'toggle'/'open' queue entries; native state above is the only opener.
   M.queue={}
+  if perf then mark('closed') end
   return
  end
  if not E.valid(ui.root) then M.close();return end
@@ -670,13 +701,20 @@ local function tick()
   elseif action=='back' then state.group=nil;state.spell=nil;state.candidate=nil;state.page=1;M.message=nil;M.back=true
   elseif action=='previous' then model.turnPage(state,-1)
   elseif action=='next' then model.turnPage(state,1)
-  elseif action=='select' and elapsed-M.since>.15 then selectSpell();if not M.open then return end end
+  elseif action=='select' and elapsed-M.since>.15 then
+   if perf then mark('input') end
+   selectSpell()
+   if perf then mark('select') end
+   if not M.open then return end
+  end
  end
  -- Game HUD activation can restore game input underneath custom UI.
  if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
  -- The game's open animation can reset the panel: re-hide it a few times a second.
  if frame%12==0 then hideNativeWheel() end
+ if perf then mark('input') end
  ui.draw(state,dt,M.message,now,cooldowns,spell)
+ if perf then mark('draw') end
 end
 function M.shutdown()
  unmuteSelectSound()
@@ -701,6 +739,30 @@ if not _G.BetterSpellWheelKeyDispatcher then
  RegisterKeyBind(0x46,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='previous' end end)
  RegisterKeyBind(0x47,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='next' end end)
 end
+perfTick=function(started)
+ local now=os.clock()
+ local spent=now-started
+ perf.ticks=perf.ticks+1;perf.total=perf.total+spent;perf.max=math.max(perf.max,spent)
+ pcall(function()
+  if E.valid(pc) then
+   local dt=E.stats:GetWorldDeltaSeconds(pc)
+   perf.frames=perf.frames+1;perf.frameSum=perf.frameSum+dt;perf.frameMax=math.max(perf.frameMax,dt)
+  end
+ end)
+ local window=now-perf.since
+ if window<1 then return end
+ local parts={}
+ for name,t in pairs(perf.sections) do parts[#parts+1]=string.format('%s=%.3f',name,t*1000/window) end
+ table.sort(parts)
+ local calls={}
+ for name,n in pairs(perf.calls) do calls[#calls+1]=string.format('%s=%d',name,n) end
+ table.sort(calls)
+ local frame=perf.frames>0 and perf.frameSum/perf.frames or 0
+ log(string.format('perf %s ticks=%d busy=%.3fms/s worst=%.3fms [%s] frame=%.2fms(%.1ffps) worstFrame=%.1fms calls[%s] heap=%.0fKB',
+  M.open and 'open' or (pending and 'casting' or 'closed'),perf.ticks,perf.total*1000/window,perf.max*1000,table.concat(parts,' '),
+  frame*1000,frame>0 and 1/frame or 0,perf.frameMax*1000,table.concat(calls,' '),collectgarbage('count')))
+ perf.since=now;perf.ticks=0;perf.total=0;perf.max=0;perf.sections={};perf.calls={};perf.frames=0;perf.frameSum=0;perf.frameMax=0
+end
 -- Opt-in development console; dev.txt is never included in release archives.
 local devPoll
 local devFile=io.open(folder..'/dev.txt','r')
@@ -720,7 +782,10 @@ end
 M.handle=LoopInGameThreadWithDelay(16,function()
  if devPoll and frame%6==0 then pcall(devPoll) end
  if _G.BetterSpellWheel~=M then return end
+ local started=perf and os.clock()
+ if perf then perf.last=started end
  local ok,err=pcall(tick)
+ if perf then perfTick(started) end
  if not ok then
   log('Disabled after error; restoring native controls: '..tostring(err));M.disabled=true
   pcall(M.close);pcall(restoreNativePanel);pcall(restore);if device then pcall(device.shutdown) end

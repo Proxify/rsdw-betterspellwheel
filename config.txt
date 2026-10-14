@@ -13,3 +13,7 @@ KeepNativeHidden=true
 # The game always decides whether a spell can be cast; the wheel never blocks
 # a cast because of its own timer, so no-cooldown mods keep working either way.
 ShowCooldowns=true
+
+# Troubleshooting only: log the mod's per-second game-thread cost and the frame
+# time to UE4SS.log. Leave false for normal play.
+PerfLog=false
