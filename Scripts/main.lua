@@ -1,9 +1,9 @@
--- BetterSpellWheel 0.4.2. Client UI; casting remains entirely native.
+-- BetterSpellWheel 0.4.3. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.4.2',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.4.3',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
@@ -26,6 +26,28 @@ E.lib=StaticFindObject('/Script/UMG.Default__WidgetBlueprintLibrary')
 E.layout=StaticFindObject('/Script/UMG.Default__WidgetLayoutLibrary')
 E.render=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
 E.clock=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
+E.stats=StaticFindObject('/Script/Engine.Default__GameplayStatics')
+-- FindFirstOf scans every UObject. Singletons (input subsystem, game state) are
+-- remembered by object path and address and re-resolved with a hash lookup.
+local singletons={}
+function E.findFirst(className)
+ local ref=singletons[className]
+ if ref then
+  local ok,o=pcall(StaticFindObject,ref.path)
+  if ok and o and o:IsValid() and o:GetAddress()==ref.addr then return o end
+  singletons[className]=nil
+ end
+ local o=FindFirstOf(className)
+ if E.valid(o) then
+  pcall(function()
+   local addr=o:GetAddress()
+   local path=o:GetFullName():match('^%S+%s+(.+)$')
+   local c=StaticFindObject(path)
+   if c and c:IsValid() and c:GetAddress()==addr then singletons[className]={path=path,addr=addr} end
+  end)
+ end
+ return o
+end
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
@@ -41,8 +63,31 @@ end
 local function log(s) print('[BetterSpellWheel] '..s..'\n') end -- errors and one-off warnings only
 local cfg={Enabled=true,ControllerPrompts="auto",KeepNativeHidden=true,ShowCooldowns=true}
 local file=io.open(folder..'/config.txt','r')
-if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' elseif k=='ShowCooldowns' then cfg.ShowCooldowns=v:lower()~='false' end end;file:close() end
+if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' elseif k=='ShowCooldowns' then cfg.ShowCooldowns=v:lower()~='false' elseif k=='PerfLog' then cfg.PerfLog=v:lower()=='true' end end;file:close() end
 M.cfg=cfg
+-- Opt-in profiler (PerfLog=true in config.txt): once a second, logs the time the
+-- mod spent on the game thread (total, worst tick, per section), the frame time,
+-- object-scan calls and the Lua heap. Off by default: no cost when off.
+local perf
+do
+ -- A previous load's counting wrappers are removed first (script reloads).
+ local original=_G.BetterSpellWheelOriginals
+ if original then for name,fn in pairs(original) do _G[name]=fn end;_G.BetterSpellWheelOriginals=nil end
+ if cfg.PerfLog then
+  original={FindAllOf=FindAllOf,FindFirstOf=FindFirstOf,StaticFindObject=StaticFindObject}
+  _G.BetterSpellWheelOriginals=original
+  perf={since=os.clock(),ticks=0,total=0,max=0,sections={},calls={},frames=0,frameSum=0,frameMax=0}
+  for name,fn in pairs(original) do
+   _G[name]=function(...) perf.calls[name]=(perf.calls[name] or 0)+1;return fn(...) end
+  end
+ end
+end
+M.perf=perf
+local perfTick
+local function mark(name)
+ local now=os.clock()
+ perf.sections[name]=(perf.sections[name] or 0)+(now-perf.last);perf.last=now
+end
 local pc,radial,panel,input,component,ui,state,pending,device,pad
 local nativeWasOpen=false
 M.radial=nil
@@ -182,14 +227,48 @@ function M.close()
  end
  M.queue={};M.message=nil
 end
+-- FindFirstOf walks the whole UObject array (hundreds of thousands of objects)
+-- and was called every tick: the mod's main per-frame cost. The bound controller
+-- is now checked with a hash lookup of its own path (same object address), and
+-- the scan runs only every BIND_VERIFY seconds while bound, or every BIND_RETRY
+-- seconds while unbound (menus, loading, respawn).
+local BIND_VERIFY,BIND_RETRY=2,.25
+local scannedAt=-1e9
+local pcPath,pcAddr
+local function rememberPc()
+ pcPath,pcAddr=nil,nil
+ pcall(function()
+  local addr=pc:GetAddress()
+  local path=pc:GetFullName():match('^%S+%s+(.+)$')
+  -- Only use the path if it resolves to this very controller.
+  local o=StaticFindObject(path)
+  if o and o:IsValid() and o:GetAddress()==addr then pcPath,pcAddr=path,addr end
+ end)
+end
+-- Without a usable path there is no safe cheap check: rescan (0.4.2 behaviour).
+local function pcAlive()
+ if not pcPath then return false end
+ local ok,o=pcall(StaticFindObject,pcPath)
+ return ok and o~=nil and o:IsValid() and o:GetAddress()==pcAddr
+end
 local function bindWorld()
+ if pc and radial then
+  if elapsed-scannedAt<BIND_VERIFY and pcAlive() and E.valid(pc.Pawn) and E.valid(radial) then return true end
+ elseif elapsed-scannedAt<BIND_RETRY and not (M.open or pending) then
+  -- (While the wheel is open or a cast is pending, rebind/close at once.)
+  return false
+ end
+ scannedAt=elapsed
  local found=FindFirstOf('BP_PlayerController_C')
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
-  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;return false
+  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;pcPath=nil;return false
  end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
+ rememberPc()
+ -- A previous world's catalogue must not be polled in the background.
+ state=nil;M.state=nil
  for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
   if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
  end
@@ -213,12 +292,46 @@ end
 -- cooldowns started before loading in, or outside this wheel, show correctly.
 -- Its clock is the world time; GameState:GetServerWorldTimeSeconds() is the
 -- fallback when a stamp lies in the client's future (server-stamped casts).
+-- Pending-kill aware validity (respawn, travel): skip rather than read.
+function E.alive(x)
+ if not E.valid(x) then return false end
+ local ok,alive=pcall(function() return E.clock:IsValid(x) end)
+ return ok and alive==true
+end
+-- The magic component is remembered by address and object path and re-resolved
+-- with a hash lookup, never kept as a userdata; found through the pawn
+-- (GetComponentByClass) instead of a FindAllOf scan.
+local magicRef={}
 local function magicComponent()
  local pawn=pc and pc.Pawn
- if not E.valid(pawn) then return nil end
- for _,c in ipairs(FindAllOf('PlayerUtilityMagicComponent') or {}) do
-  if E.valid(c) and sameObject(c:GetOwner(),pawn) then return c end
+ if not E.alive(pawn) then return nil end
+ local pawnAddr=pawn:GetAddress()
+ if magicRef.pawn==pawnAddr and magicRef.path then
+  local ok,c=pcall(StaticFindObject,magicRef.path)
+  if ok and E.alive(c) and c:GetAddress()==magicRef.addr then return c end
  end
+ magicRef={}
+ local found
+ pcall(function()
+  local class=StaticFindObject('/Script/Dominion.PlayerUtilityMagicComponent')
+  if not E.valid(class) then return end
+  local c=pawn:GetComponentByClass(class)
+  if E.alive(c) and sameObject(c:GetOwner(),pawn) then found=c end
+ end)
+ if not found then
+  for _,c in ipairs(FindAllOf('PlayerUtilityMagicComponent') or {}) do
+   if E.valid(c) and sameObject(c:GetOwner(),pawn) then found=c;break end
+  end
+ end
+ if found then
+  pcall(function()
+   local addr=found:GetAddress()
+   local path=found:GetFullName():match('^%S+%s+(.+)$')
+   local o=StaticFindObject(path)
+   if o and o:IsValid() and o:GetAddress()==addr then magicRef={pawn=pawnAddr,path=path,addr=addr} end
+  end)
+ end
+ return found
 end
 local function nativeCastTimes()
  local times={}
@@ -233,13 +346,16 @@ local function nativeCastTimes()
  return times
 end
 local function serverTime()
- local ok,t=pcall(function() return FindFirstOf('GameStateBase'):GetServerWorldTimeSeconds() end)
+ local ok,t=pcall(function() return E.findFirst('GameStateBase'):GetServerWorldTimeSeconds() end)
  return ok and tonumber(t) or nil
 end
--- The spell's cooldown, read LIVE from its data asset (other mods may change
--- UUtilitySpellData.CooldownDuration at any time), adjusted by its modifier
--- perk. Falls back to the catalogue value. 0 means no cooldown.
+-- The spell's cooldown, read from its data asset (other mods may change
+-- UUtilitySpellData.CooldownDuration at any time) once per wheel opening, adjusted
+-- by its modifier perk. Falls back to the catalogue value. 0 means no cooldown.
+local durations=setmetatable({},{__mode='k'}) -- record -> seconds, reset on open
 local function liveCooldown(spell)
+ local cached=spell and durations[spell]
+ if cached then return cached end
  local value=spell and spell.cooldown
  local data=spell and spell.data
  if E.valid(data) then
@@ -249,11 +365,14 @@ local function liveCooldown(spell)
    value=base
    if base<=0 then return end
    local perk=data.CooldownModifierPerk.CooldownPerk
+   if not E.valid(perk) then return end
    local perks=E.valid(pc) and pc:GetSkillPerkComponent()
-   if E.valid(perk) and E.valid(perks) and perks:IsPerkUnlocked(perk) then value=data.CooldownModifierPerk.ModifiedCooldown end
+   if E.valid(perks) and perks:IsPerkUnlocked(perk) then value=data.CooldownModifierPerk.ModifiedCooldown end
   end)
  end
- return cooldowns:duration({cooldown=value})
+ local duration=cooldowns:duration({cooldown=value})
+ if spell then durations[spell]=duration end
+ return duration
 end
 M.liveCooldown=liveCooldown
 function M.syncNativeCooldowns(groups,now)
@@ -264,7 +383,8 @@ function M.syncNativeCooldowns(groups,now)
  for _,group in ipairs(groups or {}) do
   for _,spell in ipairs(group.spells) do
    local cast=E.valid(spell.data) and times[spell.data:GetAddress()]
-   local duration=liveCooldown(spell)
+   -- Without a cast time and without a timer there is nothing to update.
+   local duration=(cast or cooldowns.untilById[spell.id]) and liveCooldown(spell) or 0
    -- A waived spell: the game accepted it while a cooldown was shown, so it
    -- doesn't enforce one here (a no-cooldown mod, Creative worlds).
    if duration<=0 or cooldowns:isWaived(spell) then cooldowns:clear(spell)
@@ -368,6 +488,9 @@ local function bindSlot(spell,slot,index)
  end
 end
 
+-- Keys read while a cast is pending (confirm / cancel), for emote hand-off and
+-- for the open key: each key query is an engine call, so only these are read.
+local CAST_KEYS,EMOTE_KEYS,OPEN_KEYS={'accept','mouseLeft','back','close','toggle'},{'emote'},{'open'}
 local function open()
  unmuteSelectSound()
  -- This is called from the native spell-wheel open lifecycle (or its
@@ -376,8 +499,9 @@ local function open()
  -- If the native panel was rebuilt, rebind first instead of using stale widgets.
  if not panelAlive() then return end
  hideNativeWheel()
- openWasDown=device and device.sample().open==true or false
+ openWasDown=device and device.sample(OPEN_KEYS).open==true or false
  restore()
+ durations=setmetatable({},{__mode='k'}) -- read each spell's cooldown afresh
  local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
   -- Sync cooldowns from the game's own last-cast times as the wheel opens.
   local openedAt=gameTime()
@@ -396,7 +520,7 @@ local function open()
  if ui then ui.last='' end
  ui.show();controls(true)
  emoteHandoffAt=nil;emoteWheelActive=false;emoteWheelSeen=false
- emoteWasDown=device.sample().emote==true
+ emoteWasDown=device.sample(EMOTE_KEYS).emote==true
  local dpi=E.layout:GetViewportScale(pc)
  -- Start at the wheel's centre (the dead zone), so opening never pre-selects a skill.
  pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor((ui.height/2+ui.offsetY)*dpi))
@@ -422,6 +546,10 @@ local function selectSpell()
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
  pending={component=component,original=component.SelectedSpells[index],spell=spell.data,spellId=spell.id,record=spell,slot=slot,index=index,book=book,since=elapsed}
+ -- EUtilitySpellCastType::Instant (0) still enters SpellcastingMode for its
+ -- animation. It needs no second click; Placed/Aimed/AllowMovementThenCastInstant
+ -- do. Keep an unknown type conservative if the data cannot be read.
+ pcall(function() pending.instant=spell.data.CastType==0 end)
  bindSlot(spell,slot,index)
  -- Keep the original ordering: release wheel input before native selection.
  controls(false)
@@ -467,7 +595,7 @@ local function selectSpell()
   if name:find('SpellPlacement') or name:find('Spellcasting') then
    -- Aim/placement spells are only successful after the native confirm input.
    pending.awaitingConfirm=true
-   local sample=device.sample()
+   local sample=device.sample(CAST_KEYS)
    pending.confirmArmed=not (sample.accept or sample.mouseLeft)
    pending.cancelArmed=not (sample.back or sample.close)
   else
@@ -484,12 +612,23 @@ local function selectSpell()
   M.queue={}
  end
 end
+local ESCAPE,RIGHT_MOUSE -- key structs, made once on first use
+local NO_ACTIONS={}
+local PAD_KEYS={'accept','back','close','previous','next','up','down','left','right'}
+-- After a cast through the wheel or a cooldown notice, the game's cast times are
+-- followed for WATCH seconds with the wheel closed (cast completion and server
+-- replies arrive after it closes). Otherwise nothing is polled while closed:
+-- opening the wheel syncs from the game straight away.
+local WATCH=10
+local watchUntil=-1e9
 local function tick()
  frame=frame+1;elapsed=elapsed+.016
  if not cfg.Enabled or M.disabled then return end
  -- Bind objects without modifying visibility. The lifecycle hook below is
  -- responsible for replacing the spell selector only when the game opens it.
- if not bindWorld() then return end
+ local bound=bindWorld()
+ if perf then mark('bind') end
+ if not bound then return end
  -- The emote wheel is a separate native UI. If the player opens it while
  -- BetterSpellWheel is active, yield input ownership without resetting the
  -- game's input mode (controls(false) would force GameOnly and dismiss emotes).
@@ -517,18 +656,23 @@ local function tick()
    -- Targeting can become visible one or more frames after SelectSlice().
    pending.detectingMode=false
    pending.awaitingConfirm=true
-   local initialSample=device.sample()
+   local initialSample=device.sample(CAST_KEYS)
    pending.confirmArmed=not (initialSample.accept or initialSample.mouseLeft)
    pending.cancelArmed=not (initialSample.back or initialSample.close)
   end
   if pending.awaitingConfirm then
-   local sample=device.sample()
+   local sample=device.sample(CAST_KEYS)
    -- Native targeting can be cancelled with keyboard Escape or mouse-right
    -- as well as the controller back/close buttons. These two inputs are not
    -- part of the wheel's navigation mapping, so sample them directly here.
-   local cancelNow=sample.back or sample.close
-   pcall(function() cancelNow=cancelNow or pc:IsInputKeyDown({KeyName=FName('Escape')}) end)
-   pcall(function() cancelNow=cancelNow or pc:IsInputKeyDown({KeyName=FName('RightMouseButton')}) end)
+   -- An instant spell's animation can't be cancelled: its cast stands.
+   local cancelNow=false
+   if not pending.instant then
+    cancelNow=sample.back or sample.close
+    if not ESCAPE then pcall(function() ESCAPE,RIGHT_MOUSE={KeyName=FName('Escape')},{KeyName=FName('RightMouseButton')} end) end
+    pcall(function() cancelNow=cancelNow or pc:IsInputKeyDown(ESCAPE) end)
+    pcall(function() cancelNow=cancelNow or pc:IsInputKeyDown(RIGHT_MOUSE) end)
+   end
    if cancelNow then
     pending.cancelled=true
    elseif not pending.cancelArmed then
@@ -544,16 +688,11 @@ local function tick()
    end
   end
   if elapsed-pending.since>.15 and not targetingMode then
-   -- The native mode can briefly report Spellcasting for an instant cast as
-   -- well as for a targeted spell. Once that mode has ended, treat the cast as
-   -- successful unless the player explicitly cancelled it. Requiring a sampled
-   -- confirm here missed instant casts, so their cooldown only appeared after
-   -- the next attempt was rejected by the game's native cooldown check.
-   -- Targeted spells only start a cooldown if we actually observed the
+   -- Targeted spells only start an estimated cooldown if we observed the
    -- player's confirmation input. Leaving targeting mode alone is not proof
    -- of a successful cast: the player may have cancelled it.
    if pending.awaitingConfirm then
-    if pending.confirmed and not pending.cancelled then
+    if (pending.confirmed or pending.instant) and not pending.cancelled then
      startCooldown(pending.record)
     end
    elseif pending.detectingMode then
@@ -564,8 +703,24 @@ local function tick()
    restore()
   end
  end
- if not M.open then
-  local sample=device.sample()
+ if perf then mark('pending') end
+ -- Cast completion and server replies normally arrive AFTER the wheel closes.
+ -- Keep consuming authoritative cooldown data without requiring another open
+ -- or hover. Unconfirmed/cancelled targeting still creates no local estimate.
+ if pending then watchUntil=elapsed+WATCH end
+ if state then
+  if M.cooldownNotices[1] then
+   watchUntil=elapsed+WATCH
+   applyCooldownNotices(state.groups,gameTime())
+  end
+  if (M.open or elapsed<watchUntil) and elapsed-lastSync>=1 then
+   lastSync=elapsed
+   pcall(M.syncNativeCooldowns,state.groups,gameTime())
+  end
+ end
+ if perf then mark('cooldown') end
+ if not M.open and (emoteWheelActive or emoteHandoffAt) then
+  local sample=device.sample(EMOTE_KEYS)
   local t=os.clock()
   -- Switch back from the native emote wheel with a fresh X / Square press.
   -- Don't rely solely on CurrentInputMode: some builds keep reporting the prior
@@ -575,7 +730,9 @@ local function tick()
    emoteWasDown=true
    emoteWheelActive=false
    emoteHandoffAt=nil
+   if perf then mark('closed') end
    open()
+   if perf then mark('openWheel') end
    return
   end
   emoteWasDown=sample.emote==true
@@ -591,27 +748,30 @@ local function tick()
    if E.valid(pc) and sameObject(pc.CurrentInputMode,pc.EmotesInputMode) then emoteHandoffAt=nil
    elseif t-emoteHandoffAt>.6 then emoteHandoffAt=nil;emoteWheelActive=false;controls(false) end
   end
+ end
+ if not M.open then
+  -- (Closed and not handing over to emotes: no input is sampled at all.)
   -- Native-input takeover: let the game's own Q / controller binding open the
   -- spell wheel, then replace only its radial visuals. Do not synthesize a
   -- separate Q toggle or interpret Y taps ourselves (Y may also mount).
   local isNativeOpen=nativeOpen()
   if isNativeOpen and not nativeWasOpen then
    nativeWasOpen=true
+   if perf then mark('closed') end
    open()
+   if perf then mark('openWheel') end
    return
   elseif not isNativeOpen and not M.open then
    nativeWasOpen=false
   end
   -- Legacy keybind dispatchers can survive UE4SS script reloads. Ignore their
   -- old 'toggle'/'open' queue entries; native state above is the only opener.
-  M.queue={}
+  if M.queue[1]~=nil then M.queue={} end
+  if perf then mark('closed') end
   return
  end
  if not E.valid(ui.root) then M.close();return end
  local now=E.clock:GetGameTimeInSeconds(pc)
- applyCooldownNotices(state.groups,now)
- -- Follow the game's cast times while the wheel is open (once a second).
- if elapsed-lastSync>=1 then lastSync=elapsed;pcall(M.syncNativeCooldowns,state.groups,now) end
  local dt=math.min(.05,math.max(.001,now-lastTime));lastTime=now
  ui.resize()
  local x,y=ui.pointer()
@@ -635,7 +795,7 @@ local function tick()
  local moved=(pointerX and ((x-pointerX)^2+(y-pointerY)^2)>9) or math.abs(sample.mx or 0)>.5 or math.abs(sample.my or 0)>.5
  pointerX,pointerY=x,y
  local padActivity=sample.x*sample.x+sample.y*sample.y>=controller.deadzone^2
- for _,k in ipairs({'accept','back','close','previous','next','up','down','left','right'}) do if sample[k] then padActivity=true end end
+ for _,k in ipairs(PAD_KEYS) do if sample[k] then padActivity=true end end
  if padActivity and state.input~='controller' then
   state.input='controller';pad=controller.new();state.spell=nil;M.back=false
   local _,style=device.device();state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
@@ -655,19 +815,27 @@ local function tick()
  local group=state.groups[state.group];local spell=group and group.spells[state.spell]
  local hover=spell and spell.id or tostring(state.group)
  if hover~=M.hover then M.hover=hover;M.message=nil end
- local queue=M.queue;M.queue={}
+ local queue=M.queue
+ if queue[1]==nil then queue=NO_ACTIONS else M.queue={} end
  for _,action in ipairs(queue) do
   if action=='toggle' or action=='close' then M.close();return
   elseif action=='back' then state.group=nil;state.spell=nil;state.candidate=nil;state.page=1;M.message=nil;M.back=true
   elseif action=='previous' then model.turnPage(state,-1)
   elseif action=='next' then model.turnPage(state,1)
-  elseif action=='select' and elapsed-M.since>.15 then selectSpell();if not M.open then return end end
+  elseif action=='select' and elapsed-M.since>.15 then
+   if perf then mark('input') end
+   selectSpell()
+   if perf then mark('select') end
+   if not M.open then return end
+  end
  end
  -- Game HUD activation can restore game input underneath custom UI.
  if frame%12==0 or pc.bShowMouseCursor~=(state.input~='controller') then controls(true) end
  -- The game's open animation can reset the panel: re-hide it a few times a second.
  if frame%12==0 then hideNativeWheel() end
+ if perf then mark('input') end
  ui.draw(state,dt,M.message,now,cooldowns,spell)
+ if perf then mark('draw') end
 end
 function M.shutdown()
  unmuteSelectSound()
@@ -692,6 +860,30 @@ if not _G.BetterSpellWheelKeyDispatcher then
  RegisterKeyBind(0x46,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='previous' end end)
  RegisterKeyBind(0x47,function() local m=_G.BetterSpellWheel;if m and m.open then m.queue[#m.queue+1]='next' end end)
 end
+perfTick=function(started)
+ local now=os.clock()
+ local spent=now-started
+ perf.ticks=perf.ticks+1;perf.total=perf.total+spent;perf.max=math.max(perf.max,spent)
+ pcall(function()
+  if pc and radial and pcAlive() then
+   local dt=E.stats:GetWorldDeltaSeconds(pc)
+   perf.frames=perf.frames+1;perf.frameSum=perf.frameSum+dt;perf.frameMax=math.max(perf.frameMax,dt)
+  end
+ end)
+ local window=now-perf.since
+ if window<1 then return end
+ local parts={}
+ for name,t in pairs(perf.sections) do parts[#parts+1]=string.format('%s=%.3f',name,t*1000/window) end
+ table.sort(parts)
+ local calls={}
+ for name,n in pairs(perf.calls) do calls[#calls+1]=string.format('%s=%d',name,n) end
+ table.sort(calls)
+ local frame=perf.frames>0 and perf.frameSum/perf.frames or 0
+ log(string.format('perf %s ticks=%d busy=%.3fms/s worst=%.3fms [%s] frame=%.2fms(%.1ffps) worstFrame=%.1fms calls[%s] heap=%.0fKB',
+  M.open and 'open' or (pending and 'casting' or 'closed'),perf.ticks,perf.total*1000/window,perf.max*1000,table.concat(parts,' '),
+  frame*1000,frame>0 and 1/frame or 0,perf.frameMax*1000,table.concat(calls,' '),collectgarbage('count')))
+ perf.since=now;perf.ticks=0;perf.total=0;perf.max=0;perf.sections={};perf.calls={};perf.frames=0;perf.frameSum=0;perf.frameMax=0
+end
 -- Opt-in development console; dev.txt is never included in release archives.
 local devPoll
 local devFile=io.open(folder..'/dev.txt','r')
@@ -711,7 +903,10 @@ end
 M.handle=LoopInGameThreadWithDelay(16,function()
  if devPoll and frame%6==0 then pcall(devPoll) end
  if _G.BetterSpellWheel~=M then return end
+ local started=perf and os.clock()
+ if perf then perf.last=started end
  local ok,err=pcall(tick)
+ if perf then perfTick(started) end
  if not ok then
   log('Disabled after error; restoring native controls: '..tostring(err));M.disabled=true
   pcall(M.close);pcall(restoreNativePanel);pcall(restore);if device then pcall(device.shutdown) end

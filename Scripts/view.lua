@@ -104,7 +104,9 @@ return function(E, model, L)
    -- Cooldown strings can be longer than the slot number (e.g. '1m 02s').
    -- Give them their own smaller, wider centred label so the normal index stays crisp.
    local cooldownText=text('',{x=0,y=0,w=64,h=26},12,'DescriptionTextStyle',RED,true,false)
-   u.spells[i]={base=b,highlight=h,icon=icon,number=number,cooldownText=cooldownText,alpha=0}
+   u.spells[i]={base=b,highlight=h,icon=icon,number=number,cooldownText=cooldownText,alpha=0,
+    -- What each widget currently shows, so draw() only calls the engine on change.
+    widgets={b,h,icon,number,cooldownText},shown={2,2,2,2,2},want={},numberColor=MUTED,cooldownLabel=''}
    for _,w in ipairs({b,h,icon,number,cooldownText}) do w:SetVisibility(2) end
   end
 
@@ -127,6 +129,7 @@ return function(E, model, L)
   u.costFallbacks={}
   u.costNames={}
   u.costEntries={}
+  u.costColors={}
   u.inventoryCountCacheAt=0
   for i=1,4 do
    local icon=img(nil,{x=0,y=0,w=34,h=34},30)
@@ -169,7 +172,7 @@ return function(E, model, L)
    local changed=width~=u.width or height~=u.height or scale~=u.scale
    u.width,u.height=width,height
    if changed then
-    u.scale=scale
+    u.scale=scale;u.tipFits={}
     u.canvas:SetRenderScale({X=scale,Y=scale})
     local off=L.shiftY*scale
     if off~=u.offsetY then u.offsetY=off;u.canvasSlot:SetPosition({X=0,Y=off}) end
@@ -190,6 +193,9 @@ return function(E, model, L)
    u.resize(true);u.root:SetVisibility(3);u.root:SetRenderOpacity(0)
    u.fade=0;u.appliedFade=nil;u.last='';u.branchKey='';u.appliedBranchFade=nil;u.tipAlpha=0;u.tipAppliedAlpha=nil;u.lastSkillLabel=nil;u.lastSkillVisibility=nil;u.detailSkillAppliedOpacity=nil
    u.inventories=nil;u.inventoryCountCacheAt=0
+   -- Spell costs, tool text and rune icons are read once per opening.
+   -- Tooltip fits are re-measured once per opening as well.
+   u.details={};u.tipFits={}
   end
 
   local function readField(obj,key)
@@ -280,8 +286,20 @@ return function(E, model, L)
    return okA and okB and addrA==addrB
   end
 
-  local function playerRuneCount(item)
-   if not E.valid(item) or not E.valid(u.pc) then return nil end
+  -- Counts for all cost items in one walk of the player's inventories. Per item
+  -- this is the same as before: stack counts summed per inventory, then the
+  -- native count of that inventory is preferred when larger.
+  local function playerRuneCounts(items)
+   local result={}
+   if not E.valid(u.pc) then return result end
+   local wanted={}
+   for j,item in ipairs(items) do
+    if E.valid(item) then
+     local ok,addr=pcall(function() return item:GetAddress() end)
+     if ok then wanted[j]={item=item,addr=addr,total=0,found=false} end
+    end
+   end
+   if next(wanted)==nil then return result end
    local pawn=nil
    pcall(function() pawn=u.pc.Pawn end)
    if not E.valid(pawn) then pcall(function() pawn=u.pc:GetPawn() end) end
@@ -305,9 +323,8 @@ return function(E, model, L)
      end
     end
    end
-   local inventories=u.inventories
-   local total,found,matchedOwner=0,false,false
-   for _,inv in ipairs(inventories) do
+   local matchedOwner=false
+   for _,inv in ipairs(u.inventories) do
     if E.valid(inv) then
      local owner=nil
      pcall(function() owner=inv:GetOwner() end)
@@ -330,14 +347,23 @@ return function(E, model, L)
           local data=nil
           pcall(function() data=stack.ItemData end)
           if not E.valid(data) then pcall(function() data=stack:BP_GetItemData() end) end
-          if sameObject(data,item) then
-           local amount=nil
-           pcall(function() amount=stack.Count end)
-           if type(amount)~='number' then
-            local okAmount,value=pcall(function() return stack:GetStackSize() end)
-            if okAmount then amount=tonumber(value) end
+          local okAddr,addr=false,nil
+          if E.valid(data) then okAddr,addr=pcall(function() return data:GetAddress() end) end
+          if okAddr then
+           local amount,read=nil,false
+           for _,w in pairs(wanted) do
+            if w.addr==addr then
+             if not read then
+              read=true
+              pcall(function() amount=stack.Count end)
+              if type(amount)~='number' then
+               local okAmount,value=pcall(function() return stack:GetStackSize() end)
+               if okAmount then amount=tonumber(value) end
+              end
+             end
+             if type(amount)=='number' and amount>=0 then w.total=w.total+amount;w.found=true end
+            end
            end
-           if type(amount)=='number' and amount>=0 then total=total+amount;found=true end
           end
          end
         end
@@ -345,31 +371,42 @@ return function(E, model, L)
       end
       -- Only trust the native count API on a component owned by this player.
       -- Keep the larger value to avoid under-counting when slot traversal is partial.
-      local okCount,value=pcall(function() return inv:GetNumItemsByData(item) end)
-      value=okCount and tonumber(value) or nil
-      if value and value>=0 then
-       if not found or value>total then total=value end
-       found=true
-      elseif scanned and not found then
-       -- A successfully enumerated inventory with no matching stack means zero.
-       found=true
+      for _,w in pairs(wanted) do
+       local okCount,value=pcall(function() return inv:GetNumItemsByData(w.item) end)
+       value=okCount and tonumber(value) or nil
+       if value and value>=0 then
+        if not w.found or value>w.total then w.total=value end
+        w.found=true
+       elseif scanned and not w.found then
+        -- A successfully enumerated inventory with no matching stack means zero.
+        w.found=true
+       end
       end
      end
     end
    end
-   if not matchedOwner then return nil end
-   return found and total or nil
+   if not matchedOwner then return result end
+   for j,w in pairs(wanted) do result[j]=w.found and w.total or nil end
+   return result
   end
 
   local function updateRuneCountColours(force)
    local now=os.clock()
    if not force and now-(u.inventoryCountCacheAt or 0)<1.0 then return end
    u.inventoryCountCacheAt=now
-   for i,e in ipairs(u.costEntries or {}) do
-    local available=playerRuneCount(e.item)
+   local entries=u.costEntries or {}
+   if #entries==0 then return end
+   local items={}
+   for i,e in ipairs(entries) do items[i]=e.item end
+   local counts=playerRuneCounts(items)
+   for i,e in ipairs(entries) do
+    local available=counts[i]
     -- Unknown inventory state shows white.
     local color=available==nil and WHITE or (available>=e.count and ENOUGH or INSUFFICIENT)
-    set(u.costCounts[i],tostring(e.count),color)
+    if u.costColors[i]~=color then
+     u.costColors[i]=color
+     set(u.costCounts[i],tostring(e.count),color)
+    end
    end
   end
 
@@ -397,23 +434,40 @@ return function(E, model, L)
    return lines
   end
 
+  -- Measuring needs a layout prepass per candidate size; the outcome for a given
+  -- text is remembered (until the viewport scale changes) and simply re-applied.
+  u.tipFits={}
   local function layoutTip(tip,color)
    local box=L.tipText
+   local fit=u.tipFits[tip]
+   if fit then
+    pcall(function()
+     local font=u.tipText.Font;font.Size=fit.size;u.tipText:SetFont(font)
+    end)
+    set(u.tipText,fit.text,color or WHITE)
+    u.tipText.Slot:SetSize({X=box.w,Y=fit.height})
+    u.tipText.Slot:SetPosition({X=box.x,Y=box.y+(box.h-fit.height)/2})
+    return
+   end
    local height=box.h
+   local chosen,chosenText,measured
    for _,size in ipairs({14,13,12,11,10,9,8}) do
     local lines=wrapText(tip,math.max(10,math.floor(box.w/(size*.85))))
     pcall(function()
      local font=u.tipText.Font;font.Size=size;u.tipText:SetFont(font)
     end)
-    set(u.tipText,table.concat(lines,'\n'),color or WHITE)
+    chosen,chosenText=size,table.concat(lines,'\n')
+    set(u.tipText,chosenText,color or WHITE)
     pcall(function() u.root:ForceLayoutPrepass() end)
     local ok,s=pcall(function() return u.tipText:GetDesiredSize() end)
     local w,h=0,#lines*size*1.6 -- estimate if measuring is unavailable
-    if ok and s and tonumber(s.Y) and tonumber(s.Y)>0 then w,h=tonumber(s.X),tonumber(s.Y) end
+    measured=ok and s and tonumber(s.Y) and tonumber(s.Y)>0
+    if measured then w,h=tonumber(s.X),tonumber(s.Y) end
     height=h
     if w<=box.w and h<=box.h then break end
    end
    height=math.min(height+4,box.h)
+   if measured then u.tipFits[tip]={size=chosen,text=chosenText,height=height} end
    u.tipText.Slot:SetSize({X=box.w,Y=height})
    u.tipText.Slot:SetPosition({X=box.x,Y=box.y+(box.h-height)/2})
   end
@@ -452,6 +506,8 @@ return function(E, model, L)
     font.Size=10
     u.detailSkill:SetFont(font)
    end)
+   local cached=u.details and u.details[spell]
+   if not cached then
    local entries={}
    local ok=pcall(function()
     for _,moduleRef in ipairs(spell.data:GetModulesOfType(E.class('/Script/Dominion.SpellModule_CostItems'))) do
@@ -472,6 +528,10 @@ return function(E, model, L)
    local toolLabel=''
    pcall(function() toolLabel=spell.data.SpecialRequirementsText:ToString() end)
    toolLabel=tostring(toolLabel or ''):gsub('<[^>]*>',''):gsub('%s+',' '):gsub('^%s+',''):gsub('%s+$',''):gsub('%.$','')
+   cached={entries=entries,toolLabel=toolLabel}
+   if u.details then u.details[spell]=cached end
+   end
+   local entries,toolLabel=cached.entries,cached.toolLabel
    if toolLabel~='' then
     set(u.toolRequirement,toolLabel,WHITE)
     u.toolRequirement:SetVisibility(3)
@@ -489,18 +549,23 @@ return function(E, model, L)
     for i=1,count do
      local e=entries[i]
      local x=startX+(i-1)*gap
-     local itemName='Rune'
-     pcall(function() itemName=e.item.Name:ToString() end)
-     itemName=tostring(itemName):gsub('^.*[/%.]',''):gsub('_',' ')
-     itemName=itemName:gsub('^USD ',''):gsub('^Item ','')
+     local itemName=e.name
+     if not itemName then
+      itemName='Rune'
+      pcall(function() itemName=e.item.Name:ToString() end)
+      itemName=tostring(itemName):gsub('^.*[/%.]',''):gsub('_',' ')
+      itemName=itemName:gsub('^USD ',''):gsub('^Item ','')
+      e.name=itemName
+     end
      local nameText=u.costNames[i]
      local rowOffset=u.toolShown and 22 or 0
      nameText.Slot:SetPosition({X=x-34,Y=479+rowOffset});nameText.Slot:SetSize({X=68,Y=18})
      set(nameText,itemName,WHITE);nameText:SetVisibility(3)
      local icon=u.costIcons[i]
      icon.Slot:SetPosition({X=x-17,Y=498+rowOffset});icon.Slot:SetSize({X=34,Y=34})
-     local texture=resolveItemIcon(e.item)
-     if E.valid(texture) then
+     local texture=e.texture
+     if texture==nil or (texture and not E.valid(texture)) then texture=resolveItemIcon(e.item) or false;e.texture=texture end
+     if texture and E.valid(texture) then
       icon:SetBrushFromTexture(texture,false);icon:SetVisibility(3)
      else
       -- Keep the rune name above the slot; never render opaque UObject text.
@@ -512,7 +577,7 @@ return function(E, model, L)
      local countText=u.costCounts[i]
      countText.Slot:SetPosition({X=x-21,Y=534+rowOffset});countText.Slot:SetSize({X=42,Y=20})
      u.costEntries[i]=e
-     set(countText,tostring(e.count),WHITE);countText:SetVisibility(3)
+     set(countText,tostring(e.count),WHITE);countText:SetVisibility(3);u.costColors[i]=WHITE
     end
    end
   end
@@ -606,33 +671,45 @@ return function(E, model, L)
 
     for i,n in ipairs(u.spells) do
      local visible=b and i<=b.count
-     for _,w in ipairs({n.base,n.highlight,n.icon,n.number,n.cooldownText}) do
-      w:SetVisibility(visible and 3 or 2)
-     end
-
+     local cooldown=false
      if visible then
       local d=group.spells[b.first+i-1]
       local a=b.center-b.span/2+b.step*(i-.5)
-      n.base:SetRenderTransformAngle(math.deg(a))
-      n.highlight:SetRenderTransformAngle(math.deg(a))
+      if n.angle~=a then
+       n.angle=a
+       n.base:SetRenderTransformAngle(math.deg(a))
+       n.highlight:SetRenderTransformAngle(math.deg(a))
+       local iconBox=L.icon(model,a,model.geometry.spellRadius,64)
+       n.icon.Slot:SetPosition({X=iconBox.x,Y=iconBox.y})
+       local x,y=model.point(a,385)
+       n.number.Slot:SetPosition({X=L.cx+x-11,Y=L.cy+y-14})
+       n.cooldownText.Slot:SetPosition({X=L.cx+x-32,Y=L.cy+y-13})
+       n.cooldownText.Slot:SetSize({X=64,Y=26})
+      end
       n.active=state.spell==b.first+i-1
       n.unlocked=d.unlocked
 
-      local iconBox=L.icon(model,a,model.geometry.spellRadius,64)
-      n.icon.Slot:SetPosition({X=iconBox.x,Y=iconBox.y})
-      local x,y=model.point(a,385)
-      n.number.Slot:SetPosition({X=L.cx+x-11,Y=L.cy+y-14})
-      n.cooldownText.Slot:SetPosition({X=L.cx+x-32,Y=L.cy+y-13})
-      n.cooldownText.Slot:SetSize({X=64,Y=26})
-
       local t=u.texture(icons.spells[d.id]) or u.texture(icons.skills[group.id])
-      if E.valid(t) then n.icon:SetBrushFromTexture(t,false) end
+      if E.valid(t) and not rawequal(t,n.texture) then n.texture=t;n.icon:SetBrushFromTexture(t,false) end
       local remaining=cooldowns and cooldowns:remaining(d,now) or 0
-      n.cooldown=remaining>0
-      n.number:SetVisibility(n.cooldown and 2 or 3)
-      n.cooldownText:SetVisibility(n.cooldown and 3 or 2)
-      set(n.number,tostring(i),n.active and GOLD or MUTED)
-      if n.cooldown then set(n.cooldownText,cooldowns:format(remaining),RED) end
+      cooldown=remaining>0
+      local color=n.active and GOLD or MUTED
+      if n.numberColor~=color then n.numberColor=color;set(n.number,tostring(i),color) end
+      if cooldown then
+       local label=cooldowns:format(remaining)
+       if n.cooldownLabel~=label then n.cooldownLabel=label;set(n.cooldownText,label,RED) end
+      end
+     end
+     n.cooldown=cooldown
+     -- Same final visibility as before: hidden slots hide all five widgets; a
+     -- slot on cooldown shows its timer in place of its number.
+     local v=visible and 3 or 2
+     local want=n.want
+     want[1],want[2],want[3]=v,v,v
+     want[4]=visible and (cooldown and 2 or 3) or 2
+     want[5]=visible and (cooldown and 3 or 2) or 2
+     for k,w in ipairs(n.widgets) do
+      if n.shown[k]~=want[k] then n.shown[k]=want[k];w:SetVisibility(want[k]) end
      end
     end
    end

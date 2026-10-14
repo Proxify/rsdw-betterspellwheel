@@ -1,3 +1,21 @@
+# 0.4.3 — Much lighter in the background; cooldowns update while closed
+
+- Much lower background cost. The mod no longer searches the game's objects every
+  frame: with the wheel closed it now uses about 2-3 ms of game-thread time per second
+  instead of about 35, and about half as much while the wheel is open. The wheel only
+  redraws what changed.
+- Cooldown timers keep updating from the game after a cast while the wheel is closed,
+  so the right time shows as soon as you open the wheel again.
+- Instant spells (such as Tempest Shield and Windstep) start their timer when the cast
+  animation ends; aimed and placed spells still wait for your confirmation, and a
+  cancelled cast starts no timer.
+- The game still decides whether a spell can be cast; timers never block a cast.
+- New troubleshooting setting `PerfLog` in `config.txt` (default `false`): set `true` to
+  log the mod's per-second cost and the frame time to UE4SS.log. Leave it off for normal
+  play. Updating keeps your existing `config.txt`; add the line if you need it.
+
+Measured and checked in-game: `tests/live-perf-0.4.3.txt`, `docs/COOLDOWN-VALIDATION.md`.
+
 # 0.4.2 — Cooldowns follow the game (no-cooldown mods work again)
 
 - Fixed: with a mod that removes spell cooldowns (e.g. Utility Spells - No Cooldowns),

@@ -23,12 +23,12 @@ browse its spells, and cast without reaching for the mouse.
 
 ## Download and install
 
-**0.4.2 · Windows · Keyboard and mouse (controller: beta)**
+**0.4.3 · Windows · Keyboard and mouse (controller: beta)**
 
 | Download | Installation |
 | --- | --- |
-| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.2/BetterSpellWheel-0.4.2-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
-| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.2/BetterSpellWheel-0.4.2.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
+| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.3/BetterSpellWheel-0.4.3-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
+| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.3/BetterSpellWheel-0.4.3.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
 
 The EXE is a separate download. Setup preserves other mods and your existing
 settings on update; run it again to update or uninstall. The installer is unsigned.
@@ -74,6 +74,7 @@ in `config.txt` overrides Xbox hints when using Steam Input.
 
 Locked spells remain visible with their required level. Hovering alone never casts.
 To hide cooldown timers, set `ShowCooldowns=false` in `config.txt`.
+`PerfLog=true` writes the mod's per-second cost to UE4SS.log (troubleshooting only).
 To disable the mod, set `Enabled=false` in `config.txt` and restart the game.
 
 ## Credits
@@ -91,7 +92,8 @@ cooldowns (including ones started before loading in), rune colours, walking whil
 open, and saved spellbook slots.
 
 0.4.2 was checked in-game with and without Utility Spells - No Cooldowns (see
-`tests/live-cooldowns-0.4.2.txt`).
+`tests/live-cooldowns-0.4.2.txt`). 0.4.3's performance and cooldown changes were
+measured and checked in-game (`tests/live-perf-0.4.3.txt`, `docs/COOLDOWN-VALIDATION.md`).
 
 Not yet verified for 0.4.0: gamepads (the new right-stick and emote hand-off
 behaviour), playing on a dedicated server, ultrawide displays and other spell-wheel

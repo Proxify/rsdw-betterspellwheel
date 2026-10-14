@@ -49,11 +49,24 @@ local lib=obj('lib');function lib:SetInputMode_UIOnlyEx()end;function lib:SetInp
 function lib:SetInputMode_GameAndUIEx()end
 function lib:GetGameTimeInSeconds()return clock end
 function lib:GetViewportScale()return 1 end
-function StaticFindObject(path)if path=='/Engine/Transient.Panel_0' then return panelAlive and panel or nil end;return lib end
+-- Long-lived objects are re-resolved by object path (hash lookup), as in game.
+local PC_PATH,MAGIC_PATH='/Game/Maps/W.W:PersistentLevel.BP_PlayerController_C_0','/Game/Maps/W.W:PersistentLevel.Char_0.Magic'
+local pcAtPath -- nil: the controller itself; false: gone; or a replacement object
+function pc:GetFullName()return 'BP_PlayerController_C '..PC_PATH end
+local magicComponentLookups=0
+function StaticFindObject(path)
+ if path=='/Engine/Transient.Panel_0' then return panelAlive and panel or nil end
+ if path==PC_PATH then if pcAtPath==nil then return pc end;return pcAtPath or nil end
+ if path==MAGIC_PATH then return magicAtPath end
+ return lib
+end
 function LoadAsset()return lib end
 function FindFirstOf(name)if name=='BP_PlayerController_C' then return pc else return input end end
 local castTimes={}
 local magic=obj('magic');function magic:GetOwner()return pc.Pawn end
+function magic:GetFullName()return 'PlayerUtilityMagicComponent '..MAGIC_PATH end
+magicAtPath=magic
+pc.Pawn.GetComponentByClass=function()magicComponentLookups=magicComponentLookups+1;return magic end
 magic.LastCastTimeBySpellData={ForEach=function(_,fn)for d,t in pairs(castTimes)do fn({get=function()return d end},{get=function()return t end})end end}
 function FindAllOf(name)if name=='PlayerUtilityMagicComponent' then return {magic} end;return {radial}end
 local failView=false
@@ -113,6 +126,16 @@ open();select();ticks(3);component:CancelSpellcasting();ticks(25);assert(cd()==0
 open();select();ticks(3);padSample={mouseLeft=true};ticks(2);padSample={};finish();assert(cd()>25,'confirmed aim starts cooldown');sameSlots()
 mod.cooldowns:clear(record);aim=false;instant=true
 open();select();ticks(25);assert(cd()>25,'instant cast starts cooldown');sameSlots()
+-- Instant spells can spend their animation in SpellcastingMode, without a
+-- second confirmation or a replicated cast-time entry on a joined client.
+mod.cooldowns:clear(record);instant=false;spell.CastType=0
+open();select();ticks(3);finish()
+assert(cd()>25,'instant animation starts timer without another click or native stamp');sameSlots()
+mod.cooldowns:clear(record);spell.CastType=3
+open();select();ticks(3);finish()
+assert(cd()==0,'movement-then-cast still requires confirmation')
+spell.CastType=nil;instant=true
+open();select();ticks(25)
 -- The game decides: a spell the estimate shows on cooldown is still attempted.
 -- When the game refuses it, the wheel stays open and says when it's ready.
 denied=true;before=calls;open();select();assert(calls>before and mod.open,'the native attempt is made, not blocked by the estimate')
@@ -123,6 +146,17 @@ mod.cooldowns:clear(record);castTimes[spell]=clock-10
 open();assert(math.abs(cd()-20)<1,'synced from the native cast time');keys[0x1B]();ticks()
 castTimes[spell]=clock-40;open();assert(cd()==0,'expired native cooldown is clear');keys[0x1B]();ticks()
 castTimes={};instant=false;record.cooldown=0;mod.shutdown()
+-- A cast may complete without a second sampled click (animation or native
+-- input). The game's timestamp must reach the timer with the wheel CLOSED.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+record.cooldown=30;aim=false;instant=false
+open();select();ticks(3);castTimes[spell]=clock;finish();ticks(70)
+assert(not mod.open and cd()>27,'closed wheel observes completed native cast')
+-- Server cooldown notices can arrive after the wheel closes, too.
+mod.cooldowns:clear(record);castTimes={}
+mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=10};ticks()
+assert(not mod.open and math.abs(cd()-20)<.1,'closed wheel applies server notice')
+mod.shutdown();record.cooldown=0
 -- 0.4.2 (report: cooldowns shown and casts refused with UtilitySpellsNoCooldown on
 -- a client). That mod rewrites LastCastTimeBySpellData to -1e9 every 500 ms, so the
 -- game accepts every cast; on a joined client the map may hold no entry at all.
@@ -189,6 +223,57 @@ x,y=0,-344;ticks();select();assert(not mod.open);padSample={};finish();sameSlots
 usingPad=true;padSample={};native=true;ticks(20);assert(mod.state.input=='controller')
 padSample={mx=4};ticks();assert(mod.state.input=='mouse')
 usingPad=false;padSample={};mod.shutdown()
+-- 0.4.3 review: an instant spell's animation can't be cancelled, so a back/Esc
+-- press during it does not stop its timer.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+record.cooldown=30;aim=false;instant=false;spell.CastType=0
+open();select();ticks(3);padSample={back=true};ticks(2);padSample={};finish()
+assert(cd()>25,'instant cast ignores cancel input');sameSlots()
+spell.CastType=nil;mod.cooldowns:clear(record)
+-- Perf: a closed wheel scans no objects, reads no game time and samples no input.
+local counts={}
+local function counted(name,fn) return function(...) counts[name]=(counts[name] or 0)+1;return fn(...) end end
+local findAll,findFirst,gameTimeFn,isOpen=FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen
+FindAllOf=counted('FindAllOf',findAll);FindFirstOf=counted('FindFirstOf',findFirst)
+lib.GetGameTimeInSeconds=counted('GetGameTimeInSeconds',gameTimeFn);input.IsOpen=counted('IsOpen',isOpen)
+mod.shutdown();mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+open();keys[0x1B]();ticks();assert(not mod.open and mod.state)
+ticks(700) -- past the post-activity cooldown watch window
+counts={}
+ticks(625) -- ten seconds
+assert((counts.FindAllOf or 0)==0,'closed wheel: no FindAllOf')
+assert((counts.FindFirstOf or 0)<=5,'closed wheel: controller re-verified at most every 2 s, got '..tostring(counts.FindFirstOf))
+assert((counts.GetGameTimeInSeconds or 0)==0,'closed wheel: no game-time reads without a notice or a recent cast')
+assert(counts.IsOpen==625,'closed wheel: one native open check per tick')
+-- The controller is checked by path every tick: a replacement or removal at
+-- that path is noticed on the next tick, not after the 2 s verification.
+counts={};pcAtPath=obj('pc-replacement');ticks();assert(counts.FindFirstOf==1,'replaced controller: rescan at once')
+pcAtPath=nil;ticks(130);counts={};pcAtPath=false;ticks();assert(counts.FindFirstOf==1,'controller path gone: rescan at once')
+pcAtPath=nil;ticks(130)
+-- ...but a notice arriving while closed is still applied, and opening syncs at once.
+record.cooldown=30
+mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=10};ticks()
+assert(math.abs(cd()-20)<.1,'closed: queued notice applied')
+mod.cooldowns:clear(record);castTimes[spell]=clock-5;counts={}
+open();assert(math.abs(cd()-25)<1,'open syncs immediately');keys[0x1B]();ticks()
+castTimes={};mod.cooldowns:clear(record);record.cooldown=0
+-- The magic component comes from the pawn, then from its path; a new pawn
+-- (respawn) is looked up again. No FindAllOf in either case.
+counts={};magicComponentLookups=0;record.cooldown=30;aim=false;instant=true
+open();select();ticks(25);keys[0x1B]();ticks(130)
+assert((counts.FindAllOf or 0)==0 and magicComponentLookups<=1,'magic component resolved by the pawn, then by path')
+local lookups=magicComponentLookups
+local oldPawn=pc.Pawn;pc.Pawn=obj('pawn-2');pc.Pawn.GetComponentByClass=oldPawn.GetComponentByClass
+open();keys[0x1B]();ticks()
+assert(magicComponentLookups==lookups+1 and (counts.FindAllOf or 0)==0,'new pawn: component looked up again')
+pc.Pawn=oldPawn;instant=false;record.cooldown=0;mod.cooldowns:clear(record)
+-- Unbound (menu/loading): the controller scan is retried a few times a second, not per tick.
+local pawn=pc.Pawn;pc.Pawn=nil;ticks(5);counts={}
+ticks(125)
+assert((counts.FindFirstOf or 0)<=9 and (counts.FindAllOf or 0)==0,'unbound: throttled scans, got '..tostring(counts.FindFirstOf))
+pc.Pawn=pawn;ticks(40);native=true;ticks(4);assert(mod.open,'rebinds after the pawn returns');keys[0x1B]();ticks()
+mod.shutdown()
+FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen=findAll,findFirst,gameTimeFn,isOpen
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
 for _=1,4 do callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')

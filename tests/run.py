@@ -33,6 +33,7 @@ lua.execute((root / "tests/layout_test.lua").read_text())
 lua.execute((root / "tests/controller_test.lua").read_text())
 lua.execute((root / "tests/input_test.lua").read_text())
 lua.execute((root / "tests/runtime_test.lua").read_text())
+lua.execute((root / "tests/view_perf_test.lua").read_text())
 
 # Wheel artwork: drawn by Scripts/art.lua into Assets/, valid PNGs, cached.
 import struct, tempfile, zlib
