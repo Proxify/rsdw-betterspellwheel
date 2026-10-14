@@ -1,8 +1,9 @@
 param([ValidateSet('Guard','Suite')][string]$Mode='Suite',
-      [string]$Installer='D:\rsdw-mods\dist\BetterSpellWheel-0.4.3-setup.exe',
-      [string]$Manifest='D:\rsdw-mods\dist\BetterSpellWheel-0.4.3-setup.manifest.json')
+      [string]$Installer='D:\rsdw-mods\dist\BetterSpellWheel-0.4.4-setup.exe',
+      [string]$Manifest='D:\rsdw-mods\dist\BetterSpellWheel-0.4.4-setup.manifest.json',
+      [string]$TestRoot='D:\rsdw-mods\repl')
 $ErrorActionPreference='Stop'
-$root=Join-Path 'D:\rsdw-mods\repl' ('bsw-installer-tests-'+[guid]::NewGuid().ToString('N'))
+$root=Join-Path $TestRoot ('bsw-installer-tests-'+[guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $root | Out-Null
 $results=[System.Collections.Generic.List[string]]::new()
 $hashes=Get-Content -Raw $Manifest | ConvertFrom-Json
@@ -108,7 +109,7 @@ try {
   Assert (@(Get-ChildItem -Force $outside).Count -eq 1) 'Junction target gained files'
   Pass 'junction install/uninstall refused with linked source intact'
   $interactive=Game 'interactive'
-  [IO.File]::WriteAllText('D:\rsdw-mods\repl\bsw-installer-interactive-path.txt',$interactive)
+  [IO.File]::WriteAllText((Join-Path $TestRoot 'bsw-installer-interactive-path.txt'),$interactive)
  }
 } finally {
  $results | Set-Content (Join-Path $root 'results.txt')

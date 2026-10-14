@@ -1,9 +1,9 @@
--- BetterSpellWheel 0.4.3. Client UI; casting remains entirely native.
+-- BetterSpellWheel 0.4.4. Client UI; casting remains entirely native.
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.4.3',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.4.4',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
@@ -621,8 +621,11 @@ local PAD_KEYS={'accept','back','close','previous','next','up','down','left','ri
 -- opening the wheel syncs from the game straight away.
 local WATCH=10
 local watchUntil=-1e9
+local lastTickClock=os.clock()
 local function tick()
- frame=frame+1;elapsed=elapsed+.016
+ local clockNow=os.clock()
+ elapsed=elapsed+math.max(0,clockNow-lastTickClock);lastTickClock=clockNow
+ frame=frame+1
  if not cfg.Enabled or M.disabled then return end
  -- Bind objects without modifying visibility. The lifecycle hook below is
  -- responsible for replacing the spell selector only when the game opens it.
@@ -750,6 +753,12 @@ local function tick()
   end
  end
  if not M.open then
+  -- Construct the retained view and warm its icons while closed, during world
+  -- entry. Never move asset loads into the high-frequency hover path.
+  if not pending then
+   if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons)
+   elseif ui.warm then ui.warm() end
+  end
   -- (Closed and not handing over to emotes: no input is sampled at all.)
   -- Native-input takeover: let the game's own Q / controller binding open the
   -- spell wheel, then replace only its radial visuals. Do not synthesize a
@@ -900,10 +909,12 @@ if devFile then
   os.remove(dir..'out.txt');os.rename(dir..'out.tmp',dir..'out.txt')
  end
 end
-M.handle=LoopInGameThreadWithDelay(16,function()
+M.handle=LoopInGameThreadWithDelay(1,function()
  if devPoll and frame%6==0 then pcall(devPoll) end
  if _G.BetterSpellWheel~=M then return end
- local started=perf and os.clock()
+ local clockNow=os.clock()
+ if not M.open and not pending and clockNow-lastTickClock<.0159 then return end
+ local started=perf and clockNow
  if perf then perf.last=started end
  local ok,err=pcall(tick)
  if perf then perfTick(started) end

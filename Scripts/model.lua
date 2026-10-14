@@ -3,9 +3,9 @@
 local M = {}
 local TAU = math.pi * 2
 M.geometry = { inner = 132, outer = 248, branchInner = 248,
-    branchOuter = 432, skillRadius = 202, spellRadius = 344, dwell = 0.030,
+    branchOuter = 432, skillRadius = 202, spellRadius = 344, dwell = 0,
     hysteresis = math.rad(5), spellHysteresis = math.rad(5),
-    mouseSmoothing = 0.008, maxBranch = 6 }
+    mouseSmoothing = 0, maxBranch = 6 }
 
 -- Stable positions: a level-up must never rearrange a player's muscle memory.
 M.skills = {
@@ -103,15 +103,9 @@ function M.update(state, x, y, now)
     if not state.opened then return end
     local g, r, rawAngle = M.geometry, math.sqrt(x*x+y*y), M.angle(x,y)
 
-    -- Light angular smoothing for mouse movement only. This damps tiny
-    -- hand jitter without making the wheel feel laggy or changing radius.
+    -- Follow the pointer in the current frame. Boundary hysteresis below is
+    -- spatial; it prevents edge chatter without a dwell timer or input lag.
     local angle = rawAngle
-    if state.mouseAngle ~= nil then
-        local d = M.delta(rawAngle, state.mouseAngle)
-        local alpha = 1 - math.exp(-1 / (g.mouseSmoothing * 60))
-        alpha = math.max(0.80, math.min(0.98, alpha))
-        angle = (state.mouseAngle + d * alpha) % TAU
-    end
     state.mouseAngle = angle
 
     local previousSpell = state.spell

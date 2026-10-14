@@ -23,7 +23,7 @@ browse its spells, and cast without reaching for the mouse.
 
 ## Download and install
 
-**0.4.3 · Windows · Keyboard and mouse (controller: beta)**
+**Published: 0.4.3 · Windows · Keyboard and mouse (controller: beta)**
 
 | Download | Installation |
 | --- | --- |
@@ -117,3 +117,7 @@ You may use, modify and share it, but any redistribution or derivative work
 (forks, ports, modified builds, mods that include its code or artwork) must keep
 the [NOTICE](NOTICE) file and credit the original:
 "Based on BetterSpellWheel by Proxify — https://github.com/Proxify/rsdw-betterspellwheel".
+
+## Unreleased 0.4.4 candidate
+
+Rapid navigation now retains icon assets and responds in the current game frame, without selection delays or fades. See [validation](docs/INSTANT-VALIDATION.md) for measurements and coverage. The download links above remain the published 0.4.3 release.

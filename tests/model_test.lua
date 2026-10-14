@@ -31,16 +31,16 @@ near(model.angle(1,0),math.pi/2,"three o'clock")
 near(model.delta(0,math.pi*2-0.1),0.1,"wrap across north")
 local s=model.new(groups)
 model.update(s,0,-202,0)
-eq(s.group,nil,"hover dwell filters motion noise")
+eq(s.group,1,"skill selected on the first pointer sample")
 model.update(s,0,-202,0.06)
 eq(s.group,1,"hover opens branch")
 eq(model.selection(s),nil,"skill hover never selects a spell")
 local branch=model.branch(s)
 eq(branch.count,3)
--- Mouse angle smoothing converges over a few ticks; settle like a still pointer.
+-- One pointer sample must select a target; hysteresis remains spatial.
 local function at(angle,radius,time)
     local x,y=model.point(angle,radius)
-    for _=1,6 do model.update(s,x,y,time or 1) end
+    model.update(s,x,y,time or 1)
 end
 at(-branch.step,344)
 eq(model.selection(s).id,"first","left side of north-crossing fan")
@@ -92,15 +92,15 @@ eq(s.group,nil)
 local empty=model.new({})
 model.update(empty,0,-200,0)
 eq(model.selection(empty),nil,"empty catalogue is safe")
--- A pointer that jumps directly outside must dwell on a skill first, and
+-- A pointer that jumps directly outside first chooses the skill, and
 -- cannot click a stale spell from the previous open.
 s=model.new(groups)
 local nx,ny=model.point(0,344)
 model.update(s,nx,ny,0)
-eq(s.group,nil)
-model.update(s,nx,ny,0.06)
 eq(s.group,1)
 eq(model.selection(s),nil)
+model.update(s,nx,ny,0.06)
+eq(s.group,1)
 at(0,344,0.08)
 eq(model.selection(s).id,"second")
 -- Exercise every angular position, including the +/-pi seam.
@@ -119,3 +119,15 @@ for i=1,#groups do
     end
 end
 print("PASS: "..checks.." radial and catalogue checks")
+
+-- Rapid movement across every skill is handled in the same sample, with no
+-- requirement for elapsed time. The selected spell is always cleared.
+s=model.new(groups)
+for lap=1,3 do
+ for i=1,#groups do
+  local x,y=model.point(model.skillAngle(i,#groups),202)
+  model.update(s,x,y,0)
+  eq(s.group,i,'instant skill transition')
+  eq(model.selection(s),nil,'skill change cannot cast the previous spell')
+ end
+end

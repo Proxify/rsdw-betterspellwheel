@@ -1,7 +1,7 @@
--- The optimised view must draw exactly what 0.4.2 drew. Both views run side by
+-- Visible content and casting feedback must match 0.4.2. Both views run side by
 -- side against a recording UMG mock through the same wheel states; after every
--- frame each widget's final state (visibility, text, colour, font size,
--- opacity, angle, brush, slot position/size) must match, while the new view
+-- settled target, text, colour, font, visibility and icons match. The new view
+-- removes deliberate dwell/fades and adds hidden texture-retention brushes. It
 -- makes far fewer engine calls. tests/reference/view-0.4.2.lua is the frozen
 -- 0.4.2 view and is never shipped.
 local root=arg[1]:gsub('/Scripts/model.lua$','')
@@ -107,6 +107,9 @@ local inventory={IsValid=function() return true end,GetOwner=function() return p
   return slots
  end,
  GetNumItemsByData=function(_,it) for k,v in pairs(held) do if it.GetAddress()==k then return v end end;return 0 end}
+function inventory:GetAddress() return 'inventory' end
+function pc:K2_GetComponentsByClass() return {{get=function() return inventory end}} end
+function pc.Pawn:K2_GetComponentsByClass() return {} end
 local scans=0
 function FindAllOf(name) scans=scans+1;assert(name=='InventoryComponent');return {inventory} end
 
@@ -139,22 +142,40 @@ local function instance(path)
 end
 local old=instance(root..'/tests/reference/view-0.4.2.lua')
 local new=instance(root..'/Scripts/view.lua')
-assert(old.rec.n==new.rec.n,'same widget tree')
+-- The candidate has additional hidden texture-retention brushes.
+local loadCount=0
+local oldAsset=new.E.asset
+new.E.asset=function(...) loadCount=loadCount+1;return oldAsset(...) end
+while not new.u.warm() do end
+local warmedLoads=loadCount
 
 local state=model.new(groups)
 local now,frames=100,0
 local function compare(label)
- local a,b=snapshot(old.rec),snapshot(new.rec)
- for i=1,#a do
-  if a[i]~=b[i] then error(label..': widget '..i..' differs\n0.4.2: '..a[i]..'\nnew:   '..b[i]) end
+ -- Compare player-visible properties, independent of hidden brush keepers and
+ -- deliberate removal of interpolation. These references identify the same UI.
+ local function widget(a,b,name)
+  for _,key in ipairs({'SetVisibility','SetText','SetFont','SetColorAndOpacity','SetBrushFromTexture','SetRenderTransformAngle'}) do
+   if not (name=='tipText' and key=='SetVisibility') then
+   assert(a.__state[key]==b.__state[key],label..' '..name..' '..key..': '..tostring(a.__state[key])..' != '..tostring(b.__state[key]))
+   end
+  end
  end
+ for _,key in ipairs({'detailTitle','detailSkill','requirementsLabel','toolRequirement','tipText'}) do widget(old.u[key],new.u[key],key) end
+ for i,a in ipairs(old.u.spells) do
+  local b=new.u.spells[i]
+  for _,key in ipairs({'base','highlight','icon','number','cooldownText'}) do widget(a[key],b[key],'spell '..i..' '..key) end
+ end
+ for i=1,4 do for _,key in ipairs({'costIcons','costNames','costCounts','costFallbacks'}) do widget(old.u[key][i],new.u[key][i],key..i) end end
 end
 local function frame(message,label,n)
  for _=1,n or 1 do
   frames=frames+1;now=now+.016;fake=fake+.016
   local group=state.groups[state.group];local spell=group and group.spells[state.spell]
   for _,v in ipairs({old,new}) do v.u.resize();v.u.pointer();v.u.draw(state,.016,message,now,v.cool,spell) end
-  compare(label..' frame '..frames)
+  if _==(n or 1) then compare(label..' frame '..frames) end
+  assert(new.u.fade==1 and new.u.branchFade==1,'navigation must not wait for fade-in')
+  for i,skill in ipairs(new.u.skills) do assert(skill.alpha==(i==state.group and 1 or 0),'skill highlight must be immediate') end
  end
 end
 local function both(fn) for _,v in ipairs({old,new}) do fn(v) end end
@@ -192,4 +213,23 @@ local oldSteady,newSteady=(old.rec.calls-o0)/600,(new.rec.calls-n0)/600
 os.clock=realClock
 assert(newCalls<oldCalls*.75,('engine calls not reduced enough: %d -> %d'):format(oldCalls,newCalls))
 assert(newSteady<=oldSteady*.6,('steady open frame calls: %.2f -> %.2f'):format(oldSteady,newSteady))
-print(('PASS: optimised view draws exactly what 0.4.2 drew over %d frames; engine calls %d -> %d (scenario), %.2f -> %.2f per steady open frame'):format(frames,oldCalls,newCalls,oldSteady,newSteady))
+print(('PASS: visible view state matches 0.4.2 with immediate highlights over %d frames; engine calls %d -> %d (scenario), %.2f -> %.2f per steady open frame'):format(frames,oldCalls,newCalls,oldSteady,newSteady))
+
+-- Cached Lua wrappers alone are insufficient: every asset path must also be
+-- referenced by a retained native brush, including icons never hovered yet.
+local pinned=0
+for path,t in pairs(new.u.textures) do
+ if path:sub(1,1)=='/' then
+  local pin=new.u.texturePins[path]
+  assert(pin and pin.Slot and pin.__state.SetVisibility=='2','missing retained hidden brush: '..path)
+  assert(pin.__state.SetBrushFromTexture==ser({t,false}),'brush does not reference cached texture: '..path)
+  pinned=pinned+1
+ end
+end
+assert(pinned>=12,'all skill textures retained')
+local loadsBefore=loadCount
+new.u.hide();new.u.show()
+for _,path in pairs(icons.spells) do new.u.texture(path) end
+assert(loadCount==loadsBefore,'reopening must reuse warmed spell textures')
+assert(new.u.tipFits[next(new.u.tipFits)]~=nil,'tooltip measurements survive reopening')
+print('PASS: asset brush retention, prewarming and cache reuse across reopen')

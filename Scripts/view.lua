@@ -71,9 +71,24 @@ return function(E, model, L)
    if color then tb:SetColorAndOpacity({SpecifiedColor=color,ColorUseRule=0}) end
   end
 
+  -- Lua UObject wrappers do not keep textures alive through Unreal GC. Each
+  -- cached texture also belongs to a hidden UMG brush retained by this tree.
+  -- Otherwise revisiting a branch can synchronously reload its icons.
+  u.texturePins={}
   function u.texture(path)
    if not path or path=='' then return nil end
-   if not E.valid(u.textures[path]) then u.textures[path]=E.asset(path) end
+   if not E.valid(u.textures[path]) then
+    local texture=E.asset(path)
+    u.textures[path]=texture
+    if E.valid(texture) then
+     local pin=u.texturePins[path]
+     if not pin then
+      pin=widget('Image');pin:SetVisibility(2)
+      rootCanvas:AddChildToCanvas(pin);u.texturePins[path]=pin
+     end
+     pin:SetBrushFromTexture(texture,false)
+    end
+   end
    return u.textures[path]
   end
 
@@ -172,7 +187,7 @@ return function(E, model, L)
    local changed=width~=u.width or height~=u.height or scale~=u.scale
    u.width,u.height=width,height
    if changed then
-    u.scale=scale;u.tipFits={}
+    u.scale=scale;u.tipFits={};u.tipFitCount=0
     u.canvas:SetRenderScale({X=scale,Y=scale})
     local off=L.shiftY*scale
     if off~=u.offsetY then u.offsetY=off;u.canvasSlot:SetPosition({X=0,Y=off}) end
@@ -189,13 +204,26 @@ return function(E, model, L)
    u.root:SetVisibility(2);u.last=''
   end
 
+  -- Warm one icon at a time during world entry, before the player opens the
+  -- wheel. The brush pins keep this bounded set resident for the view lifetime.
+  local warmPaths={}
+  for _,path in pairs(icons.spells) do warmPaths[#warmPaths+1]=path end
+  table.sort(warmPaths)
+  local warmIndex=1
+  function u.warm()
+   local path=warmPaths[warmIndex]
+   if not path then return true end
+   u.texture(path);warmIndex=warmIndex+1
+   return warmIndex>#warmPaths
+  end
+
   function u.show()
-   u.resize(true);u.root:SetVisibility(3);u.root:SetRenderOpacity(0)
-   u.fade=0;u.appliedFade=nil;u.last='';u.branchKey='';u.appliedBranchFade=nil;u.tipAlpha=0;u.tipAppliedAlpha=nil;u.lastSkillLabel=nil;u.lastSkillVisibility=nil;u.detailSkillAppliedOpacity=nil
+   u.resize(true);u.root:SetVisibility(3);u.root:SetRenderOpacity(1)
+   u.fade=1;u.appliedFade=nil;u.last='';u.branchKey='';u.appliedBranchFade=nil;u.tipAlpha=0;u.tipAppliedAlpha=nil;u.lastSkillLabel=nil;u.lastSkillVisibility=nil;u.detailSkillAppliedOpacity=nil
    u.inventories=nil;u.inventoryCountCacheAt=0
    -- Spell costs, tool text and rune icons are read once per opening.
-   -- Tooltip fits are re-measured once per opening as well.
-   u.details={};u.tipFits={}
+   -- Measured text fits remain valid across openings; resize invalidates them.
+   u.details={}
   end
 
   local function readField(obj,key)
@@ -276,117 +304,44 @@ return function(E, model, L)
    return nil
   end
 
-  -- Count exact rune ItemData across the local player's inventory components.
-  -- Prefer scanning real UItem stacks: GetNumItemsByData can report a slot/item
-  -- count rather than the summed stack quantity in some game builds.
-  local function sameObject(a,b)
-   if not E.valid(a) or not E.valid(b) then return false end
-   local okA,addrA=pcall(function() return a:GetAddress() end)
-   local okB,addrB=pcall(function() return b:GetAddress() end)
-   return okA and okB and addrA==addrB
-  end
-
-  -- Counts for all cost items in one walk of the player's inventories. Per item
-  -- this is the same as before: stack counts summed per inventory, then the
-  -- native count of that inventory is preferred when larger.
+  -- Query only this player's inventories. A world-wide FindAllOf on first
+  -- hover scales with every chest/NPC; reading UItem stacks also creates
+  -- avoidable wrappers and risks stale stack objects during inventory updates.
   local function playerRuneCounts(items)
    local result={}
    if not E.valid(u.pc) then return result end
-   local wanted={}
-   for j,item in ipairs(items) do
-    if E.valid(item) then
-     local ok,addr=pcall(function() return item:GetAddress() end)
-     if ok then wanted[j]={item=item,addr=addr,total=0,found=false} end
-    end
-   end
-   if next(wanted)==nil then return result end
-   local pawn=nil
-   pcall(function() pawn=u.pc.Pawn end)
-   if not E.valid(pawn) then pcall(function() pawn=u.pc:GetPawn() end) end
-   -- In this game build, the inventory components found by the probe are
-   -- owned by BP_PlayerController_C, not necessarily by the pawn.
-   local owners={}
+   local owners={u.pc}
+   local pawn=u.pc.Pawn
    if E.valid(pawn) then owners[#owners+1]=pawn end
-   owners[#owners+1]=u.pc
-   -- FindAllOf walks every inventory in the world (chests, NPCs). Do it once
-   -- per wheel opening and keep only this player's components.
    if not u.inventories then
     u.inventories={}
-    local okList,all=pcall(function() return FindAllOf('InventoryComponent') end)
-    if okList and type(all)=='table' then
-     for _,inv in ipairs(all) do
-      local owner=nil
-      pcall(function() owner=inv:GetOwner() end)
-      for _,candidate in ipairs(owners) do
-       if sameObject(owner,candidate) then u.inventories[#u.inventories+1]=inv;break end
-      end
-     end
-    end
-   end
-   local matchedOwner=false
-   for _,inv in ipairs(u.inventories) do
-    if E.valid(inv) then
-     local owner=nil
-     pcall(function() owner=inv:GetOwner() end)
-     local belongs=false
-     for _,candidate in ipairs(owners) do
-      if sameObject(owner,candidate) then belongs=true;break end
-     end
-     if belongs then
-      matchedOwner=true
-      local scanned=false
-      local okSlots,slots=pcall(function() return inv:GetItemSlots() end)
-      if okSlots and slots then
-       local okN,n=pcall(function() return slots:GetArrayNum() end)
-       if okN and type(n)=='number' then
-        scanned=true
-        for slot=1,n do
-         local stack=nil
-         pcall(function() stack=slots[slot] end)
-         if E.valid(stack) then
-          local data=nil
-          pcall(function() data=stack.ItemData end)
-          if not E.valid(data) then pcall(function() data=stack:BP_GetItemData() end) end
-          local okAddr,addr=false,nil
-          if E.valid(data) then okAddr,addr=pcall(function() return data:GetAddress() end) end
-          if okAddr then
-           local amount,read=nil,false
-           for _,w in pairs(wanted) do
-            if w.addr==addr then
-             if not read then
-              read=true
-              pcall(function() amount=stack.Count end)
-              if type(amount)~='number' then
-               local okAmount,value=pcall(function() return stack:GetStackSize() end)
-               if okAmount then amount=tonumber(value) end
-              end
-             end
-             if type(amount)=='number' and amount>=0 then w.total=w.total+amount;w.found=true end
-            end
-           end
-          end
-         end
-        end
-       end
-      end
-      -- Only trust the native count API on a component owned by this player.
-      -- Keep the larger value to avoid under-counting when slot traversal is partial.
-      for _,w in pairs(wanted) do
-       local okCount,value=pcall(function() return inv:GetNumItemsByData(w.item) end)
-       value=okCount and tonumber(value) or nil
-       if value and value>=0 then
-        if not w.found or value>w.total then w.total=value end
-        w.found=true
-       elseif scanned and not w.found then
-        -- A successfully enumerated inventory with no matching stack means zero.
-        w.found=true
+    local seen={}
+    local class=E.class('/Script/Dominion.InventoryComponent')
+    for _,owner in ipairs(owners) do
+     local ok,refs=pcall(function() return owner:K2_GetComponentsByClass(class) end)
+     if ok and type(refs)=='table' then
+      for _,ref in ipairs(refs) do
+       local inv=ref:get()
+       if E.valid(inv) then
+        local addr=inv:GetAddress()
+        if not seen[addr] then seen[addr]=true;u.inventories[#u.inventories+1]=inv end
        end
       end
      end
     end
    end
-   if not matchedOwner then return result end
-   for j,w in pairs(wanted) do result[j]=w.found and w.total or nil end
+   for i,item in ipairs(items) do
+    if E.valid(item) then
+     local total,known=0,false
+     for _,inv in ipairs(u.inventories) do
+      if E.valid(inv) then
+       local ok,n=pcall(function() return inv:GetNumItemsByData(item) end)
+       if ok and type(n)=='number' and n>=0 then total=total+n;known=true end
+      end
+     end
+     if known then result[i]=total end
+    end
+   end
    return result
   end
 
@@ -458,7 +413,7 @@ return function(E, model, L)
     end)
     chosen,chosenText=size,table.concat(lines,'\n')
     set(u.tipText,chosenText,color or WHITE)
-    pcall(function() u.root:ForceLayoutPrepass() end)
+    pcall(function() u.tipText:ForceLayoutPrepass() end)
     local ok,s=pcall(function() return u.tipText:GetDesiredSize() end)
     local w,h=0,#lines*size*1.6 -- estimate if measuring is unavailable
     measured=ok and s and tonumber(s.Y) and tonumber(s.Y)>0
@@ -467,7 +422,12 @@ return function(E, model, L)
     if w<=box.w and h<=box.h then break end
    end
    height=math.min(height+4,box.h)
-   if measured then u.tipFits[tip]={size=chosen,text=chosenText,height=height} end
+   if measured then
+    -- Refusal strings can contain changing cooldown values; bound this cache.
+    if (u.tipFitCount or 0)>=128 then u.tipFits={};u.tipFitCount=0 end
+    u.tipFits[tip]={size=chosen,text=chosenText,height=height}
+    u.tipFitCount=(u.tipFitCount or 0)+1
+   end
    u.tipText.Slot:SetSize({X=box.w,Y=height})
    u.tipText.Slot:SetPosition({X=box.x,Y=box.y+(box.h-height)/2})
   end
@@ -583,7 +543,7 @@ return function(E, model, L)
   end
 
   function u.draw(state,dt,message,now,cooldowns,selectedSpell)
-   local fade=math.min(1,(u.fade or 0)+dt/.12)
+   local fade=1
    if fade>=.995 then fade=1 end
    u.fade=fade
    if fade~=u.appliedFade then
@@ -601,26 +561,10 @@ return function(E, model, L)
     end
    end
 
-   local tipTarget=u.tipHas and 1 or 0
-   local tipDelta=tipTarget-u.tipAlpha
-   if math.abs(tipDelta)<.01 then u.tipAlpha=tipTarget
-   else u.tipAlpha=u.tipAlpha+tipDelta*math.min(1,dt*18) end
-   local ta=u.tipAlpha<.02 and 0 or u.tipAlpha
-   local shown=ta>0
-   if shown~=u.tipShown then
-    u.tipShown=shown
-    for _,w in ipairs(u.tipAll) do w:SetVisibility(shown and 3 or 2) end
-   end
-   if shown and (not u.tipAppliedAlpha or math.abs(ta-u.tipAppliedAlpha)>.005) then
-    u.tipAppliedAlpha=ta
-    for _,w in ipairs(u.tipAll) do w:SetRenderOpacity(ta) end
-   elseif not shown then u.tipAppliedAlpha=0 end
-
    local group=state.groups[state.group]
    for i,n in ipairs(u.skills) do
     local target=i==state.group and 1 or 0
-    local delta=target-n.alpha
-    if math.abs(delta)<.005 then n.alpha=target else n.alpha=n.alpha+delta*math.min(1,dt*20) end
+    n.alpha=target
     if n.appliedAlpha~=n.alpha then n.highlight:SetRenderOpacity(n.alpha);n.appliedAlpha=n.alpha end
     local iconAlpha=(not group or i==state.group) and 1 or .65
     if n.iconAlpha~=iconAlpha then n.icon:SetRenderOpacity(iconAlpha);n.iconAlpha=iconAlpha end
@@ -628,7 +572,7 @@ return function(E, model, L)
 
    local branchKey=tostring(state.group)..':'..state.page
    if branchKey~=u.branchKey then u.branchKey=branchKey;u.branchFade=0;u.appliedBranchFade=nil end
-   local branchFade=math.min(1,(u.branchFade or 0)+dt/.1)
+   local branchFade=1
    if branchFade>=.995 then branchFade=1 end
    u.branchFade=branchFade
 
@@ -641,6 +585,19 @@ return function(E, model, L)
     drawDetails(selectedSpell)
     if message and message~='' then layoutTip(message,RED);u.tipHas=true end
    end
+   local tipTarget=u.tipHas and 1 or 0
+   u.tipAlpha=tipTarget
+   local ta=u.tipAlpha<.02 and 0 or u.tipAlpha
+   local shown=ta>0
+   if shown~=u.tipShown then
+    u.tipShown=shown
+    for _,w in ipairs(u.tipAll) do w:SetVisibility(shown and 3 or 2) end
+   end
+   if shown and (not u.tipAppliedAlpha or math.abs(ta-u.tipAppliedAlpha)>.005) then
+    u.tipAppliedAlpha=ta
+    for _,w in ipairs(u.tipAll) do w:SetRenderOpacity(ta) end
+   elseif not shown then u.tipAppliedAlpha=0 end
+
    -- Show the current skill name in the centre while navigating the OUTER
    -- skill ring. Once the player moves into the inner spell ring, hide it so
    -- the centre is reserved for the spell details. Do not alter outer-ring
@@ -725,8 +682,7 @@ return function(E, model, L)
    end
    for _,n in ipairs(u.spells) do
     local target=n.active and 1 or 0
-    local delta=target-n.alpha
-    if math.abs(delta)<.005 then n.alpha=target else n.alpha=n.alpha+delta*math.min(1,dt*22) end
+    n.alpha=target
     local highlightAlpha=n.alpha*branchFade
     if n.appliedHighlightAlpha~=highlightAlpha then
      n.highlight:SetRenderOpacity(highlightAlpha)

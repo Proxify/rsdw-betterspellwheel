@@ -4,6 +4,8 @@ local realDofile=dofile
 local root=arg[1]:gsub('/Scripts/model.lua$','')
 local model=realDofile(root..'/Scripts/model.lua')
 local clock,book,native,aim,denied,instant=0,0,false,false,false,false
+local realClock=os.clock
+os.clock=function() return clock end
 local x,y=0,0
 local padSample,usingPad={},false
 local captured=false
@@ -275,6 +277,8 @@ pc.Pawn=pawn;ticks(40);native=true;ticks(4);assert(mod.open,'rebinds after the p
 mod.shutdown()
 FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen=findAll,findFirst,gameTimeFn,isOpen
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
-for _=1,4 do callback() end
+for _=1,4 do clock=clock+.02;callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')
 print('PASS: native adapter denial, four-book offsets, pending aim/cancel, empty slot, concurrent update, lock, deadzone, shutdown and native fallback checks')
+
+os.clock=realClock

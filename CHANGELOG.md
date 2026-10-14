@@ -1,3 +1,15 @@
+# 0.4.4 — Instant wheel navigation (unreleased candidate)
+
+- Keep icons resident in Unreal and preload spell icons while the wheel is closed,
+  preventing repeat synchronous asset loads during rapid navigation.
+- Select and highlight in the current frame, with no dwell, smoothing or fades.
+  Spatial boundary hysteresis still prevents accidental edge flicker.
+- Update the open wheel every game frame; retain throttled background work.
+- Measure only tooltip text and retain bounded text-fit results across openings.
+- Read rune totals from the local player’s inventory components without a world-wide search.
+
+Measured against the native wheel on SudoBlade; see `docs/INSTANT-VALIDATION.md`.
+
 # 0.4.3 — Much lighter in the background; cooldowns update while closed
 
 - Much lower background cost. The mod no longer searches the game's objects every
