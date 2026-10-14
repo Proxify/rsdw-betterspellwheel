@@ -25,7 +25,7 @@ return function(E)
    return s
   end
   function i.device()
-   local sub=FindFirstOf('CommonInputSubsystem')
+   local sub=(E.findFirst or FindFirstOf)('CommonInputSubsystem')
    if not E.valid(sub) then return false,'xbox' end
    local name=sub:GetCurrentGamepadName():ToString():lower()
    return sub:GetCurrentInputType()==1,(name:find('ps') or name:find('playstation') or name:find('dualsense') or name:find('dualshock')) and 'playstation' or 'xbox'

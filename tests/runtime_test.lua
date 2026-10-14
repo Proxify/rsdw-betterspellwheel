@@ -210,6 +210,42 @@ x,y=0,-344;ticks();select();assert(not mod.open);padSample={};finish();sameSlots
 usingPad=true;padSample={};native=true;ticks(20);assert(mod.state.input=='controller')
 padSample={mx=4};ticks();assert(mod.state.input=='mouse')
 usingPad=false;padSample={};mod.shutdown()
+-- 0.4.3 review: an instant spell's animation can't be cancelled, so a back/Esc
+-- press during it does not stop its timer.
+mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+record.cooldown=30;aim=false;instant=false;spell.CastType=0
+open();select();ticks(3);padSample={back=true};ticks(2);padSample={};finish()
+assert(cd()>25,'instant cast ignores cancel input');sameSlots()
+spell.CastType=nil;mod.cooldowns:clear(record)
+-- Perf: a closed wheel scans no objects, reads no game time and samples no input.
+local counts={}
+local function counted(name,fn) return function(...) counts[name]=(counts[name] or 0)+1;return fn(...) end end
+local findAll,findFirst,gameTimeFn,isOpen=FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen
+FindAllOf=counted('FindAllOf',findAll);FindFirstOf=counted('FindFirstOf',findFirst)
+lib.GetGameTimeInSeconds=counted('GetGameTimeInSeconds',gameTimeFn);input.IsOpen=counted('IsOpen',isOpen)
+mod.shutdown();mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+open();keys[0x1B]();ticks();assert(not mod.open and mod.state)
+ticks(700) -- past the post-activity cooldown watch window
+counts={}
+ticks(625) -- ten seconds
+assert((counts.FindAllOf or 0)==0,'closed wheel: no FindAllOf')
+assert((counts.FindFirstOf or 0)<=5,'closed wheel: controller re-verified at most every 2 s, got '..tostring(counts.FindFirstOf))
+assert((counts.GetGameTimeInSeconds or 0)==0,'closed wheel: no game-time reads without a notice or a recent cast')
+assert(counts.IsOpen==625,'closed wheel: one native open check per tick')
+-- ...but a notice arriving while closed is still applied, and opening syncs at once.
+record.cooldown=30
+mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=10};ticks()
+assert(math.abs(cd()-20)<.1,'closed: queued notice applied')
+mod.cooldowns:clear(record);castTimes[spell]=clock-5;counts={}
+open();assert(math.abs(cd()-25)<1,'open syncs immediately');keys[0x1B]();ticks()
+castTimes={};mod.cooldowns:clear(record);record.cooldown=0
+-- Unbound (menu/loading): the controller scan is retried a few times a second, not per tick.
+local pawn=pc.Pawn;pc.Pawn=nil;ticks(5);counts={}
+ticks(125)
+assert((counts.FindFirstOf or 0)<=9 and (counts.FindAllOf or 0)==0,'unbound: throttled scans, got '..tostring(counts.FindFirstOf))
+pc.Pawn=pawn;ticks(40);native=true;ticks(4);assert(mod.open,'rebinds after the pawn returns');keys[0x1B]();ticks()
+mod.shutdown()
+FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen=findAll,findFirst,gameTimeFn,isOpen
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
 for _=1,4 do callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')
