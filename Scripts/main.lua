@@ -245,17 +245,17 @@ local function rememberPc()
   if o and o:IsValid() and o:GetAddress()==addr then pcPath,pcAddr=path,addr end
  end)
 end
+-- Without a usable path there is no safe cheap check: rescan (0.4.2 behaviour).
 local function pcAlive()
- if pcPath then
-  local ok,o=pcall(StaticFindObject,pcPath)
-  return ok and o~=nil and o:IsValid() and o:GetAddress()==pcAddr
- end
- return E.valid(pc)
+ if not pcPath then return false end
+ local ok,o=pcall(StaticFindObject,pcPath)
+ return ok and o~=nil and o:IsValid() and o:GetAddress()==pcAddr
 end
 local function bindWorld()
  if pc and radial then
   if elapsed-scannedAt<BIND_VERIFY and pcAlive() and E.valid(pc.Pawn) and E.valid(radial) then return true end
- elseif elapsed-scannedAt<BIND_RETRY then
+ elseif elapsed-scannedAt<BIND_RETRY and not (M.open or pending) then
+  -- (While the wheel is open or a cast is pending, rebind/close at once.)
   return false
  end
  scannedAt=elapsed
@@ -314,7 +314,8 @@ local function magicComponent()
  local found
  pcall(function()
   local class=StaticFindObject('/Script/Dominion.PlayerUtilityMagicComponent')
-  local c=E.valid(class) and pawn:GetComponentByClass(class)
+  if not E.valid(class) then return end
+  local c=pawn:GetComponentByClass(class)
   if E.alive(c) and sameObject(c:GetOwner(),pawn) then found=c end
  end)
  if not found then
@@ -609,6 +610,7 @@ local function selectSpell()
  end
 end
 local ESCAPE,RIGHT_MOUSE -- key structs, made once on first use
+local NO_ACTIONS={}
 local PAD_KEYS={'accept','back','close','previous','next','up','down','left','right'}
 -- After a cast through the wheel or a cooldown notice, the game's cast times are
 -- followed for WATCH seconds with the wheel closed (cast completion and server
@@ -811,7 +813,7 @@ local function tick()
  local hover=spell and spell.id or tostring(state.group)
  if hover~=M.hover then M.hover=hover;M.message=nil end
  local queue=M.queue
- if queue[1]~=nil then M.queue={} end
+ if queue[1]==nil then queue=NO_ACTIONS else M.queue={} end
  for _,action in ipairs(queue) do
   if action=='toggle' or action=='close' then M.close();return
   elseif action=='back' then state.group=nil;state.spell=nil;state.candidate=nil;state.page=1;M.message=nil;M.back=true
@@ -860,7 +862,7 @@ perfTick=function(started)
  local spent=now-started
  perf.ticks=perf.ticks+1;perf.total=perf.total+spent;perf.max=math.max(perf.max,spent)
  pcall(function()
-  if E.valid(pc) then
+  if pc and radial and pcAlive() then
    local dt=E.stats:GetWorldDeltaSeconds(pc)
    perf.frames=perf.frames+1;perf.frameSum=perf.frameSum+dt;perf.frameMax=math.max(perf.frameMax,dt)
   end

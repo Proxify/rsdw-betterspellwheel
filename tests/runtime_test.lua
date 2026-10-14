@@ -49,11 +49,24 @@ local lib=obj('lib');function lib:SetInputMode_UIOnlyEx()end;function lib:SetInp
 function lib:SetInputMode_GameAndUIEx()end
 function lib:GetGameTimeInSeconds()return clock end
 function lib:GetViewportScale()return 1 end
-function StaticFindObject(path)if path=='/Engine/Transient.Panel_0' then return panelAlive and panel or nil end;return lib end
+-- Long-lived objects are re-resolved by object path (hash lookup), as in game.
+local PC_PATH,MAGIC_PATH='/Game/Maps/W.W:PersistentLevel.BP_PlayerController_C_0','/Game/Maps/W.W:PersistentLevel.Char_0.Magic'
+local pcAtPath -- nil: the controller itself; false: gone; or a replacement object
+function pc:GetFullName()return 'BP_PlayerController_C '..PC_PATH end
+local magicComponentLookups=0
+function StaticFindObject(path)
+ if path=='/Engine/Transient.Panel_0' then return panelAlive and panel or nil end
+ if path==PC_PATH then if pcAtPath==nil then return pc end;return pcAtPath or nil end
+ if path==MAGIC_PATH then return magicAtPath end
+ return lib
+end
 function LoadAsset()return lib end
 function FindFirstOf(name)if name=='BP_PlayerController_C' then return pc else return input end end
 local castTimes={}
 local magic=obj('magic');function magic:GetOwner()return pc.Pawn end
+function magic:GetFullName()return 'PlayerUtilityMagicComponent '..MAGIC_PATH end
+magicAtPath=magic
+pc.Pawn.GetComponentByClass=function()magicComponentLookups=magicComponentLookups+1;return magic end
 magic.LastCastTimeBySpellData={ForEach=function(_,fn)for d,t in pairs(castTimes)do fn({get=function()return d end},{get=function()return t end})end end}
 function FindAllOf(name)if name=='PlayerUtilityMagicComponent' then return {magic} end;return {radial}end
 local failView=false
@@ -232,6 +245,11 @@ assert((counts.FindAllOf or 0)==0,'closed wheel: no FindAllOf')
 assert((counts.FindFirstOf or 0)<=5,'closed wheel: controller re-verified at most every 2 s, got '..tostring(counts.FindFirstOf))
 assert((counts.GetGameTimeInSeconds or 0)==0,'closed wheel: no game-time reads without a notice or a recent cast')
 assert(counts.IsOpen==625,'closed wheel: one native open check per tick')
+-- The controller is checked by path every tick: a replacement or removal at
+-- that path is noticed on the next tick, not after the 2 s verification.
+counts={};pcAtPath=obj('pc-replacement');ticks();assert(counts.FindFirstOf==1,'replaced controller: rescan at once')
+pcAtPath=nil;ticks(130);counts={};pcAtPath=false;ticks();assert(counts.FindFirstOf==1,'controller path gone: rescan at once')
+pcAtPath=nil;ticks(130)
 -- ...but a notice arriving while closed is still applied, and opening syncs at once.
 record.cooldown=30
 mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=10};ticks()
@@ -239,6 +257,16 @@ assert(math.abs(cd()-20)<.1,'closed: queued notice applied')
 mod.cooldowns:clear(record);castTimes[spell]=clock-5;counts={}
 open();assert(math.abs(cd()-25)<1,'open syncs immediately');keys[0x1B]();ticks()
 castTimes={};mod.cooldowns:clear(record);record.cooldown=0
+-- The magic component comes from the pawn, then from its path; a new pawn
+-- (respawn) is looked up again. No FindAllOf in either case.
+counts={};magicComponentLookups=0;record.cooldown=30;aim=false;instant=true
+open();select();ticks(25);keys[0x1B]();ticks(130)
+assert((counts.FindAllOf or 0)==0 and magicComponentLookups<=1,'magic component resolved by the pawn, then by path')
+local lookups=magicComponentLookups
+local oldPawn=pc.Pawn;pc.Pawn=obj('pawn-2');pc.Pawn.GetComponentByClass=oldPawn.GetComponentByClass
+open();keys[0x1B]();ticks()
+assert(magicComponentLookups==lookups+1 and (counts.FindAllOf or 0)==0,'new pawn: component looked up again')
+pc.Pawn=oldPawn;instant=false;record.cooldown=0;mod.cooldowns:clear(record)
 -- Unbound (menu/loading): the controller scan is retried a few times a second, not per tick.
 local pawn=pc.Pawn;pc.Pawn=nil;ticks(5);counts={}
 ticks(125)

@@ -194,7 +194,8 @@ return function(E, model, L)
    u.fade=0;u.appliedFade=nil;u.last='';u.branchKey='';u.appliedBranchFade=nil;u.tipAlpha=0;u.tipAppliedAlpha=nil;u.lastSkillLabel=nil;u.lastSkillVisibility=nil;u.detailSkillAppliedOpacity=nil
    u.inventories=nil;u.inventoryCountCacheAt=0
    -- Spell costs, tool text and rune icons are read once per opening.
-   u.details={};u.itemIcons={}
+   -- Tooltip fits are re-measured once per opening as well.
+   u.details={};u.tipFits={}
   end
 
   local function readField(obj,key)
