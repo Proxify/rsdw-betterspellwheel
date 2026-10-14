@@ -113,6 +113,16 @@ open();select();ticks(3);component:CancelSpellcasting();ticks(25);assert(cd()==0
 open();select();ticks(3);padSample={mouseLeft=true};ticks(2);padSample={};finish();assert(cd()>25,'confirmed aim starts cooldown');sameSlots()
 mod.cooldowns:clear(record);aim=false;instant=true
 open();select();ticks(25);assert(cd()>25,'instant cast starts cooldown');sameSlots()
+-- Instant spells can spend their animation in SpellcastingMode, without a
+-- second confirmation or a replicated cast-time entry on a joined client.
+mod.cooldowns:clear(record);instant=false;spell.CastType=0
+open();select();ticks(3);finish()
+assert(cd()>25,'instant animation starts timer without another click or native stamp');sameSlots()
+mod.cooldowns:clear(record);spell.CastType=3
+open();select();ticks(3);finish()
+assert(cd()==0,'movement-then-cast still requires confirmation')
+spell.CastType=nil;instant=true
+open();select();ticks(25)
 -- The game decides: a spell the estimate shows on cooldown is still attempted.
 -- When the game refuses it, the wheel stays open and says when it's ready.
 denied=true;before=calls;open();select();assert(calls>before and mod.open,'the native attempt is made, not blocked by the estimate')

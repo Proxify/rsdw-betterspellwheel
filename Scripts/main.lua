@@ -424,6 +424,10 @@ local function selectSpell()
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
  pending={component=component,original=component.SelectedSpells[index],spell=spell.data,spellId=spell.id,record=spell,slot=slot,index=index,book=book,since=elapsed}
+ -- EUtilitySpellCastType::Instant (0) still enters SpellcastingMode for its
+ -- animation. It needs no second click; Placed/Aimed/AllowMovementThenCastInstant
+ -- do. Keep an unknown type conservative if the data cannot be read.
+ pcall(function() pending.instant=spell.data.CastType==0 end)
  bindSlot(spell,slot,index)
  -- Keep the original ordering: release wheel input before native selection.
  controls(false)
@@ -546,11 +550,11 @@ local function tick()
    end
   end
   if elapsed-pending.since>.15 and not targetingMode then
-   -- Targeted spells only start a cooldown if we actually observed the
+   -- Targeted spells only start an estimated cooldown if we observed the
    -- player's confirmation input. Leaving targeting mode alone is not proof
    -- of a successful cast: the player may have cancelled it.
    if pending.awaitingConfirm then
-    if pending.confirmed and not pending.cancelled then
+    if (pending.confirmed or pending.instant) and not pending.cancelled then
      startCooldown(pending.record)
     end
    elseif pending.detectingMode then
