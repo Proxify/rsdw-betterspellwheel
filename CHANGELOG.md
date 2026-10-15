@@ -1,4 +1,4 @@
-# 0.4.4 — Instant wheel navigation (unreleased candidate)
+# 0.4.4 — Instant wheel navigation
 
 - Keep icons resident in Unreal and preload spell icons while the wheel is closed,
   preventing repeat synchronous asset loads during rapid navigation.

@@ -1,8 +1,8 @@
 # BetterSpellWheel 0.4.4 candidate: rapid navigation
 
-Unpublished candidate on `work/l-bsw-instant`, based on released 0.4.3 (`8cdd846`).
+Release 0.4.4, based on 0.4.3 (`8cdd846`); performance implementation `a82974a`.
 Testing: 2026-10-14, SudoBlade, sarah/njoy, Creative TradeTesterB in MODTEST.
-No production deployment, public tag, or store upload was made.
+The candidate was approved for public release after this validation. Publication receipts are maintained separately in the project release directory.
 
 ## Finding and fix
 

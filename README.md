@@ -23,12 +23,12 @@ browse its spells, and cast without reaching for the mouse.
 
 ## Download and install
 
-**Published: 0.4.3 · Windows · Keyboard and mouse (controller: beta)**
+**0.4.4 · Windows · Keyboard and mouse (controller: beta)**
 
 | Download | Installation |
 | --- | --- |
-| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.3/BetterSpellWheel-0.4.3-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
-| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.3/BetterSpellWheel-0.4.3.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
+| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.4/BetterSpellWheel-0.4.4-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
+| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.4/BetterSpellWheel-0.4.4.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
 
 The EXE is a separate download. Setup preserves other mods and your existing
 settings on update; run it again to update or uninstall. The installer is unsigned.
@@ -118,6 +118,6 @@ You may use, modify and share it, but any redistribution or derivative work
 the [NOTICE](NOTICE) file and credit the original:
 "Based on BetterSpellWheel by Proxify — https://github.com/Proxify/rsdw-betterspellwheel".
 
-## Unreleased 0.4.4 candidate
+## Responsive navigation in 0.4.4
 
-Rapid navigation now retains icon assets and responds in the current game frame, without selection delays or fades. See [validation](docs/INSTANT-VALIDATION.md) for measurements and coverage. The download links above remain the published 0.4.3 release.
+Icons stay resident and navigation responds in the current game frame, without selection delays or fades. See [validation](docs/INSTANT-VALIDATION.md) for measurements and coverage.
