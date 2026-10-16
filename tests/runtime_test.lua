@@ -36,6 +36,7 @@ local radial=obj('radial');radial.Slices={GetArrayNum=function()return 12 end};r
 radial.SpellbookSelector={RadioGroup={GetSelectedValue=function()return book end}}
 radial.RequirementText={GetText=function()return {ToString=function()return '-'end}end}
 function radial:GetOuter()return {GetOuter=function()return panel end}end
+function radial:GetFullName()return 'WBP_SurvivalSorcery_RadialSelector_C /Engine/Transient.GameEngine_0.Radial_0' end
 function radial:StopRadialSelection()end
 function radial:HighlightSlice()end
 function radial:InvalidSelectAudioTrigger()end
@@ -45,7 +46,15 @@ function radial:SelectSlice()
  if instant then return end
  pc.CurrentInputMode=obj(aim and 'DIM_SpellPlacementMode' or 'DIM_SpellcastingMode')
 end
-local input=obj('input');function input:IsOpen()return native end
+local isOpenCalls=0
+local input=obj('input');function input:IsOpen()isOpenCalls=isOpenCalls+1;return native end
+function input:GetFullName()return 'InputManagerUIAPI /Engine/Transient.GameEngine_0.InputManagerUIAPI_1' end
+-- (0.4.5) the class default object and an archetype radial come first in FindAllOf: never bound
+local defaultInput=obj('default-input');function defaultInput:GetFullName()return 'InputManagerUIAPI /Script/Dominion.Default__InputManagerUIAPI' end
+function defaultInput:IsOpen()error('IsOpen on the class default object') end
+local archRadial=obj('arch-radial');archRadial.Slices={GetArrayNum=function()return 12 end}
+function archRadial:GetFullName()return 'WBP_SurvivalSorcery_RadialSelector_C /Game/UI/HUD/WBP_X.WBP_X_C:WidgetTree.Radial' end
+function archRadial:GetOuter()error('archetype radial read') end
 function input:CloseWidgetIfOpen()native=false;pc.CurrentInputMode=obj('DIM_Gameplay')end
 local lib=obj('lib');function lib:SetInputMode_UIOnlyEx()end;function lib:SetInputMode_GameOnly()end
 function lib:SetInputMode_GameAndUIEx()end
@@ -70,7 +79,7 @@ function magic:GetFullName()return 'PlayerUtilityMagicComponent '..MAGIC_PATH en
 magicAtPath=magic
 pc.Pawn.GetComponentByClass=function()magicComponentLookups=magicComponentLookups+1;return magic end
 magic.LastCastTimeBySpellData={ForEach=function(_,fn)for d,t in pairs(castTimes)do fn({get=function()return d end},{get=function()return t end})end end}
-function FindAllOf(name)if name=='PlayerUtilityMagicComponent' then return {magic} end;return {radial}end
+function FindAllOf(name)if name=='PlayerUtilityMagicComponent' then return {magic} end;if name=='InputManagerUIAPI' then return {defaultInput,input} end;return {archRadial,radial}end
 local failView=false
 local callback,keys
 keys={};function RegisterKeyBind(key,fn)keys[key]=fn end
@@ -90,6 +99,11 @@ function dofile(path)
 end
 local mod=realDofile(root..'/Scripts/main.lua')
 local function ticks(n)for _=1,n or 1 do clock=clock+.016;callback();assert(not mod.disabled,'adapter disabled')end end
+-- (0.4.5) world entry settle: nothing is called on the world in the first 5 s after the player's pawn appears
+native=true;ticks(300);assert(not mod.open and isOpenCalls==0 and panelWrites==0,'no world calls during the settle');native=false
+ticks(30);assert(isOpenCalls>0,'bound after the settle, through the live input API (not the class default)')
+assert(mod.radial==radial,'the live radial, not the archetype')
+print('PASS: 0.4.5 settle: no world calls in the first 5 s; binds the live input API and radial, never Default__/archetypes')
 local function open()
  native=true;x,y=0,0;ticks(4);assert(mod.open)
  x,y=0,-202;ticks(20);x,y=0,-344;ticks(2)
@@ -121,7 +135,7 @@ padSample={open=true};ticks();assert(not mod.open);padSample={}
 open();select();sameSlots(1,spell);mod.shutdown();sameSlots()
 -- Cooldown timers: only a confirmed aimed cast or an instant cast starts one;
 -- a cancelled aim does not. The timer is display-only and never blocks a cast.
-mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 record.cooldown=30;aim=true;book=0
 local function cd()return mod.cooldowns:remaining(record,clock)end
 open();select();ticks(3);component:CancelSpellcasting();ticks(25);assert(cd()==0,'cancelled aim starts no cooldown');sameSlots()
@@ -150,7 +164,7 @@ castTimes[spell]=clock-40;open();assert(cd()==0,'expired native cooldown is clea
 castTimes={};instant=false;record.cooldown=0;mod.shutdown()
 -- A cast may complete without a second sampled click (animation or native
 -- input). The game's timestamp must reach the timer with the wheel CLOSED.
-mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 record.cooldown=30;aim=false;instant=false
 open();select();ticks(3);castTimes[spell]=clock;finish();ticks(70)
 assert(not mod.open and cd()>27,'closed wheel observes completed native cast')
@@ -162,7 +176,7 @@ mod.shutdown();record.cooldown=0
 -- 0.4.2 (report: cooldowns shown and casts refused with UtilitySpellsNoCooldown on
 -- a client). That mod rewrites LastCastTimeBySpellData to -1e9 every 500 ms, so the
 -- game accepts every cast; on a joined client the map may hold no entry at all.
-mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 record.cooldown=30;instant=true;aim=false;book=0
 -- (a) No native entry (joined client): the first cast starts the estimate...
 open();select();ticks(25);assert(cd()>25,'first cast starts the estimate')
@@ -198,7 +212,7 @@ mod.cfg.ShowCooldowns=true
 castTimes={};instant=false;record.cooldown=0;mod.shutdown()
 -- A destroyed native panel is never written to again (native fault, 0.4.0
 -- crash dump 2026-10-12), the mod stays enabled, and a live panel is used again.
-mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 open();assert(mod.open)
 panelAlive=false;local writes=panelWrites
 ticks(60);assert(panelWrites==writes,'no writes to a dead panel');assert(not mod.disabled)
@@ -206,7 +220,7 @@ select();assert(panelWrites==writes and not mod.disabled,'selecting with a dead 
 native=false;ticks(30)
 panelAlive=true;native=true;ticks(30);assert(mod.open,'reopens once the panel is live again');keys[0x1B]();ticks();mod.shutdown()
 -- Controller opens via native wheel, selects a skill, enters, and casts once.
-mod=realDofile(root..'/Scripts/main.lua');usingPad=true;padSample={};native=true;x,y=0,0;ticks(20)
+mod=realDofile(root..'/Scripts/main.lua');usingPad=true;padSample={};ticks(320);native=true;x,y=0,0;ticks(20)
 assert(mod.open and captured and mod.state.input=='controller')
 padSample={x=0,y=-1};ticks(2);assert(mod.state.group==1 and not mod.state.spell)
 padSample={accept=true};ticks();assert(mod.open and mod.state.spell==1)
@@ -227,7 +241,7 @@ padSample={mx=4};ticks();assert(mod.state.input=='mouse')
 usingPad=false;padSample={};mod.shutdown()
 -- 0.4.3 review: an instant spell's animation can't be cancelled, so a back/Esc
 -- press during it does not stop its timer.
-mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 record.cooldown=30;aim=false;instant=false;spell.CastType=0
 open();select();ticks(3);padSample={back=true};ticks(2);padSample={};finish()
 assert(cd()>25,'instant cast ignores cancel input');sameSlots()
@@ -238,7 +252,7 @@ local function counted(name,fn) return function(...) counts[name]=(counts[name] 
 local findAll,findFirst,gameTimeFn,isOpen=FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen
 FindAllOf=counted('FindAllOf',findAll);FindFirstOf=counted('FindFirstOf',findFirst)
 lib.GetGameTimeInSeconds=counted('GetGameTimeInSeconds',gameTimeFn);input.IsOpen=counted('IsOpen',isOpen)
-mod.shutdown();mod=realDofile(root..'/Scripts/main.lua');ticks(40)
+mod.shutdown();mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 open();keys[0x1B]();ticks();assert(not mod.open and mod.state)
 ticks(700) -- past the post-activity cooldown watch window
 counts={}
@@ -273,11 +287,11 @@ pc.Pawn=oldPawn;instant=false;record.cooldown=0;mod.cooldowns:clear(record)
 local pawn=pc.Pawn;pc.Pawn=nil;ticks(5);counts={}
 ticks(125)
 assert((counts.FindFirstOf or 0)<=9 and (counts.FindAllOf or 0)==0,'unbound: throttled scans, got '..tostring(counts.FindFirstOf))
-pc.Pawn=pawn;ticks(40);native=true;ticks(4);assert(mod.open,'rebinds after the pawn returns');keys[0x1B]();ticks()
+pc.Pawn=pawn;ticks(340);native=true;ticks(4);assert(mod.open,'rebinds after the pawn returns (after the 5 s settle)');keys[0x1B]();ticks()
 mod.shutdown()
 FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen=findAll,findFirst,gameTimeFn,isOpen
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
-for _=1,4 do clock=clock+.02;callback() end
+for _=1,300 do clock=clock+.02;callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')
 print('PASS: native adapter denial, four-book offsets, pending aim/cancel, empty slot, concurrent update, lock, deadzone, shutdown and native fallback checks')
 

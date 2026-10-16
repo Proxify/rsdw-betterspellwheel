@@ -3,7 +3,7 @@ local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.4.4',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.4.5',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
@@ -100,7 +100,7 @@ local emoteWheelActive=false
 local emoteWheelSeen=false -- native emote mode has been observed since the handoff
 local lastTime,frame,elapsed,lastSync=0,0,0,0
 M.cooldowns=cooldowns
-local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end
+local function nativeOpen() return E.valid(input) and E.valid(pc) and input:IsOpen(pc,21) end   -- (input: a live instance, bindWorld)
 local function sameObject(a,b)
  if not E.valid(a) or not E.valid(b) then return false end
  local oka,aa=pcall(function() return a:GetAddress() end)
@@ -251,6 +251,24 @@ local function pcAlive()
  local ok,o=pcall(StaticFindObject,pcPath)
  return ok and o~=nil and o:IsValid() and o:GetAddress()==pcAddr
 end
+-- World entry settle (0.4.5): a client crashed ~2 s after joining a server (native AV reading 0x0 under ProcessEvent,
+-- called from UE4SS; 3 of 10 joins with BetterSpellWheel, 0 without, 2026-10-15). In the first seconds of a world the
+-- previous (menu) world's UI objects are still around and IsValid() stays true for them until garbage collection, and
+-- the HUD is still being built. Nothing is called on the world until the player's pawn has been there SETTLE seconds,
+-- and only live, non-default, not pending-kill objects are bound (the Together mod's rule since 2.0).
+local SETTLE=5
+local pawnSeen,pawnSince=nil,nil
+-- a live instance of a class: not a Default__/archetype object, not pending kill
+local function liveOf(className, widget)
+ for _,o in ipairs(FindAllOf(className) or {}) do
+  local ok,name=pcall(function() return o:GetFullName() end)
+  if ok and type(name)=='string' and not name:find('Default__',1,true) and (not widget or name:find(' /Engine/Transient.',1,true)) and E.alive(o) then
+   if not widget then return o end
+   local okW,good=pcall(function() return not o.bIsSpellbookInstance and o.Slices:GetArrayNum()>0 end)
+   if okW and good then return o end
+  end
+ end
+end
 local function bindWorld()
  if pc and radial then
   if elapsed-scannedAt<BIND_VERIFY and pcAlive() and E.valid(pc.Pawn) and E.valid(radial) then return true end
@@ -262,21 +280,30 @@ local function bindWorld()
  local found=FindFirstOf('BP_PlayerController_C')
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
-  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;pcPath=nil;return false
+  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;pcPath=nil
+  pawnSeen,pawnSince=nil,nil
+  return false
  end
+ -- (settle: the same pawn for SETTLE s before anything else is read or called)
+ local okP,pawnAddr=pcall(function() return found:GetAddress()..':'..found.Pawn:GetAddress() end)
+ if not okP then return false end
+ if pawnSeen~=pawnAddr then pawnSeen,pawnSince=pawnAddr,elapsed;if M.open then pcall(M.close) end;return false end
+ if elapsed-pawnSince<SETTLE then return false end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
  rememberPc()
  -- A previous world's catalogue must not be polled in the background.
  state=nil;M.state=nil
- for _,w in ipairs(FindAllOf('WBP_SurvivalSorcery_RadialSelector_C') or {}) do
-  if E.valid(w) and not w.bIsSpellbookInstance and w.Slices:GetArrayNum()>0 then radial=w;break end
- end
+ radial=liveOf('WBP_SurvivalSorcery_RadialSelector_C',true)
  M.radial=radial
- if not E.valid(radial) then return false end
- panel=radial:GetOuter():GetOuter();input=FindFirstOf('InputManagerUIAPI');component=pc:GetSpellcastingComponent()
+ if not E.alive(radial) or not E.alive(pc) then radial=nil;M.radial=nil;return false end
+ panel=nil;pcall(function() panel=radial:GetOuter():GetOuter() end)
+ input=liveOf('InputManagerUIAPI',false)
+ if not (E.alive(panel) and E.alive(input)) then radial=nil;M.radial=nil;return false end
+ component=nil;pcall(function() component=pc:GetSpellcastingComponent() end)
  if E.valid(panel) then rememberPanel() end
- if not (E.valid(panel) and E.valid(input) and E.valid(component)) then return false end
+ if not E.alive(component) then radial=nil;M.radial=nil;return false end
+ log('bound to the world ('..SETTLE..' s after the player arrived)')
  -- Pre-hide at opacity 0 so the first native open never renders a visible frame.
  keepNativeOffscreen()
  -- Do not hide or detach the native radial during world binding. It is only
