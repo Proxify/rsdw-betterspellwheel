@@ -1,3 +1,8 @@
+# 0.4.5 — Join crash fix
+
+- Fix a crash a few seconds after joining a server. The wheel now waits until the World has finished loading (5 s
+  after your character appears) before it connects to the game's spell wheel, and binds only live game objects.
+
 # 0.4.4 — Instant wheel navigation
 
 - Keep icons resident in Unreal and preload spell icons while the wheel is closed,
