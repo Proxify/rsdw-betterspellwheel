@@ -10,7 +10,9 @@
   cursor is centred before it is shown. The hidden native wheel is no longer re-hidden on every open (provisional,
   pending an in-game no-flash check). Optional open-time profiling sections. The controller and native-panel
   liveness checks from 0.4.2–0.4.5 are kept.
-- In-game appearance, input and frame-time validation are pending; see `tests/cropped-art-evidence.md`.
+- Native three-build results are mixed: lower open-idle p99, overlapping closed-idle results, worse navigation than
+  PR #6 and longer opening-event frames. This remains a draft with partial functional coverage; see
+  `docs/performance/20261023/NATIVE-RESULTS.md` and `tests/cropped-art-evidence.md`.
 
 # 0.4.5 — Join crash fix
 
