@@ -1,9 +1,10 @@
 # Unreleased — Lighter wheel artwork
 
-- Wheel textures are cropped to their visible artwork (with a transparent filtering margin) instead of full 848 px
-  frames: the same pixels in the same places, about a tenth of the texture memory and first-launch drawing. Cached in
-  `Assets/v2/`; older cached PNGs in `Assets/` are no longer used.
+- Wheel textures are cropped to their artwork (with a transparent filtering margin) instead of full 848 px
+  frames. This preserves the generated pixels while reducing decoded pixel data from 15.58 MB to 1.45 MB.
+  Cached in `Assets/v2/`; older cached PNGs in `Assets/` are left untouched for switching back.
 - Handing input back after a cast reads only the five buttons it waits for (was 17 key queries per tick).
+- In-game appearance, input and frame-time validation are pending; see `tests/cropped-art-evidence.md`.
 
 # 0.4.5 — Join crash fix
 
@@ -143,4 +144,3 @@ The wheel now uses larger icons and compact slot numbers. A matching spell list
 keeps full names and required levels in a fixed panel, with separate space for
 the selected spell's description, cost, cooldown and feedback. Text is fitted
 using the game's rendered font metrics. No full spell name crosses a wheel slice.
-
