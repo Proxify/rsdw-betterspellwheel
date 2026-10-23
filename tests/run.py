@@ -33,6 +33,7 @@ lua.execute((root / "tests/layout_test.lua").read_text())
 lua.execute((root / "tests/controller_test.lua").read_text())
 lua.execute((root / "tests/input_test.lua").read_text())
 lua.execute((root / "tests/runtime_test.lua").read_text())
+lua.execute((root / "tests/cast_variant_test.lua").read_text())
 lua.execute((root / "tests/view_perf_test.lua").read_text())
 
 lua.globals().arg = lua.table_from([(root / "Scripts/model.lua").as_posix()])

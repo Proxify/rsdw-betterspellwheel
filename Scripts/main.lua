@@ -92,6 +92,17 @@ end
 local pc,radial,panel,input,component,ui,state,pending,device,pad,catalogueGroups
 local unlockRefreshAt={}
 local nativeWasOpen=false
+-- Casting handoff experiment (development only, see castDev near the end of this
+-- file). Release installs have no dev.txt, so castDev stays nil and every cast
+-- uses the legacy slot-0 handoff. 'restore-only' keeps the full bind but skips the
+-- restore when slot 0 already held the chosen spell; 'same-slot' also skips the
+-- bind then, after one full handoff on the same book and absolute slot since
+-- binding (warmBook, warmIndex).
+-- Warm only means that handoff ran; it is not proof the native slice is current.
+-- That needs the native test (first cast after launch, book changes).
+local castDev,castVariant,warmBook,warmIndex=nil,'legacy',nil,nil
+local castMeasure=false -- receipts, clocks and counters (dev console only; off by default without dev.txt)
+local notifyCalls,slotWrites=0,0 -- our own Client_NotifySelectedSpell / direct writes
 M.radial=nil
 local openWasDown=false
 local pointerX,pointerY
@@ -190,28 +201,57 @@ local function controls(on)
   pc:RefreshInputMode()
  end
 end
+local function finishReceipt(p,started)
+ local r=p.receipt
+ if not r then return end
+ r.restoreUs=(os.clock()-started)*1e6
+ r.notifies=notifyCalls-r.notifiesAtStart;r.writes=slotWrites-r.writesAtStart
+ r.cancelled=p.cancelled==true;r.confirmed=p.confirmed==true
+ -- Life of the pending cast in the mod's elapsed clock (summed os.clock deltas; not
+ -- proven wall time until the native clock calibration), including aiming: not CPU cost.
+ r.pendingMs=(elapsed-r.startElapsed)*1000;r.pendingTicks=frame-r.startTick
+ -- 'finished' (tick saw the cast end) or 'refused' are complete samples; anything
+ -- else (reopen, rebind, shutdown, error) is 'aborted' and is not a timing sample.
+ r.status=r.status or 'aborted'
+end
 local function restore()
  if not pending then return end
  local p=pending;pending=nil
+ local started=p.receipt and os.clock()
+ -- same-slot experiment: a book change seen as the cast ends drops the warm state.
+ if castVariant=='same-slot' and warmBook~=nil then
+  local ok,b=pcall(function() return E.valid(radial) and radial.SpellbookSelector.RadioGroup:GetSelectedValue() end)
+  if not ok or b~=warmBook then warmBook=nil end
+ end
+ -- Nothing was written (same-slot), or the slot already held this spell before
+ -- the bind (restore-only): restoring would write the same entry back.
+ if p.reused or p.skipRestore then
+  if started then finishReceipt(p,started) end
+  return
+ end
  if E.valid(p.component) then
   -- Never overwrite a newer update from the game/server.
   local current=p.component.SelectedSpells[p.index]
   if E.valid(current) and E.valid(p.spell) and current:GetAddress()==p.spell:GetAddress() then
    if E.valid(radial) and radial.SpellbookSelector.RadioGroup:GetSelectedValue()==p.book then
+    if castMeasure then notifyCalls=notifyCalls+1 end
     p.component:Client_NotifySelectedSpell(E.valid(p.original) and p.original or nil,p.slot)
     -- The notify can silently fail to take; if our spell is still in the slot,
     -- write the original back directly so the next cast starts from a clean slot.
     local after=p.component.SelectedSpells[p.index]
     if E.valid(after) and sameObject(after,p.spell) then
+     if castMeasure then slotWrites=slotWrites+1 end
      pcall(function() p.component.SelectedSpells[p.index]=p.original end)
     end
    else
     -- A native book switch changes the notification's relative offset. Repair
     -- only our old absolute array entry; the visible book is left untouched.
+    if castMeasure then slotWrites=slotWrites+1 end
     p.component.SelectedSpells[p.index]=p.original
    end
   end
  end
+ if started then finishReceipt(p,started) end
 end
 function M.close()
  if ui and E.valid(ui.root) then ui.hide() end
@@ -285,7 +325,7 @@ local function bindWorld()
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
   restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;pcPath=nil
-  catalogueGroups=nil;unlockRefreshAt={}
+  catalogueGroups=nil;unlockRefreshAt={};warmBook=nil
   pawnSeen,pawnSince=nil,nil
   return false
  end
@@ -293,11 +333,12 @@ local function bindWorld()
  local okP,pawnAddr=pcall(function() return found:GetAddress()..':'..found.Pawn:GetAddress() end)
  if not okP then return false end
  -- A new pawn (respawn, travel) with the same controller skips the rebind below, so
- -- the per-world catalogue cache is dropped here too.
- if pawnSeen~=pawnAddr then pawnSeen,pawnSince=pawnAddr,elapsed;catalogueGroups=nil;unlockRefreshAt={};if M.open then pcall(M.close) end;return false end
+ -- the per-world catalogue cache (and the cast experiment's warm state) is dropped here too.
+ if pawnSeen~=pawnAddr then pawnSeen,pawnSince,warmBook=pawnAddr,elapsed,nil;catalogueGroups=nil;unlockRefreshAt={};if M.open then pcall(M.close) end;return false end
  if elapsed-pawnSince<SETTLE then return false end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
+ warmBook=nil -- a new native radial: the next cast on any book is a full handoff
  rememberPc()
  -- A previous world's catalogue must not be polled in the background.
  state=nil;M.state=nil;catalogueGroups=nil;unlockRefreshAt={}
@@ -505,6 +546,7 @@ end
 -- Bind spell into native slot 0 and verify it took. If the component array does
 -- not hold the spell after notify+highlight, force-write it and rebuild the slice.
 local function bindSlot(spell,slot,index)
+ if castMeasure then notifyCalls=notifyCalls+1 end
  component:Client_NotifySelectedSpell(spell.data,slot)
  radial.CachedSectionId=0;radial:HighlightSlice(0)
  if sameObject(component.SelectedSpells[index],spell.data) then return end
@@ -512,8 +554,10 @@ local function bindSlot(spell,slot,index)
   slotWarnings=slotWarnings+1
   log('slot mismatch after notify: wanted '..tostring(spell.id)..', slot holds '..slotName(component.SelectedSpells[index]))
  end
+ if castMeasure then slotWrites=slotWrites+1 end
  pcall(function() component.SelectedSpells[index]=spell.data end)
  pcall(function() radial:StopRadialSelection() end)
+ if castMeasure then notifyCalls=notifyCalls+1 end
  component:Client_NotifySelectedSpell(spell.data,slot)
  radial.CachedSectionId=0;radial:HighlightSlice(0)
  if slotWarnings<5 and not sameObject(component.SelectedSpells[index],spell.data) then
@@ -554,6 +598,12 @@ local function open()
  if perf then mark('openHide') end
  openWasDown=device and device.sample(OPEN_KEYS).open==true or false
  restore()
+ -- same-slot experiment: a book change seen at open drops the warm state. A change
+ -- away and back between two opens can't be seen; see castDev below.
+ if castVariant=='same-slot' and warmBook~=nil then
+  local ok,b=pcall(function() return radial.SpellbookSelector.RadioGroup:GetSelectedValue() end)
+  if not ok or b~=warmBook then warmBook=nil end
+ end
  durations=setmetatable({},{__mode='k'}) -- read each spell's cooldown afresh
  if not catalogueGroups then
   local errors
@@ -613,6 +663,7 @@ local function selectSpell()
  -- into native slot 0, select native slice 0, then let the game's normal
  -- selector/casting path run. Mapping the custom wheel index to a native slice
  -- here reintroduced dependence on the native wheel's scroll/section state.
+ local t0,notifies0,writes0=castMeasure and os.clock(),notifyCalls,slotWrites
  local slot=radial.RadialSlice_0.SpellSlotNum
  local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
  local index=book*component.NumSpellSlotsPerRadial+slot+1
@@ -621,13 +672,41 @@ local function selectSpell()
  -- animation. It needs no second click; Placed/Aimed/AllowMovementThenCastInstant
  -- do. Keep an unknown type conservative if the data cannot be read.
  pcall(function() pending.instant=spell.data.CastType==0 end)
- bindSlot(spell,slot,index)
+ local variant,warm=castVariant,warmBook==book and warmIndex==index
+ local t1=castMeasure and os.clock()
+ -- Development experiment only (castVariant is 'legacy' unless a dev console set it).
+ -- Only slot 0 of the visible book is ever considered: no search of other slots or books.
+ local eligible
+ if variant~='legacy' then eligible=sameObject(pending.original,spell.data) end
+ local t2=castMeasure and os.clock()
+ local path='legacy'
+ if variant=='same-slot' and eligible and warm then
+  -- Slot 0 already holds the spell: no notify, nothing to restore. The section and
+  -- highlight are still set, exactly as bindSlot does after its notify.
+  path='reuse';pending.reused=true
+  radial.CachedSectionId=0;radial:HighlightSlice(0)
+ else
+  bindSlot(spell,slot,index)
+  warmBook,warmIndex=book,index
+  if variant=='restore-only' and eligible then path='skip-restore';pending.skipRestore=true
+  elseif variant~='legacy' and eligible then path='cold' end -- same-slot: first handoff on this book/slot
+ end
+ local t3=castMeasure and os.clock()
  -- Keep the original ordering: release wheel input before native selection.
  controls(false)
  muteSelectSound()
  local selOk,selErr=pcall(function() radial:SelectSlice() end)
  if not selOk then unmuteSelectSound();error(selErr) end
  local requirement=radial.RequirementText:GetText():ToString()
+ if castMeasure then
+  local t4=os.clock()
+  local inPath,eligibilityUs=eligible~=nil,(t2-t1)*1e6
+  -- Legacy records eligibility after its timed phases, so its path is unchanged.
+  if not inPath then eligible=sameObject(pending.original,spell.data);eligibilityUs=(os.clock()-t4)*1e6 end
+  pending.receipt=castDev.record({variant=variant,spell=tostring(spell.id),book=book,index=index,warm=warm,eligible=eligible==true,eligibilityInPath=inPath,path=path,
+   prepareUs=(t1-t0)*1e6,eligibilityUs=eligibilityUs,bindUs=(t3-t2)*1e6,handoffUs=(t4-t3)*1e6,
+   notifiesAtStart=notifies0,writesAtStart=writes0,startTick=frame,startElapsed=elapsed})
+ end
  -- Some failed casts close the native wheel rather than leaving it open. The
  -- requirement label is the game's own reason for rejecting a spell (e.g. runes).
  local requirementFailed=requirement~='' and requirement~='-'
@@ -647,6 +726,7 @@ local function selectSpell()
    cooldowns:trust(spell)
    if remaining<=0 then startCooldown(spell) end
   end
+  if pending and pending.receipt then pending.receipt.status='refused' end
   restore();radial:StopRadialSelection();controls(true)
  else
   -- The game accepted a spell our timer said was on cooldown: the timer was
@@ -726,6 +806,10 @@ local function tick()
   local mode=pc.CurrentInputMode
   local name=E.valid(mode) and mode:GetFName():ToString() or ''
   local targetingMode=name:find('SpellPlacement') or name:find('Spellcasting')
+  if targetingMode and pending.receipt and not pending.receipt.targetMs then
+   -- Select-to-targeting observation latency (tick granularity), not CPU cost.
+   pending.receipt.targetMs=(elapsed-pending.receipt.startElapsed)*1000;pending.receipt.targetTicks=frame-pending.receipt.startTick
+  end
   if pending.detectingMode and targetingMode then
    -- Targeting can become visible one or more frames after SelectSlice().
    pending.detectingMode=false
@@ -774,6 +858,7 @@ local function tick()
     -- was an instant cast. Start its cooldown after the mode has settled.
     startCooldown(pending.record)
    end
+   if pending.receipt then pending.receipt.status='finished' end
    restore()
   end
  end
@@ -982,6 +1067,120 @@ if devFile then
   out:write((ok and '=> ' or 'ERROR: ')..tostring(result));out:close()
   os.remove(dir..'out.txt');os.rename(dir..'out.tmp',dir..'out.txt')
  end
+ -- Casting handoff experiment, reachable only from this console:
+ --   BetterSpellWheel.castDev.set('legacy'|'restore-only'|'same-slot')
+ --   BetterSpellWheel.castDev.status() / .report() / .receipts() / .reset()
+ -- A script reload starts again at 'legacy' with no receipts. Each cast keeps one
+ -- receipt in a ring of CAST_RING entries (oldest overwritten, counted in overflow).
+ -- Times are Lua os.clock() deltas. Its domain and resolution in this game process are
+ -- not yet measured (native probe pending): no timing verdict if it is too coarse.
+ -- Phases of selectSpell/restore on the game thread, including the native calls made:
+ -- prepareUs (slot/book/original reads), eligibilityUs (slot-0 compare; for legacy it
+ -- is measured after the handoff and is not in its path: eligibilityInPath=false),
+ -- bindUs (bindSlot, or the reuse highlight), handoffUs (input release, mute,
+ -- SelectSlice, requirement text), restoreUs. They are not the whole cast's CPU cost.
+ -- notifies/writes count our Client_NotifySelectedSpell calls and direct slot writes
+ -- for the whole cast (bind plus restore). targetMs is when a later tick first saw
+ -- the targeting mode (sampled at tick granularity, not its onset); pendingMs is the
+ -- pending cast's life including the player's aiming, not a cost. Both use the mod's
+ -- elapsed clock (summed os.clock deltas): not proven wall time until calibrated.
+ -- warm only means a full handoff ran on that book and slot since binding: it does
+ -- not prove the native slice is current. Book changes are checked at open, select
+ -- and cast end; a change away and back between those checks is not observed.
+ -- Enabling this console grants no machine or process permission.
+ local CAST_RING=256
+ local VARIANTS={legacy=true,['restore-only']=true,['same-slot']=true}
+ local ring,seq,overflow,refusals={},0,0,0
+ local function busy()
+  if M.disabled then return 'disabled' end
+  if M.open then return 'wheel open' end
+  if pending then return 'cast pending' end
+  if device and device.draining then return 'input draining' end
+  if emoteHandoffAt or emoteWheelActive then return 'emote hand-off' end
+  if _G.BetterSpellWheel~=M then return 'retired module (reloaded)' end
+  if not (pc and radial and component) then return 'not bound to a world' end
+  if not pcAlive() or not E.valid(pc.Pawn) then return 'controller not live (transit)' end
+  if not panelAlive() then return 'native panel not live' end
+ end
+ castDev={record=function(r)
+  seq=seq+1;r.seq=seq;r.clock='lua os.clock'
+  if ring[(seq-1)%CAST_RING+1] then overflow=overflow+1 end
+  ring[(seq-1)%CAST_RING+1]=r
+  return r
+ end}
+ function castDev.set(v)
+  if not VARIANTS[v] then refusals=refusals+1;return false,'unknown variant '..tostring(v) end
+  local why=busy()
+  if why then refusals=refusals+1;return false,'refused: '..why end
+  castVariant=v;warmBook=nil
+  return true,v
+ end
+ -- Measurement off: no clocks, receipts, counters or legacy diagnostic compare, so an
+ -- external frame-time capture can compare the variants without this instrumentation.
+ -- The variant keeps operating. Instrumented phase sums are not an external frame
+ -- result; confirm any benefit with measurement off and an external frame capture.
+ castMeasure=true
+ function castDev.measure(on)
+  local why=busy()
+  if why then refusals=refusals+1;return false,'refused: '..why end
+  castMeasure=on==true
+  return true,castMeasure
+ end
+ function castDev.status()
+  return {measure=castMeasure,variant=castVariant,warmBook=warmBook,busy=busy() or 'idle',casts=seq,overflow=overflow,refusals=refusals,ring=CAST_RING}
+ end
+ function castDev.receipts() local out={};for i=math.max(1,seq-CAST_RING+1),seq do out[#out+1]=ring[(i-1)%CAST_RING+1] end;return out end
+ function castDev.reset()
+  local why=busy();if why then refusals=refusals+1;return false,'refused: '..why end
+  ring,seq,overflow={},0,0;return true
+ end
+ -- All receipts as CSV (header + one row per cast) for the console's out.txt. Times in
+ -- microseconds (*Us) or milliseconds (*Ms) of Lua os.clock; empty = not observed.
+ -- complete=1 only for finished/refused casts; aborted/pending rows are not samples.
+ local CSV_FIELDS={'seq','variant','spell','book','index','warm','eligible','eligibilityInPath','path','status','complete',
+  'refusedOrCancelled','confirmed','cancelled','prepareUs','eligibilityUs','bindUs','handoffUs','restoreUs','notifies','writes',
+  'targetMs','targetTicks','pendingMs','pendingTicks','clock'}
+ function castDev.csv()
+  local lines={table.concat(CSV_FIELDS,',')}
+  for _,r in ipairs(castDev.receipts()) do
+   local row={}
+   for i,f in ipairs(CSV_FIELDS) do
+    local v=r[f]
+    if f=='complete' then v=(r.status=='finished' or r.status=='refused') and 1 or 0
+    elseif f=='refusedOrCancelled' then v=(r.status=='refused' or r.cancelled) and 1 or 0
+    elseif f=='status' then v=r.status or 'pending' end
+    if type(v)=='boolean' then v=v and 1 or 0 elseif type(v)=='number' and math.type(v)=='float' then v=string.format('%.1f',v) end
+    row[i]=v==nil and '' or tostring(v):gsub('[,\n]','_')
+   end
+   lines[#lines+1]=table.concat(row,',')
+  end
+  return table.concat(lines,'\n')
+ end
+ -- One line per variant/path/status group; complete samples are finished/refused.
+ function castDev.report()
+  local groups,order={},{}
+  for _,r in ipairs(castDev.receipts()) do
+   local k=r.variant..' '..r.path..' '..(r.eligible and 'eligible' or 'ineligible')..' '..(r.warm and 'warm' or 'cold')..' '..(r.status or 'pending')
+   if not groups[k] then groups[k]={};order[#order+1]=k end
+   local g=groups[k];g[#g+1]=r
+  end
+  local function stat(list,f)
+   local v={};for _,r in ipairs(list) do if r[f] then v[#v+1]=r[f] end end
+   if #v==0 then return f..'=-' end
+   table.sort(v);local function q(x) return v[math.max(1,math.ceil(x*#v))] end
+   return string.format('%s=%.0f/%.0f/%.0f/%.0f',f,v[1],q(.5),q(.95),v[#v])
+  end
+  local lines={string.format('clock=lua os.clock casts=%d overflow=%d refusals=%d variant=%s (min/median/p95/max)',seq,overflow,refusals,castVariant)}
+  for _,k in ipairs(order) do
+   local g=groups[k];local n,w=0,0
+   -- notifies/writes are set only when a cast ends (incomplete receipts add nothing)
+   for _,r in ipairs(g) do n=n+(r.notifies or 0);w=w+(r.writes or 0) end
+   lines[#lines+1]=string.format('%s n=%d notifies=%d writes=%d %s %s %s %s %s %s %s',k,#g,n,w,
+    stat(g,'prepareUs'),stat(g,'eligibilityUs'),stat(g,'bindUs'),stat(g,'handoffUs'),stat(g,'restoreUs'),stat(g,'targetMs'),stat(g,'pendingMs'))
+  end
+  return table.concat(lines,'\n')
+ end
+ M.castDev=castDev
 end
 M.handle=LoopInGameThreadWithDelay(1,function()
  if devPoll and frame%6==0 then pcall(devPoll) end
