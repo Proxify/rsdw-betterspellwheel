@@ -8,9 +8,9 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 for path in sorted(root.rglob("*.lua")):
     error = lua.execute("local f,e=load(...); return e", path.read_text())
     assert error is None, f"{path}: {error}"
-lua.globals().arg = lua.table_from([str(root / "Scripts/model.lua")])
+lua.globals().arg = lua.table_from([(root / "Scripts/model.lua").as_posix()])
 lua.execute((root / "tests/model_test.lua").read_text())
-lua.globals().snapshot_path = str(root / "tests/live_catalogue_snapshot.lua")
+lua.globals().snapshot_path = (root / "tests/live_catalogue_snapshot.lua").as_posix()
 lua.execute("""
 local model = dofile(arg[1])
 local records = dofile(snapshot_path)
@@ -35,7 +35,7 @@ lua.execute((root / "tests/input_test.lua").read_text())
 lua.execute((root / "tests/runtime_test.lua").read_text())
 lua.execute((root / "tests/view_perf_test.lua").read_text())
 
-lua.globals().arg = lua.table_from([str(root / "Scripts/model.lua")])
+lua.globals().arg = lua.table_from([(root / "Scripts/model.lua").as_posix()])
 lua.execute((root / "tests/art_view_test.lua").read_text())
 
 # Wheel artwork: drawn by Scripts/art.lua into Assets/v2/, valid PNGs, cached.

@@ -175,7 +175,7 @@ return function(E, model, L, art)
   u.costNames={}
   u.costEntries={}
   u.costColors={}
-  u.inventoryCountCacheAt=0
+  u.runeCounts={}
   for i=1,4 do
    local icon=img(nil,{x=0,y=0,w=34,h=34},30)
    -- Rune name is its own compact label above the icon. Do not print raw UObject
@@ -252,7 +252,7 @@ return function(E, model, L, art)
   function u.show()
    u.resize(true);u.root:SetVisibility(3);u.root:SetRenderOpacity(1)
    u.fade=1;u.appliedFade=nil;u.last='';u.branchKey='';u.appliedBranchFade=nil;u.tipAlpha=0;u.tipAppliedAlpha=nil;u.lastSkillLabel=nil;u.lastSkillVisibility=nil;u.detailSkillAppliedOpacity=nil
-   u.inventories=nil;u.inventoryCountCacheAt=0
+   u.inventories=nil;u.runeCounts={}
    -- Spell costs, tool text and rune icons are read once per opening.
    -- Measured text fits remain valid across openings; resize invalidates them.
    u.details={}
@@ -378,16 +378,27 @@ return function(E, model, L, art)
   end
 
   local function updateRuneCountColours(force)
-   local now=os.clock()
-   if not force and now-(u.inventoryCountCacheAt or 0)<1.0 then return end
-   u.inventoryCountCacheAt=now
    local entries=u.costEntries or {}
    if #entries==0 then return end
-   local items={}
-   for i,e in ipairs(entries) do items[i]=e.item end
-   local counts=playerRuneCounts(items)
+   -- Per-rune counts (PR6), kept for 1 s within one opening: a newly hovered
+   -- spell's runes are counted at once; runes counted recently are not re-queried.
+   local now=os.clock()
+   local staleItems,seen={},{}
+   u.runeCounts=u.runeCounts or {}
+   for _,entry in ipairs(entries) do
+    local item=entry.item
+    local cached=u.runeCounts[item]
+    if item and (force or not cached or now-cached.at>=1.0) and not seen[item] then
+     seen[item]=true;staleItems[#staleItems+1]=item
+    end
+   end
+   if #staleItems>0 then
+    local counts=playerRuneCounts(staleItems)
+    for i,item in ipairs(staleItems) do u.runeCounts[item]={count=counts[i],at=now} end
+   end
    for i,e in ipairs(entries) do
-    local available=counts[i]
+    local cached=e.item and u.runeCounts[e.item]
+    local available=cached and cached.count
     -- Unknown inventory state shows white.
     local color=available==nil and WHITE or (available>=e.count and ENOUGH or INSUFFICIENT)
     if u.costColors[i]~=color then

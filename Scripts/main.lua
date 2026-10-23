@@ -89,7 +89,8 @@ local function mark(name)
  local now=os.clock()
  perf.sections[name]=(perf.sections[name] or 0)+(now-perf.last);perf.last=now
 end
-local pc,radial,panel,input,component,ui,state,pending,device,pad
+local pc,radial,panel,input,component,ui,state,pending,device,pad,catalogueGroups
+local unlockRefreshAt={}
 local nativeWasOpen=false
 M.radial=nil
 local openWasDown=false
@@ -112,9 +113,12 @@ end
 -- The native selector is suppressed at its visibility request, before it renders.
 -- Hide the radial's grandparent panel, exactly like 0.3.0. The radial itself is
 -- left live so its slices keep processing notify/highlight/select normally.
--- The game can animate/reset the panel's opacity and visibility on open and close,
--- so also park it far off-screen with a render translation (the game doesn't
--- animate that), and re-assert both every tick.
+-- The game can animate/reset the panel's opacity and visibility on open and close.
+-- With KeepNativeHidden (default) the panel is parked far off-screen with a render
+-- translation at bind and close (the game doesn't animate that) and not re-hidden
+-- on open or every few frames (PR6). PROVISIONAL: needs the native no-flash check
+-- (first open, reopen, after a cast or emote, resolution change, respawn).
+-- With KeepNativeHidden=false, visibility and opacity are still re-asserted.
 -- The native panel is a game-owned widget that can be destroyed and rebuilt
 -- (HUD changes, casting modes). Calling a UFunction on a freed widget is a
 -- native fault pcall can't catch: a 0.4.0 test build crashed in
@@ -151,11 +155,11 @@ local function keepNativeOffscreen()
  pcall(function() panel:SetRenderOpacity(0) end)
  pcall(function() panel:SetRenderTranslation({X=-20000,Y=-20000}) end)
 end
-local function hideNativeWheel()
- if not panelAlive() then return end
+local function hideNativeWheel(panelIsAlive)
+ if cfg.KeepNativeHidden then return end
+ if not panelIsAlive and not panelAlive() then return end
  pcall(function() panel:SetVisibility(2) end)
  pcall(function() panel:SetRenderOpacity(0) end)
- if cfg.KeepNativeHidden then pcall(function() panel:SetRenderTranslation({X=-20000,Y=-20000}) end) end
 end
 -- KeepNativeHidden (default on): the native panel stays at opacity 0 permanently,
 -- so neither the open nor the close of the native wheel can ever flash on screen.
@@ -212,10 +216,9 @@ end
 function M.close()
  if ui and E.valid(ui.root) then ui.hide() end
  nativeWasOpen=false
- if panelAlive() then
-  if cfg.KeepNativeHidden then keepNativeOffscreen() else restoreNativePanel() end
-  if nativeOpen() and panelAlive() then pcall(function() panel:SetVisibility(0) end) end
- end
+ if cfg.KeepNativeHidden then keepNativeOffscreen()
+ else restoreNativePanel() end
+ if panelAlive() and nativeOpen() then pcall(function() panel:SetVisibility(0) end) end
  if M.open then
   M.open=false
   if state then model.close(state) end
@@ -282,19 +285,22 @@ local function bindWorld()
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
   restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;pcPath=nil
+  catalogueGroups=nil;unlockRefreshAt={}
   pawnSeen,pawnSince=nil,nil
   return false
  end
  -- (settle: the same pawn for SETTLE s before anything else is read or called)
  local okP,pawnAddr=pcall(function() return found:GetAddress()..':'..found.Pawn:GetAddress() end)
  if not okP then return false end
- if pawnSeen~=pawnAddr then pawnSeen,pawnSince=pawnAddr,elapsed;if M.open then pcall(M.close) end;return false end
+ -- A new pawn (respawn, travel) with the same controller skips the rebind below, so
+ -- the per-world catalogue cache is dropped here too.
+ if pawnSeen~=pawnAddr then pawnSeen,pawnSince=pawnAddr,elapsed;catalogueGroups=nil;unlockRefreshAt={};if M.open then pcall(M.close) end;return false end
  if elapsed-pawnSince<SETTLE then return false end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
  rememberPc()
  -- A previous world's catalogue must not be polled in the background.
- state=nil;M.state=nil
+ state=nil;M.state=nil;catalogueGroups=nil;unlockRefreshAt={}
  radial=liveOf('WBP_SurvivalSorcery_RadialSelector_C',true)
  M.radial=radial
  if not E.alive(radial) or not E.alive(pc) then radial=nil;M.radial=nil;return false end
@@ -519,6 +525,23 @@ end
 -- Keys read while a cast is pending (confirm / cancel), for emote hand-off and
 -- for the open key: each key query is an engine call, so only these are read.
 local CAST_KEYS,EMOTE_KEYS,OPEN_KEYS={'accept','mouseLeft','back','close','toggle'},{'emote'},{'open'}
+local function setSpellUnlocked(group,spell,unlocked)
+ unlocked=unlocked==true
+ if (spell.unlocked==true)==unlocked then return end
+ spell.unlocked=unlocked
+ group.available=math.max(0,(group.available or 0)+(unlocked and 1 or -1))
+end
+-- The catalogue is scanned once per world (two FindAllOf scans; PR6). Unlocks made
+-- since are picked up per hovered skill at most every 10 s, and at selection.
+-- Cooldown durations are not taken from it: liveCooldown re-reads each spell's
+-- data asset and perk on every open.
+local function refreshGroupUnlocks(group)
+ if not group or elapsed-(unlockRefreshAt[group.id] or -1e9)<10 then return end
+ if not pcAlive() then return end
+ local progress=pc:GetProgressComponent()
+ catalogue.refresh({group},function(spell) return progress:IsSpellUnlocked(spell.data) end)
+ unlockRefreshAt[group.id]=elapsed
+end
 local function open()
  unmuteSelectSound()
  -- This is called from the native spell-wheel open lifecycle (or its
@@ -526,42 +549,62 @@ local function open()
  -- the game-owned selector object alive for spell selection/casting internals.
  -- If the native panel was rebuilt, rebind first instead of using stale widgets.
  if not panelAlive() then return end
- hideNativeWheel()
+ if perf then mark('openPanelCheck') end
+ hideNativeWheel(true)
+ if perf then mark('openHide') end
  openWasDown=device and device.sample(OPEN_KEYS).open==true or false
  restore()
  durations=setmetatable({},{__mode='k'}) -- read each spell's cooldown afresh
- local groups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
+ if not catalogueGroups then
+  local errors
+  catalogueGroups,errors=catalogue.scan(function(_,data) return pc:GetProgressComponent():IsSpellUnlocked(data) end,pc:GetSkillPerkComponent())
+  for _,group in ipairs(catalogueGroups) do unlockRefreshAt[group.id]=elapsed end
+ end
+ if perf then mark('openCatalogue') end
+ local groups=catalogueGroups
   -- Sync cooldowns from the game's own last-cast times as the wheel opens.
   local openedAt=gameTime()
   pcall(M.syncNativeCooldowns,groups,openedAt)
   applyCooldownNotices(groups,openedAt)
   lastSync=elapsed;refusedId=nil
+ if perf then mark('openCooldown') end
  state=model.new(groups);M.state=state
  pad=controller.new()
  local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
  controller.prime(pad,device.sample());state.controllerStage=pad.stage
+ if perf then mark('openSetup') end
  -- Build the custom view after the native wheel has been suppressed.
  if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons) end
  -- Native wheel suppression already happened at the very start of open().
- radial:StopRadialSelection();hideNativeWheel()
+ radial:StopRadialSelection()
  M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed
  if ui then ui.last='' end
- ui.show();controls(true)
+ ui.show()
+ if perf then mark('openView') end
  emoteHandoffAt=nil;emoteWheelActive=false;emoteWheelSeen=false
  emoteWasDown=device.sample(EMOTE_KEYS).emote==true
  local dpi=E.layout:GetViewportScale(pc)
  -- Start at the wheel's centre (the dead zone), so opening never pre-selects a skill.
  pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor((ui.height/2+ui.offsetY)*dpi))
  pointerX,pointerY=ui.pointer()
+ controls(true)
+ if perf then mark('openInput') end
 end
 local function selectSpell()
  if not panelAlive() then M.close();return end
+ local group=state and state.groups[state.group]
+ local selected=group and state.spell and group.spells[state.spell]
+ if selected then
+  local unlocked=pc:GetProgressComponent():IsSpellUnlocked(selected.data)
+  setSpellUnlocked(group,selected,unlocked)
+ end
  local spell,reason=model.selection(state)
  if not spell then
   if reason=='locked' then M.message='This spell has not been unlocked yet.';radial:InvalidSelectAudioTrigger() end
   return
  end
- if not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
+ -- (model.selection returns the hovered spell checked above; anything else is checked here)
+ if spell~=selected and not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
  -- The game is authoritative for cooldowns: never refuse a cast on the wheel's
  -- own estimate (other mods, e.g. UtilitySpellsNoCooldown, change the game's
  -- cast times). Always attempt it; the game refuses it if it must.
@@ -851,7 +894,10 @@ local function tick()
  end
  local group=state.groups[state.group];local spell=group and group.spells[state.spell]
  local hover=spell and spell.id or tostring(state.group)
- if hover~=M.hover then M.hover=hover;M.message=nil end
+ if hover~=M.hover then
+  M.hover=hover;M.message=nil
+  refreshGroupUnlocks(group)
+ end
  local queue=M.queue
  if queue[1]==nil then queue=NO_ACTIONS else M.queue={} end
  for _,action in ipairs(queue) do

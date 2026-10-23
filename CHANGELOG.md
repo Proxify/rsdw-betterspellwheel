@@ -4,6 +4,12 @@
   frames. This preserves the generated pixels while reducing decoded pixel data from 15.58 MB to 1.45 MB.
   Cached in `Assets/v2/`; older cached PNGs in `Assets/` are left untouched for switching back.
 - Handing input back after a cast reads only the five buttons it waits for (was 17 key queries per tick).
+- From community PR #6 by dhenriques: the spell list is read once per World instead of on every open (it scanned
+  all game objects twice), with unlocks refreshed per skill as you hover (at most every 10 s) and checked again when
+  you cast; cooldown durations are still read fresh each open. Rune counts colour as soon as you hover a spell. The
+  cursor is centred before it is shown. The hidden native wheel is no longer re-hidden on every open (provisional,
+  pending an in-game no-flash check). Optional open-time profiling sections. The controller and native-panel
+  liveness checks from 0.4.2–0.4.5 are kept.
 - In-game appearance, input and frame-time validation are pending; see `tests/cropped-art-evidence.md`.
 
 # 0.4.5 — Join crash fix

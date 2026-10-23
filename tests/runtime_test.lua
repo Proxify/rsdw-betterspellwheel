@@ -16,9 +16,12 @@ local empty={IsValid=function()return false end}
 local original=obj('original');local spell=obj('spell');local newer=obj('server-update')
 spell.GetModulesOfType=function()return{}end
 local record={id='test',name='Test Spell',skill='Woodcutting',level=1,unlocked=true,data=spell,cooldown=0,description='Test'}
+local unlockChecks=0
 local pc=obj('pc');pc.Pawn=obj('pawn');pc.PlayerState=obj('state');pc.CurrentInputMode=obj('DIM_Gameplay')
-function pc:GetSkillPerkComponent()return obj("perks")end
-function pc:GetProgressComponent()return {IsSpellUnlocked=function()return record.unlocked end}end
+-- gameUnlocked/perkUnlocked: the game's state when it differs from the cached catalogue record
+local gameUnlocked,perkUnlocked=nil,false
+function pc:GetSkillPerkComponent()local p=obj("perks");p.IsPerkUnlocked=function()return perkUnlocked end;return p end
+function pc:GetProgressComponent()return {IsSpellUnlocked=function()unlockChecks=unlockChecks+1;if gameUnlocked~=nil then return gameUnlocked end;return record.unlocked end}end
 function pc:RefreshInputMode()end
 function pc:SetMouseLocation()end
 local calls=0
@@ -27,9 +30,9 @@ for i=1,48 do component.SelectedSpells[i]=original end
 function component:Client_NotifySelectedSpell(d,slot) calls=calls+1;self.SelectedSpells[book*12+slot+1]=d or empty end
 function component:CancelSpellcasting()pc.CurrentInputMode=obj('DIM_Gameplay')end
 function pc:GetSpellcastingComponent()return component end
-local panel=obj('panel');local panelAlive,panelWrites=true,0
-function panel:SetRenderOpacity()panelWrites=panelWrites+1 end;function panel:SetVisibility()panelWrites=panelWrites+1 end
-function panel:SetRenderTranslation()panelWrites=panelWrites+1 end
+local panel=obj('panel');local panelAlive,panelWrites,opacityWrites,translationWrites,visibilityWrites=true,0,0,0,0
+function panel:SetRenderOpacity()panelWrites=panelWrites+1;opacityWrites=opacityWrites+1 end;function panel:SetVisibility()panelWrites=panelWrites+1;visibilityWrites=visibilityWrites+1 end
+function panel:SetRenderTranslation()panelWrites=panelWrites+1;translationWrites=translationWrites+1 end
 function panel:GetClass()return {GetFName=function()return {ToString=function()return 'WBP_Spellcasting_MainPanel_C' end}end}end
 function panel:GetFullName()return 'WBP_Spellcasting_MainPanel_C /Engine/Transient.Panel_0' end
 local radial=obj('radial');radial.Slices={GetArrayNum=function()return 12 end};radial.RadialSlice_0={SpellSlotNum=0}
@@ -63,10 +66,11 @@ function lib:GetViewportScale()return 1 end
 -- Long-lived objects are re-resolved by object path (hash lookup), as in game.
 local PC_PATH,MAGIC_PATH='/Game/Maps/W.W:PersistentLevel.BP_PlayerController_C_0','/Game/Maps/W.W:PersistentLevel.Char_0.Magic'
 local pcAtPath -- nil: the controller itself; false: gone; or a replacement object
+local panelPathLookups=0
 function pc:GetFullName()return 'BP_PlayerController_C '..PC_PATH end
 local magicComponentLookups=0
 function StaticFindObject(path)
- if path=='/Engine/Transient.Panel_0' then return panelAlive and panel or nil end
+ if path=='/Engine/Transient.Panel_0' then panelPathLookups=panelPathLookups+1;return panelAlive and panel or nil end
  if path==PC_PATH then if pcAtPath==nil then return pc end;return pcAtPath or nil end
  if path==MAGIC_PATH then return magicAtPath end
  return lib
@@ -85,12 +89,29 @@ local callback,keys
 keys={};function RegisterKeyBind(key,fn)keys[key]=fn end
 function LoopInGameThreadWithDelay(_,fn)callback=fn;return 1 end
 function CancelDelayedAction()end
+local catalogueScans=0
 function dofile(path)
  if path:find('/input.lua',1,true)then return function()return {new=function()return {
   sample=function()local s={x=0,y=0};for k,v in pairs(padSample)do s[k]=v end;return s end, device=function()return usingPad,'xbox' end,
   capture=function()captured=true end,release=function()captured=false end,shutdown=function()captured=false end,
  }end}end end
- if path:find('/catalogue.lua',1,true)then return function()return {scan=function()return model.catalogue({record}),{}end}end end
+ if path:find('/catalogue.lua',1,true)then return function()return {
+    scan=function(isUnlocked)
+     catalogueScans=catalogueScans+1
+     record.unlocked=isUnlocked(nil,record.data)==true
+     return model.catalogue({record}),{}
+    end,
+  refresh=function(groups,isUnlocked)
+   for _,group in ipairs(groups)do
+    group.available=0
+    for _,spell in ipairs(group.spells)do
+     spell.unlocked=isUnlocked(spell)==true
+     if spell.unlocked then group.available=group.available+1 end
+    end
+   end
+   return groups
+  end,
+ }end end
  if path:find('/view.lua',1,true)then return function()return {new=function()
   assert(not failView,'test missing artwork')
   return {root=obj("root"),width=1920,height=1080,scale=1,offsetY=0,show=function()end,hide=function()end,resize=function()end,pointer=function()return x,y end,draw=function()end}
@@ -114,9 +135,14 @@ local function sameSlots(expectedIndex,expected)
  for i=1,48 do assert(component.SelectedSpells[i]==(i==expectedIndex and expected or original),'unexpected slot '..i)end
 end
 -- Denied cast retains the UI and all slots.
-denied=true;open();select();assert(mod.open);sameSlots();keys[0x1B]();ticks();assert(not mod.open)
+local scansBeforeOpen=catalogueScans
+denied=true;local opacityBeforeOpen,translationBeforeOpen,visibilityBeforeOpen=opacityWrites,translationWrites,visibilityWrites
+local panelChecksBeforeOpen=panelPathLookups
+open();assert(opacityWrites==opacityBeforeOpen and translationWrites==translationBeforeOpen and visibilityWrites==visibilityBeforeOpen,'offscreen mode avoids redundant native panel writes');assert(panelPathLookups==panelChecksBeforeOpen+1,'offscreen mode: one parent-panel liveness check (kept guard), no re-hide')
+assert(catalogueScans>scansBeforeOpen,'first open scans the world catalogue');local scansAfterOpen=catalogueScans;local checksAfterFirstOpen=unlockChecks;select();assert(unlockChecks==checksAfterFirstOpen+1,'cast revalidates the selected spell');assert(mod.open);sameSlots();keys[0x1B]();ticks();assert(not mod.open)
 -- Book two uses array index 13, while the native notification takes relative 0.
-denied=false;aim=true;book=1;open();select();assert(not mod.open);sameSlots(13,spell)
+denied=false;aim=true;book=1;mod.cfg.KeepNativeHidden=false;local opacityBeforeOpen,translationBeforeOpen,visibilityBeforeOpen=opacityWrites,translationWrites,visibilityWrites;local checksBeforeReopen,panelChecksBeforeReopen=unlockChecks,panelPathLookups
+open();assert(opacityWrites>opacityBeforeOpen and translationWrites==translationBeforeOpen and visibilityWrites>visibilityBeforeOpen,'visible native panel mode hides by visibility and opacity, no translation');assert(panelPathLookups>panelChecksBeforeReopen,'visible native panel mode validates the parent before hiding');assert(catalogueScans==scansAfterOpen,'reopen refreshes unlocks without rescanning');assert(unlockChecks==checksBeforeReopen,'reopen does not sweep unlock state');select();assert(not mod.open);sameSlots(13,spell)
 ticks(50);sameSlots(13,spell);finish();sameSlots()
 -- Cancelling native placement restores the book, too.
 open();select();component:CancelSpellcasting();ticks(25);sameSlots()
@@ -249,8 +275,9 @@ spell.CastType=nil;mod.cooldowns:clear(record)
 -- Perf: a closed wheel scans no objects, reads no game time and samples no input.
 local counts={}
 local function counted(name,fn) return function(...) counts[name]=(counts[name] or 0)+1;return fn(...) end end
-local findAll,findFirst,gameTimeFn,isOpen=FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen
+local findAll,findFirst,findStatic,gameTimeFn,isOpen=FindAllOf,FindFirstOf,StaticFindObject,lib.GetGameTimeInSeconds,input.IsOpen
 FindAllOf=counted('FindAllOf',findAll);FindFirstOf=counted('FindFirstOf',findFirst)
+StaticFindObject=counted('StaticFindObject',findStatic)
 lib.GetGameTimeInSeconds=counted('GetGameTimeInSeconds',gameTimeFn);input.IsOpen=counted('IsOpen',isOpen)
 mod.shutdown();mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 open();keys[0x1B]();ticks();assert(not mod.open and mod.state)
@@ -289,7 +316,44 @@ ticks(125)
 assert((counts.FindFirstOf or 0)<=9 and (counts.FindAllOf or 0)==0,'unbound: throttled scans, got '..tostring(counts.FindFirstOf))
 pc.Pawn=pawn;ticks(340);native=true;ticks(4);assert(mod.open,'rebinds after the pawn returns (after the 5 s settle)');keys[0x1B]();ticks()
 mod.shutdown()
-FindAllOf,FindFirstOf,lib.GetGameTimeInSeconds,input.IsOpen=findAll,findFirst,gameTimeFn,isOpen
+FindAllOf,FindFirstOf,StaticFindObject,lib.GetGameTimeInSeconds,input.IsOpen=findAll,findFirst,findStatic,gameTimeFn,isOpen
+-- PR6 port: the catalogue is cached per world; unlocks and cooldowns stay fresh.
+mod=realDofile(root..'/Scripts/main.lua');ticks(340);aim=false;instant=true;denied=false;book=0;record.cooldown=0;record.unlocked=true
+local scans=catalogueScans
+open();keys[0x1B]();ticks();open();keys[0x1B]();ticks()
+assert(catalogueScans==scans+1,'one catalogue scan per world, not per open')
+local pawnBack=pc.Pawn;pc.Pawn=nil;ticks(20);pc.Pawn=pawnBack;ticks(340)
+open();keys[0x1B]();ticks();assert(catalogueScans==scans+2,'unbind/rebind clears the cached catalogue')
+local oldPawn=pc.Pawn;pc.Pawn=obj('pawn-respawned');pc.Pawn.GetComponentByClass=oldPawn.GetComponentByClass;ticks(340)
+open();keys[0x1B]();ticks();assert(catalogueScans==scans+3,'same controller, new pawn: catalogue scanned again')
+pc.Pawn=oldPawn;ticks(340);open();keys[0x1B]();ticks();assert(catalogueScans==scans+4)
+-- Closing with the native panel gone never asks the native wheel whether it is open.
+open();panelAlive=false;local isOpenBefore=isOpenCalls;mod.close();assert(isOpenCalls==isOpenBefore and not mod.open,'close: panel guard before IsOpen')
+panelAlive=true;ticks(30)
+open();keys[0x1B]();ticks();assert(catalogueScans==scans+5,'a rebuilt native panel rebinds and rescans')
+-- Hover refresh: at most once per 10 s per skill.
+local checks=unlockChecks
+open();keys[0x1B]();ticks();assert(unlockChecks==checks,'no unlock sweep within 10 s of the scan')
+ticks(700);checks=unlockChecks;open();assert(unlockChecks==checks+1,'hovering a skill after 10 s refreshes its spells');keys[0x1B]();ticks()
+checks=unlockChecks;open();keys[0x1B]();ticks();assert(unlockChecks==checks,'throttled again')
+-- A controller that fails its path check is never used for the refresh.
+ticks(700);pcAtPath=false;checks=unlockChecks;open();assert(unlockChecks==checks,'no refresh through an unverified controller');keys[0x1B]();ticks();pcAtPath=nil;ticks(130)
+-- Unlock state changed in the game since the last refresh: selection decides.
+gameUnlocked=false;ticks(700);open();keys[0x1B]();ticks();assert(record.unlocked==false,'refresh cached the locked state')
+gameUnlocked=true;local before=calls;open();select();assert(not mod.open and calls>before,'unlocked since the last refresh: cast at selection');finish();sameSlots()
+gameUnlocked=false;before=calls;open();select();assert(mod.open and calls==before and mod.message:find('not been unlocked',1,true),'locked since: refused at selection');keys[0x1B]();ticks()
+gameUnlocked=nil;record.unlocked=true
+-- Cooldown durations are read live on each open, not from the cached catalogue:
+-- a cooldown perk unlocked after the scan shortens the next cast's timer.
+scans=catalogueScans
+spell.CooldownDuration=30;spell.CooldownModifierPerk={CooldownPerk=obj('cd-perk'),ModifiedCooldown=10};record.cooldown=30
+local function remaining() return mod.cooldowns:remaining(record,clock) end
+open();select();ticks(25);assert(remaining()>25,'base cooldown');mod.cooldowns:clear(record)
+perkUnlocked=true;open();select();ticks(25);assert(remaining()>5 and remaining()<=10,'perk unlocked after the scan: modified cooldown')
+assert(catalogueScans==scans,'no rescan needed for fresh durations')
+spell.CooldownDuration=nil;spell.CooldownModifierPerk=nil;record.cooldown=0;mod.cooldowns:clear(record);perkUnlocked=false
+mod.shutdown()
+print('PASS: PR6 catalogue cache: one scan per world, cleared on unbind and new pawn; close guards the panel before IsOpen; 10 s hover unlock refresh only through a verified controller; selection revalidates; live perk cooldowns')
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
 for _=1,300 do clock=clock+.02;callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')

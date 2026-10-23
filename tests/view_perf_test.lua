@@ -80,6 +80,7 @@ local function item(name,withIcon)
 end
 local air,law,nature=item('Air',true),item('Law',false),item('Nature',true)
 local held={Air=12,Law=1,Nature=0}
+local runeCountQueries=0
 local function spellData(costs,tool)
  local module={IsValid=function() return true end,ItemsCostInfo={ForEach=function(_,fn)
   for _,c in ipairs(costs) do fn(nil,{get=function() return {ItemData=c[1],Count=c[2]} end}) end end}}
@@ -107,7 +108,7 @@ local inventory={IsValid=function() return true end,GetOwner=function() return p
   for i,s in ipairs(list) do slots[i]={IsValid=function() return true end,ItemData=s[1],Count=s[2]} end
   return slots
  end,
- GetNumItemsByData=function(_,it) for k,v in pairs(held) do if it.GetAddress()==k then return v end end;return 0 end}
+ GetNumItemsByData=function(_,it) runeCountQueries=runeCountQueries+1;for k,v in pairs(held) do if it.GetAddress()==k then return v end end;return 0 end}
 function inventory:GetAddress() return 'inventory' end
 function pc:K2_GetComponentsByClass() return {{get=function() return inventory end}} end
 function pc.Pawn:K2_GetComponentsByClass() return {} end
@@ -157,7 +158,9 @@ local function compare(label)
  -- deliberate removal of interpolation. These references identify the same UI.
  local function widget(a,b,name)
   for _,key in ipairs({'SetVisibility','SetText','SetFont','SetColorAndOpacity','SetBrushFromTexture','SetRenderTransformAngle'}) do
-   if not (name=='tipText' and key=='SetVisibility') then
+   -- Rune count colours now update on the first hover (per-rune cache), so they may
+   -- differ from the 0.4.2 reference; they are asserted separately below.
+   if not (name=='tipText' and key=='SetVisibility') and not (key=='SetColorAndOpacity' and name:match('^costCounts')) then
    -- Same ring texture, now a crop cached under Assets/v2 (placement: art_view_test).
    local bv=b.__state[key] and b.__state[key]:gsub('/Assets/v2/','/Assets/')
    assert(a.__state[key]==bv,label..' '..name..' '..key..': '..tostring(a.__state[key])..' != '..tostring(bv))
@@ -171,7 +174,7 @@ local function compare(label)
  end
  for i=1,4 do for _,key in ipairs({'costIcons','costNames','costCounts','costFallbacks'}) do widget(old.u[key][i],new.u[key][i],key..i) end end
 end
-local function frame(message,label,n)
+local function frame(message,label,n,allowImmediateRuneColor)
  for _=1,n or 1 do
   frames=frames+1;now=now+.016;fake=fake+.016
   local group=state.groups[state.group];local spell=group and group.spells[state.spell]
@@ -187,9 +190,19 @@ both(function(v) v.u.show() end)
 frame(nil,'centre',10)
 state.group=1;state.zone='skill';frame(nil,'skill ring',15)
 state.group=12;state.zone='skill';frame(nil,'agility',10)
-state.zone='spell';state.spell=1;frame(nil,'hover windstep',10)
-state.spell=2;frame(nil,'hover phase dash (tool, long tip)',70)
+state.zone='spell';state.spell=1;local queriesBeforeHover=runeCountQueries;frame(nil,'hover windstep',10)
+assert(runeCountQueries>queriesBeforeHover,'first rune hover queries inventory immediately after empty wheel')
+assert(new.u.costCounts[1].__state.SetColorAndOpacity:find('R=0.25',1,true),'sufficient rune count turns green immediately')
+-- Per-rune cache: hovering a spell queries only runes not counted in the last second.
+local queriesBeforeDash=runeCountQueries
+state.spell=2;frame(nil,'hover phase dash (tool, long tip)',1)
+assert(runeCountQueries-queriesBeforeDash==1,'only the uncached Law rune is queried, got '..(runeCountQueries-queriesBeforeDash))
+assert(new.u.costCounts[2].__state.SetColorAndOpacity:find('R=0.25',1,true),'newly hovered Law count is green at once')
+frame(nil,'hover phase dash (tool, long tip)',69)
 held.Law=0;frame(nil,'rune count drops',70)
+local function colour(v,i) return v.u.costCounts[i].__state.SetColorAndOpacity end
+assert(colour(new,2):find('R=1.0',1,true) or colour(new,2):find('R=1,',1,true),'Law count turns red once the cached count expires: '..tostring(colour(new,2)))
+for i=1,2 do assert(colour(old,i)==colour(new,i),'after the 1 s window rune colours match the 0.4.2 reference ('..i..')') end
 both(function(v) v.cool:start(groups[12].spells[1],now) end)
 frame(nil,'cooldown ticking',200)
 state.spell=3;frame('On cooldown. Ready in 12s.','refusal message',20)
