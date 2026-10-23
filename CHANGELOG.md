@@ -1,3 +1,10 @@
+# Unreleased — Lighter wheel artwork
+
+- Wheel textures are cropped to their visible artwork (with a transparent filtering margin) instead of full 848 px
+  frames: the same pixels in the same places, about a tenth of the texture memory and first-launch drawing. Cached in
+  `Assets/v2/`; older cached PNGs in `Assets/` are no longer used.
+- Handing input back after a cast reads only the five buttons it waits for (was 17 key queries per tick).
+
 # 0.4.5 — Join crash fix
 
 - Fix a crash a few seconds after joining a server. The wheel now waits until the World has finished loading (5 s

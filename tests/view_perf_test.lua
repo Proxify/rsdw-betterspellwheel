@@ -10,6 +10,7 @@ local model=dofile(root..'/Scripts/model.lua')
 local L=dofile(root..'/Scripts/layout.lua')
 local icons=dofile(root..'/Scripts/icons.lua')
 local cooldownsModule=dofile(root..'/Scripts/cooldowns.lua')
+local art=dofile(root..'/Scripts/art.lua')
 local fake=0
 local realClock=os.clock
 os.clock=function() return fake end
@@ -136,7 +137,7 @@ local function instance(path)
  local rec=newRecorder()
  recorder=rec
  local E=makeE(rec)
- local R=dofile(path)(E,model,L)
+ local R=dofile(path)(E,model,L,art)
  local u=R.new(pc,'/mod',icons)
  return {rec=rec,u=u,cool=cooldownsModule.new(),E=E}
 end
@@ -157,7 +158,9 @@ local function compare(label)
  local function widget(a,b,name)
   for _,key in ipairs({'SetVisibility','SetText','SetFont','SetColorAndOpacity','SetBrushFromTexture','SetRenderTransformAngle'}) do
    if not (name=='tipText' and key=='SetVisibility') then
-   assert(a.__state[key]==b.__state[key],label..' '..name..' '..key..': '..tostring(a.__state[key])..' != '..tostring(b.__state[key]))
+   -- Same ring texture, now a crop cached under Assets/v2 (placement: art_view_test).
+   local bv=b.__state[key] and b.__state[key]:gsub('/Assets/v2/','/Assets/')
+   assert(a.__state[key]==bv,label..' '..name..' '..key..': '..tostring(a.__state[key])..' != '..tostring(bv))
    end
   end
  end

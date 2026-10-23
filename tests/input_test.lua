@@ -48,6 +48,29 @@ down.LeftMouseButton=true;input.capture();input.release();assert(input.draining 
 down.LeftMouseButton=false;for _=1,8 do input.release() end;assert(mapRemoved==2)
 -- Emote handoff passes the held X through to the game.
 input.capture();input.release(true,true);assert(mapRemoved==3 and lastIgnore==false)
-input.capture();down.Gamepad_FaceButton_Right=true;input.shutdown();assert(mapRemoved==4 and destroyed==1)
+-- The drain reads only the 5 buttons it waits on (17 before), with unchanged
+-- timing: each of them (Y/top counts as close) holds the handoff until it
+-- has been up for 8 ticks; other held keys never did and still don't.
+queries=0
+pc.IsInputKeyDown=function(...)queries=queries+1;return isDown(...)end
+pc.GetInputAnalogKeyState=function(...)queries=queries+1;return analogState(...)end
+local removed=mapRemoved
+for _,key in ipairs({'Gamepad_FaceButton_Bottom','Gamepad_FaceButton_Right','Gamepad_Special_Right','Gamepad_FaceButton_Top','LeftMouseButton'}) do
+ input.capture();down[key]=true
+ queries=0;for _=1,20 do input.release();assert(input.draining and mapRemoved==removed,key..' held keeps input captured') end
+ assert(queries==20*5,key..' drain queries '..queries)
+ down[key]=false
+ for _=1,7 do input.release();assert(input.draining and mapRemoved==removed,key..' quiet ticks') end
+ queries=0;input.release();assert(queries==5 and not input.draining and mapRemoved==removed+1 and lastIgnore==true,key..' released on tick 8')
+ removed=mapRemoved
+end
+input.capture();down.Gamepad_DPad_Up=true;down.Gamepad_RightShoulder=true;axes.Gamepad_RightX=1
+for _=1,8 do input.release() end;assert(mapRemoved==removed+1,'non-drain keys do not hold the handoff')
+down.Gamepad_DPad_Up=false;down.Gamepad_RightShoulder=false;removed=mapRemoved
+input.capture();down.Gamepad_FaceButton_Bottom=true;queries=0;input.release(true);assert(queries==0 and mapRemoved==removed+1,'forced release reads nothing')
+down.Gamepad_FaceButton_Bottom=false
+queries=0;input.sample();assert(queries==17,'navigation still samples all 17 keys')
+pc.IsInputKeyDown,pc.GetInputAnalogKeyState=isDown,analogState
+input.capture();down.Gamepad_FaceButton_Right=true;input.shutdown();assert(mapRemoved==removed+2 and destroyed==1)
 FindFirstOf,StaticFindObject,StaticConstructObject,FName=oldFind,oldStatic,oldConstruct,oldFName
-print('PASS: raw input, right-stick-only navigation, movement passthrough, scoped mapping, B/Y interception, quiet-tick release drain, emote passthrough and forced shutdown cleanup')
+print('PASS: raw input, right-stick-only navigation, movement passthrough, scoped mapping, B/Y interception, quiet-tick release drain (5 queries per tick), emote passthrough and forced shutdown cleanup')

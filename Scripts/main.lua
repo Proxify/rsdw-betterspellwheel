@@ -51,12 +51,13 @@ end
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
-local view=dofile(folder..'/Scripts/view.lua')(E,model,layout)
--- The wheel artwork is drawn on first launch and cached in Assets/ (no image
+-- The wheel artwork is drawn on first launch and cached in Assets/v2/ (no image
 -- files are shipped). If this fails the view can't load its textures and the
 -- mod falls back to the native wheel.
+local artOk,art=pcall(dofile,folder..'/Scripts/art.lua')
+local view=dofile(folder..'/Scripts/view.lua')(E,model,layout,artOk and art or nil)
 do
- local ok,drawn=pcall(function() return dofile(folder..'/Scripts/art.lua').ensure(folder) end)
+ local ok,drawn=pcall(function() assert(artOk,art);return art.ensure(folder) end)
  if not ok then print('[BetterSpellWheel] Could not draw wheel artwork: '..tostring(drawn)..'\n')
  elseif drawn>0 then print('[BetterSpellWheel] Drew '..drawn..' wheel textures\n') end
 end
