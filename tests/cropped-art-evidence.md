@@ -1,7 +1,7 @@
 # Cropped artwork: evidence and remaining gates
 
 2026-10-23. Baseline: 0.4.5, `320ebdde44f37470ed432d06d952ff1b11ac53fe`.
-Implementation: `67e7024fb66ed3b8a575c58742b3298d6bc7c198`; subsequent changes document evidence only.
+Cropped-art implementation: `67e7024fb66ed3b8a575c58742b3298d6bc7c198`. PR6 integration and rune-cache correction: `5a6a048`, `00e98ac`. See [performance-integration.md](performance-integration.md) for the three-arm scope and additional tests.
 This is an unreleased candidate. Native validation, game performance measurements and the showcase are pending.
 
 ## Implemented
@@ -13,7 +13,7 @@ frame permits it. The active spell glow already touches the original top edge; t
 
 Versioned `Assets/v2/` caches coexist with the original cache without overwriting it. Input release samples the
 five buttons it actually reads instead of all 17 navigation inputs. Quiet timing, model hit tests, casting,
-cooldowns and controller lifetime checks are unchanged. No third-party implementation code was imported.
+cooldowns and controller lifetime checks are unchanged by the crop/input change. The later integration ports reviewed community PR6 improvements with contributor credit, as documented separately.
 
 ## Offline validation
 
@@ -50,8 +50,7 @@ processing or a game benchmark. No engine was running.
 | Candidate | 599 | 591 | 623 | 601 | 591 | 599 |
 
 These timings show less work in this local generator. They do not establish game startup time or FPS gains.
-The pre-existing view-performance test's 5090-to-1980 call comparison is against a historical 0.4.2 reference;
-it is unchanged from baseline and is **not a gain from this PR**.
+The view-performance simulation compares against a historical 0.4.2 reference: 5090-to-1980 before PR6 integration, 5090-to-1998 after it (immediate rune queries add work on first hover). These are simulated scenario counts, **not native timing gains from this PR**.
 
 ## Native gates before readiness
 
@@ -61,17 +60,14 @@ it is unchanged from baseline and is **not a gain from this PR**.
 - Test cast/cancel, input release and fast reopening, native cooldown state while closed and timer on reopen.
 - Verify repeated controlled reloads with the same PID, complete source hashes, safe input release and a single
   active generation; then validate a fresh process with absent caches and with existing v1 caches.
-- Measure interleaved clean-process B/C runs on one fixed machine, scene and settings, initially three 30–60 s
-  repetitions per representative case. Include true stock with both wheel folders absent and the attachment
-  AllSpellsOneWheel 1.0.1 as separately labelled reference controls. Never load both wheels together.
+- Measure interleaved clean-process Main `320ebdd` / pristine PR6 `81e1e038` / integrated PR7 runs on one fixed machine, scene and settings, initially three 30–60 s repetitions per representative case. Stock and AllSpellsOneWheel 1.0.1 are optional secondary controls. Never load both wheels together.
 - Report per-run p50/p95/p99/p99.9, maxima and hitches, run ranges and CPU/GPU busy where supported. Recording
   runs are separate from benchmarks. Preserve null or regressing results rather than claiming an uplift.
 - Record and produce the requested motion showcase using the `kevinbadi/claude-motion-skills` catalogue and
   selected motion/data-animation packs. Label the split-screen comparison “Same PC · separate runs · 1× speed”.
   Any simultaneous two-player proof is a separate shot and needs two admitted clients.
 
-At review time, SudoBlade is offline; nJoyDesk has another session's exclusive headless TEST lease and an absolute
-TradeTesterB no-relaunch/Cloud-choice hold. No client runs, benchmarks, recordings or media rendering occurred.
+At integration review, SudoBlade is under a single coordinated tester preparing a full game backup on NAS before Steam admission/update. Its Windows harness passed23 checks. No client benchmarks or recordings have run. nJoyDesk's absolute TradeTesterB no-relaunch/Cloud-choice hold remains.
 All video compute remains restricted to verified nJoyDesk or SudoBlade. The showcase is not yet attached.
 
 ## Iteration and scope
