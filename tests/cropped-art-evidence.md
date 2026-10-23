@@ -2,7 +2,7 @@
 
 2026-10-23. Baseline: 0.4.5, `320ebdde44f37470ed432d06d952ff1b11ac53fe`.
 Cropped-art implementation: `67e7024fb66ed3b8a575c58742b3298d6bc7c198`. PR6 integration and rune-cache correction: `5a6a048`, `00e98ac`. See [performance-integration.md](performance-integration.md) for the three-arm scope and additional tests.
-This is an unreleased candidate. Native validation, game performance measurements and the showcase are pending.
+This is an unreleased candidate. Native validation is partial; game measurements are complete and mixed. See [native results](../docs/performance/20261023/NATIVE-RESULTS.md). The polished showcase is being finalized.
 
 ## Implemented
 
@@ -38,7 +38,7 @@ The coordinator independently reran `python tests/run.py` using Python with lupa
 | Native key queries per input-release drain tick | 17 | 5 |
 
 Decoded byte counts are not measured GPU allocation. Smaller widget area is a mechanism to reduce transparent
-overdraw; GPU cost and game frame times have not been measured for this candidate.
+overdraw; Game frame times have now been measured for the integrated candidate, with mixed results; this does not isolate cropping’s GPU cost.
 
 `python tools/art_metrics.py 5` independently measured fresh `art.ensure` in temporary directories, interleaving
 baseline and candidate on the same Linux/Cuttle host with Lua 5.4. This is static artwork generation, not video
@@ -67,7 +67,7 @@ The view-performance simulation compares against a historical 0.4.2 reference: 5
   selected motion/data-animation packs. Label the split-screen comparison “Same PC · separate runs · 1× speed”.
   Any simultaneous two-player proof is a separate shot and needs two admitted clients.
 
-At integration review, SudoBlade is under a single coordinated tester preparing a full game backup on NAS before Steam admission/update. Its Windows harness passed23 checks. No client benchmarks or recordings have run. nJoyDesk's absolute TradeTesterB no-relaunch/Cloud-choice hold remains.
+The later native session completed27 steady captures and7 Q-event processes after full NAS backup, admission and game update. Windows harness25checks pass. Three real separate gameplay takes exist; full functional gates above remain partial. See the native report for current coverage rather than treating the original planned gate list as completed. nJoyDesk's absolute TradeTesterB no-relaunch/Cloud-choice hold remains.
 All video compute remains restricted to verified nJoyDesk or SudoBlade. The showcase is not yet attached.
 
 ## Iteration and scope

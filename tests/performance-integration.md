@@ -1,6 +1,6 @@
 # PR6 integration and three-way comparison
 
-Baseline Main: `320ebdde44f37470ed432d06d952ff1b11ac53fe`. Pristine community [PR6](https://github.com/Proxify/rsdw-betterspellwheel/pull/6): `81e1e0383c59d5d854eb83176a6f2af87f327370`. Integrated PR7 runtime source: `00e98ac5617e4a853f96f3d7a9f2703cb095d147` (port `5a6a048`, rune-key fix `00e98ac`, on cropped artwork `67e7024`). This is an unreleased candidate with native acceptance pending.
+Baseline Main: `320ebdde44f37470ed432d06d952ff1b11ac53fe`. Pristine community [PR6](https://github.com/Proxify/rsdw-betterspellwheel/pull/6): `81e1e0383c59d5d854eb83176a6f2af87f327370`. Integrated PR7 runtime source: `00e98ac5617e4a853f96f3d7a9f2703cb095d147` (port `5a6a048`, rune-key fix `00e98ac`, on cropped artwork `67e7024`). This is an unreleased candidate with partial native acceptance. The completed three-build measurements are mixed; see [native results](../docs/performance/20261023/NATIVE-RESULTS.md).
 
 ## What is incorporated
 
@@ -14,7 +14,7 @@ Credit to dhenriques for PR6's catalogue caching, rune feedback, cursor position
 | Cursor | visible before centring | centred first | centred first |
 | Default native panel | repeated hide writes | repeated writes removed, open guard skipped | repeated writes removed provisionally; live panel guard kept |
 | Controller lifetime | next-tick path/address check | removed | kept, with original tests |
-| Artwork | full transparent rectangles | unchanged | cropped original pixels; native placement pending |
+| Artwork | full transparent rectangles | unchanged | cropped original pixels; sampled native placement passes, full sweep pending |
 | Input-release drain |17 key queries|17|5, same quiet timing |
 | Casting | native temporary-slice handoff | unchanged | unchanged |
 
@@ -30,10 +30,10 @@ Rune tests cover distinct wrappers with the same rune address, only the uncached
 
 The historical view simulation changes from 5090→1980 calls before integration to 5090→1998 after it, because immediate rune queries add first-hover work. These are mocked scenario counts, not game FPS or native timings. Cropped-art byte totals and generator microbenchmarks are documented in [cropped-art-evidence.md](cropped-art-evidence.md).
 
-## Native comparison still pending
+## Native comparison and remaining gates
 
-Measure Main, pristine PR6 and the frozen integrated PR7 on the same admitted PC, build, scene and settings. Use interleaved cold processes, repeated cases, exact source/payload receipts and per-run p50/p95/p99/p99.9/max/hitches with spread. Separate cold first-open from warm reopens, and keep optional Lua profiling and recording outside external frame-time runs. Preserve null results and regressions. No claim that PR7 is faster than either baseline is established yet.
+Exact-source cold-process comparison completed on SudoBlade (client26162923, UE4SSf6d5f942):27 steady captures and7 Q-event processes. [Full results, run ranges and all samples](../docs/performance/20261023/NATIVE-RESULTS.md) retain regressions. [Method](../docs/performance/20261023/METHOD.md) explains the prespecified matched open/navigation subset and limitations. PR7 has lower open-idle p99 in these runs, overlapping closed-idle ranges, worse navigation p99 than PR6 and longer opening Q-event frame gaps than both baselines. It is not faster overall; Q-event metrics are not input latency. No mod-off control was measured.
 
-Verify cropped pivot/hit alignment, all skill branches, mouse/controller, cast/cancel/fast reopen, cooldown state while closed, rune colours, cache freshness, repeated controlled reloads and cold loading with/without old caches. Lua iteration uses complete syntax-checked, hash-verified source and the game-thread dofile console; never UE4SS Ctrl+R. Cold benchmarks avoid contamination from retained widgets across reloads.
+Native sampled pivot/outer Tempest hit, real casting/refusal/closed cooldown, cold binding, integrated game-thread reload and actual same-process menu exit/rejoin pass. Full all-sector selection, physical controller, multiplayer, cancellation, native cache-unlock/perk/rune-change checks and the full no-flash matrix remain incomplete. Sparse footage cannot establish absence of a transient flash. The PR stays draft.
 
-The casting-reuse experiment is isolated and not included. It requires native correctness and useful measured benefit; any later inclusion changes the candidate and requires renewed exact-source acceptance/comparison. The requested showcase will use real separately recorded runs at 1× speed with all three arms in the statistics. No video or native results are available yet. No release or deployment is part of this PR.
+The casting-reuse experiment is isolated at59a98b1 and not included. No native benefit result exists. Any later inclusion changes the candidate and requires renewed exact-source acceptance/comparison. Real separate gameplay takes exist for all three builds; the polished showcase is being finalized and is not yet attached. They run at1x wall time with about17–18fps capture, not game-FPS evidence. No release/deployment is part of this PR.

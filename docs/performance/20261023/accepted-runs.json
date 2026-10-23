@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "analyzerSha256": "dbb4118445cfa4b54cd87b235450cfac3c8440a27521d5b3454f4a360f71e41b",
+  "openingAnalyzerSha256": "726a26622035342565fd94b6de5a6595eb18d6416afd41fb12dea1ada93c8bd9",
+  "supplementary": [
+    "B1-closed",
+    "B1-open",
+    "B1-nav",
+    "C1-open",
+    "C1-nav",
+    "D1-open",
+    "D1-nav"
+  ],
+  "cases": {
+    "closed": {
+      "context": "1cb23bf2f0b1",
+      "roles": {
+        "main": [
+          "B2-closed",
+          "B3-closed",
+          "B4-closed"
+        ],
+        "pr6": [
+          "D1-closed",
+          "D2-closed",
+          "D3-closed"
+        ],
+        "pr7": [
+          "C1-closed",
+          "C2-closed",
+          "C3-closed"
+        ]
+      }
+    },
+    "open": {
+      "context": "1cb23bf2f0b1",
+      "roles": {
+        "main": [
+          "B2-open",
+          "B3-open",
+          "B4-open"
+        ],
+        "pr6": [
+          "D2-open",
+          "D3-open"
+        ],
+        "pr7": [
+          "C2-open",
+          "C3-open"
+        ]
+      }
+    },
+    "nav": {
+      "context": "1cb23bf2f0b1",
+      "roles": {
+        "main": [
+          "B2-nav",
+          "B3-nav",
+          "B4-nav"
+        ],
+        "pr6": [
+          "D2-nav",
+          "D3-nav"
+        ],
+        "pr7": [
+          "C2-nav",
+          "C3-nav"
+        ]
+      }
+    }
+  },
+  "openingCases": {
+    "open-repeat": {
+      "context": "552b7246d94d",
+      "roles": {
+        "main": [
+          {
+            "label": "B2-opening",
+            "events": [
+              "open:2",
+              "open:3"
+            ]
+          },
+          {
+            "label": "B3-opening",
+            "events": [
+              "open:2",
+              "open:3"
+            ]
+          },
+          {
+            "label": "B4-opening",
+            "events": [
+              "open:2",
+              "open:3"
+            ]
+          }
+        ],
+        "pr6": [
+          {
+            "label": "D2-opening",
+            "events": [
+              "open:2",
+              "open:3"
+            ]
+          },
+          {
+            "label": "D3-opening",
+            "events": [
+              "open:2",
+              "open:3"
+            ]
+          }
+        ],
+        "pr7": [
+          {
+            "label": "C2-opening",
+            "events": [
+              "open:2",
+              "open:3"
+            ]
+          },
+          {
+            "label": "C3-opening",
+            "events": [
+              "open:2",
+              "open:3"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

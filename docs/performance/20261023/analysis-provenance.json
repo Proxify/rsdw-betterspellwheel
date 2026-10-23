@@ -1,0 +1,12 @@
+{
+  "note": "accepted-runs analyzerSha256 and openingAnalyzerSha256 refer to result JSON bytes, not executable analyzer source. Both source and result hashes are listed here.",
+  "sha256": {
+    "native-harness/analyze.py": "59c284afb724c4f76ffd2084e8f7796bbcd4eb08598d1309720f1e1cf8f90774",
+    "opening/opening_analyze.py": "6e290ab41487f5529157069bb62ccffe902bb22628a284ca4ae49217c2dff43a",
+    "review/primary-final.json": "dbb4118445cfa4b54cd87b235450cfac3c8440a27521d5b3454f4a360f71e41b",
+    "review/opening-final.json": "726a26622035342565fd94b6de5a6595eb18d6416afd41fb12dea1ada93c8bd9",
+    "review/accepted-runs.json": "0d835de43a266b5cadd6c83925c5af4aae6d23b4b33a194b342bb24491a735eb",
+    "review/summarize-final.py": "7cc9d1bbc61991c16aec5b20c55661097c0d89f714dc0a765f0612e9c7ff1592",
+    "review/NATIVE-RESULTS.md": "004cc1b81d2bbc50c5f8f86234620dac9c30dd6e292d4bb86c5996158c0cd7a3"
+  }
+}

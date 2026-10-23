@@ -1,0 +1,3418 @@
+{
+ "skip_s": 0.0,
+ "runs": [
+  {
+   "file": "B2-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x20673EAD080",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.975,
+   "cpu_busy_ms": {
+    "n": 2813,
+    "mean": 10.337,
+    "p50": 10.2034,
+    "p95": 12.4816,
+    "p99": 13.9193,
+    "p999": 25.2184,
+    "max": 52.5452
+   },
+   "gpu_busy_ms": {
+    "n": 2813,
+    "mean": 10.597,
+    "p50": 10.5389,
+    "p95": 10.9685,
+    "p99": 11.7127,
+    "p999": 23.8096,
+    "max": 26.0733
+   },
+   "frames": 2813,
+   "frametime_ms": {
+    "n": 2813,
+    "mean": 10.66,
+    "p50": 10.5294,
+    "p95": 12.7963,
+    "p99": 14.2135,
+    "p999": 25.6093,
+    "max": 52.8477
+   },
+   "fps_mean": 93.8,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "B2-closed",
+   "arm": "B",
+   "case": "closed",
+   "pid": 21684,
+   "procStartUtc": "2026-10-23T20:30:16.2474660Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B2-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x20673EAD080",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.959,
+   "cpu_busy_ms": {
+    "n": 2619,
+    "mean": 11.104,
+    "p50": 10.8085,
+    "p95": 13.7886,
+    "p99": 16.7978,
+    "p999": 27.2439,
+    "max": 75.3616
+   },
+   "gpu_busy_ms": {
+    "n": 2619,
+    "mean": 11.391,
+    "p50": 11.0904,
+    "p95": 13.674,
+    "p99": 15.0883,
+    "p999": 26.3563,
+    "max": 28.6757
+   },
+   "frames": 2619,
+   "frametime_ms": {
+    "n": 2619,
+    "mean": 11.444,
+    "p50": 11.1391,
+    "p95": 14.0877,
+    "p99": 17.054,
+    "p999": 27.5844,
+    "max": 75.6203
+   },
+   "fps_mean": 87.4,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "B2-nav",
+   "arm": "B",
+   "case": "nav",
+   "pid": 21684,
+   "procStartUtc": "2026-10-23T20:30:16.2474660Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B2-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x20673EAD080",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.976,
+   "cpu_busy_ms": {
+    "n": 2730,
+    "mean": 10.655,
+    "p50": 10.5748,
+    "p95": 12.7176,
+    "p99": 14.0673,
+    "p999": 25.2305,
+    "max": 27.2052
+   },
+   "gpu_busy_ms": {
+    "n": 2730,
+    "mean": 10.955,
+    "p50": 10.9178,
+    "p95": 11.272,
+    "p99": 11.7075,
+    "p999": 24.5293,
+    "max": 25.8034
+   },
+   "frames": 2730,
+   "frametime_ms": {
+    "n": 2730,
+    "mean": 10.984,
+    "p50": 10.904,
+    "p95": 13.0361,
+    "p99": 14.3819,
+    "p999": 25.5569,
+    "max": 27.4654
+   },
+   "fps_mean": 91.0,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "B2-open",
+   "arm": "B",
+   "case": "open",
+   "pid": 21684,
+   "procStartUtc": "2026-10-23T20:30:16.2474660Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B3-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x16FBDFE6D40",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.972,
+   "cpu_busy_ms": {
+    "n": 2823,
+    "mean": 10.292,
+    "p50": 10.19,
+    "p95": 12.2458,
+    "p99": 13.562,
+    "p999": 25.4185,
+    "max": 28.0655
+   },
+   "gpu_busy_ms": {
+    "n": 2823,
+    "mean": 10.581,
+    "p50": 10.5239,
+    "p95": 10.872,
+    "p99": 11.5171,
+    "p999": 24.5573,
+    "max": 24.5853
+   },
+   "frames": 2823,
+   "frametime_ms": {
+    "n": 2823,
+    "mean": 10.621,
+    "p50": 10.5161,
+    "p95": 12.5572,
+    "p99": 13.9285,
+    "p999": 25.7418,
+    "max": 28.4288
+   },
+   "fps_mean": 94.2,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "B3-closed",
+   "arm": "B",
+   "case": "closed",
+   "pid": 27476,
+   "procStartUtc": "2026-10-23T20:54:02.2037575Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B3-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x16FBDFE6D40",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.947,
+   "cpu_busy_ms": {
+    "n": 2556,
+    "mean": 11.382,
+    "p50": 10.9075,
+    "p95": 15.0872,
+    "p99": 17.4297,
+    "p999": 29.72,
+    "max": 49.5566
+   },
+   "gpu_busy_ms": {
+    "n": 2556,
+    "mean": 11.67,
+    "p50": 11.0914,
+    "p95": 14.5945,
+    "p99": 15.1798,
+    "p999": 25.883,
+    "max": 26.8146
+   },
+   "frames": 2556,
+   "frametime_ms": {
+    "n": 2556,
+    "mean": 11.723,
+    "p50": 11.2413,
+    "p95": 15.3869,
+    "p99": 17.7461,
+    "p999": 30.0078,
+    "max": 49.9827
+   },
+   "fps_mean": 85.3,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "B3-nav",
+   "arm": "B",
+   "case": "nav",
+   "pid": 27476,
+   "procStartUtc": "2026-10-23T20:54:02.2037575Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B3-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x16FBDFE6D40",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.953,
+   "cpu_busy_ms": {
+    "n": 2725,
+    "mean": 10.665,
+    "p50": 10.575,
+    "p95": 12.7291,
+    "p99": 14.1591,
+    "p999": 27.6247,
+    "max": 30.8791
+   },
+   "gpu_busy_ms": {
+    "n": 2725,
+    "mean": 10.968,
+    "p50": 10.921,
+    "p95": 11.3007,
+    "p99": 11.7344,
+    "p999": 26.0516,
+    "max": 27.3141
+   },
+   "frames": 2725,
+   "frametime_ms": {
+    "n": 2725,
+    "mean": 10.996,
+    "p50": 10.9158,
+    "p95": 13.0455,
+    "p99": 14.523,
+    "p999": 28.2622,
+    "max": 31.1808
+   },
+   "fps_mean": 90.9,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "B3-open",
+   "arm": "B",
+   "case": "open",
+   "pid": 27476,
+   "procStartUtc": "2026-10-23T20:54:02.2037575Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B4-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x28FC4ACC020",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.961,
+   "cpu_busy_ms": {
+    "n": 2805,
+    "mean": 10.348,
+    "p50": 10.2276,
+    "p95": 12.2579,
+    "p99": 13.9322,
+    "p999": 28.2245,
+    "max": 55.2504
+   },
+   "gpu_busy_ms": {
+    "n": 2805,
+    "mean": 10.626,
+    "p50": 10.5691,
+    "p95": 10.9599,
+    "p99": 11.4213,
+    "p999": 24.8456,
+    "max": 27.1639
+   },
+   "frames": 2805,
+   "frametime_ms": {
+    "n": 2805,
+    "mean": 10.685,
+    "p50": 10.5603,
+    "p95": 12.5841,
+    "p99": 14.2274,
+    "p999": 28.5026,
+    "max": 55.62260000000001
+   },
+   "fps_mean": 93.6,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "B4-closed",
+   "arm": "B",
+   "case": "closed",
+   "pid": 27104,
+   "procStartUtc": "2026-10-23T21:09:53.8456114Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B4-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x28FC4ACC020",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.945,
+   "cpu_busy_ms": {
+    "n": 2553,
+    "mean": 11.387,
+    "p50": 10.9168,
+    "p95": 14.8345,
+    "p99": 17.1534,
+    "p999": 30.6798,
+    "max": 114.05
+   },
+   "gpu_busy_ms": {
+    "n": 2553,
+    "mean": 11.662,
+    "p50": 11.1513,
+    "p95": 14.6913,
+    "p99": 15.399,
+    "p999": 24.9261,
+    "max": 27.0117
+   },
+   "frames": 2553,
+   "frametime_ms": {
+    "n": 2553,
+    "mean": 11.735,
+    "p50": 11.2627,
+    "p95": 15.1396,
+    "p99": 17.4568,
+    "p999": 30.9149,
+    "max": 114.3503
+   },
+   "fps_mean": 85.2,
+   "hitch_ge50": 1,
+   "hitch_ge100": 1,
+   "label": "B4-nav",
+   "arm": "B",
+   "case": "nav",
+   "pid": 27104,
+   "procStartUtc": "2026-10-23T21:09:53.8456114Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "B4-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x28FC4ACC020",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.969,
+   "cpu_busy_ms": {
+    "n": 2722,
+    "mean": 10.674,
+    "p50": 10.6173,
+    "p95": 12.8171,
+    "p99": 14.2206,
+    "p999": 24.7653,
+    "max": 25.0269
+   },
+   "gpu_busy_ms": {
+    "n": 2722,
+    "mean": 10.984,
+    "p50": 10.9489,
+    "p95": 11.3079,
+    "p99": 11.879,
+    "p999": 24.0615,
+    "max": 24.5935
+   },
+   "frames": 2722,
+   "frametime_ms": {
+    "n": 2722,
+    "mean": 11.015,
+    "p50": 10.9527,
+    "p95": 13.1746,
+    "p99": 14.6241,
+    "p999": 25.381,
+    "max": 27.4655
+   },
+   "fps_mean": 90.8,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "B4-open",
+   "arm": "B",
+   "case": "open",
+   "pid": 27104,
+   "procStartUtc": "2026-10-23T21:09:53.8456114Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "506f69ac057c4c70",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C1-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1E0156C93B0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.966,
+   "cpu_busy_ms": {
+    "n": 2812,
+    "mean": 10.325,
+    "p50": 10.1784,
+    "p95": 12.2141,
+    "p99": 13.8525,
+    "p999": 26.6712,
+    "max": 55.3244
+   },
+   "gpu_busy_ms": {
+    "n": 2812,
+    "mean": 10.599,
+    "p50": 10.545,
+    "p95": 10.9949,
+    "p99": 11.5328,
+    "p999": 24.5187,
+    "max": 26.7882
+   },
+   "frames": 2812,
+   "frametime_ms": {
+    "n": 2812,
+    "mean": 10.661,
+    "p50": 10.5315,
+    "p95": 12.5272,
+    "p99": 14.1256,
+    "p999": 26.9901,
+    "max": 55.5951
+   },
+   "fps_mean": 93.8,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "C1-closed",
+   "arm": "C",
+   "case": "closed",
+   "pid": 34292,
+   "procStartUtc": "2026-10-23T20:19:50.7513905Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C1-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1E0156C93B0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.973,
+   "cpu_busy_ms": {
+    "n": 2799,
+    "mean": 10.366,
+    "p50": 10.2756,
+    "p95": 11.689,
+    "p99": 13.3637,
+    "p999": 26.5688,
+    "max": 29.1294
+   },
+   "gpu_busy_ms": {
+    "n": 2799,
+    "mean": 10.676,
+    "p50": 10.6225,
+    "p95": 11.0046,
+    "p99": 11.4934,
+    "p999": 25.509,
+    "max": 28.566
+   },
+   "frames": 2799,
+   "frametime_ms": {
+    "n": 2799,
+    "mean": 10.712,
+    "p50": 10.6159,
+    "p95": 12.0616,
+    "p99": 13.6478,
+    "p999": 26.8456,
+    "max": 29.4474
+   },
+   "fps_mean": 93.4,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "C1-nav",
+   "arm": "C",
+   "case": "nav",
+   "pid": 34292,
+   "procStartUtc": "2026-10-23T20:19:50.7513905Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C1-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1E0156C93B0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.955,
+   "cpu_busy_ms": {
+    "n": 2823,
+    "mean": 10.274,
+    "p50": 10.1723,
+    "p95": 11.8042,
+    "p99": 13.3507,
+    "p999": 25.7922,
+    "max": 27.9205
+   },
+   "gpu_busy_ms": {
+    "n": 2823,
+    "mean": 10.582,
+    "p50": 10.5249,
+    "p95": 10.8518,
+    "p99": 11.5266,
+    "p999": 24.8983,
+    "max": 26.3917
+   },
+   "frames": 2823,
+   "frametime_ms": {
+    "n": 2823,
+    "mean": 10.614,
+    "p50": 10.5256,
+    "p95": 12.1353,
+    "p99": 13.677,
+    "p999": 26.1091,
+    "max": 28.2119
+   },
+   "fps_mean": 94.2,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "C1-open",
+   "arm": "C",
+   "case": "open",
+   "pid": 34292,
+   "procStartUtc": "2026-10-23T20:19:50.7513905Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C2-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x21C7CB65CA0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.976,
+   "cpu_busy_ms": {
+    "n": 2826,
+    "mean": 10.285,
+    "p50": 10.1932,
+    "p95": 12.2167,
+    "p99": 13.5508,
+    "p999": 26.5239,
+    "max": 32.7463
+   },
+   "gpu_busy_ms": {
+    "n": 2826,
+    "mean": 10.571,
+    "p50": 10.513,
+    "p95": 10.8852,
+    "p99": 11.3926,
+    "p999": 24.5834,
+    "max": 26.3864
+   },
+   "frames": 2826,
+   "frametime_ms": {
+    "n": 2826,
+    "mean": 10.611,
+    "p50": 10.5196,
+    "p95": 12.5392,
+    "p99": 13.8375,
+    "p999": 26.989,
+    "max": 33.1407
+   },
+   "fps_mean": 94.2,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "C2-closed",
+   "arm": "C",
+   "case": "closed",
+   "pid": 34868,
+   "procStartUtc": "2026-10-23T20:40:57.5434438Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C2-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x21C7CB65CA0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.948,
+   "cpu_busy_ms": {
+    "n": 2676,
+    "mean": 10.854,
+    "p50": 10.5144,
+    "p95": 13.7711,
+    "p99": 17.0102,
+    "p999": 29.4368,
+    "max": 51.5013
+   },
+   "gpu_busy_ms": {
+    "n": 2676,
+    "mean": 11.121,
+    "p50": 10.7865,
+    "p95": 13.4708,
+    "p99": 14.8874,
+    "p999": 25.6465,
+    "max": 27.746
+   },
+   "frames": 2676,
+   "frametime_ms": {
+    "n": 2676,
+    "mean": 11.197,
+    "p50": 10.8637,
+    "p95": 14.1472,
+    "p99": 17.2915,
+    "p999": 29.718,
+    "max": 51.8064
+   },
+   "fps_mean": 89.3,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "C2-nav",
+   "arm": "C",
+   "case": "nav",
+   "pid": 34868,
+   "procStartUtc": "2026-10-23T20:40:57.5434438Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C2-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x21C7CB65CA0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.97,
+   "cpu_busy_ms": {
+    "n": 2805,
+    "mean": 10.356,
+    "p50": 10.2763,
+    "p95": 12.3553,
+    "p99": 13.6207,
+    "p999": 25.0184,
+    "max": 27.0445
+   },
+   "gpu_busy_ms": {
+    "n": 2805,
+    "mean": 10.657,
+    "p50": 10.6031,
+    "p95": 10.9888,
+    "p99": 11.4019,
+    "p999": 24.7958,
+    "max": 26.2108
+   },
+   "frames": 2805,
+   "frametime_ms": {
+    "n": 2805,
+    "mean": 10.689,
+    "p50": 10.6201,
+    "p95": 12.6319,
+    "p99": 13.9485,
+    "p999": 25.4044,
+    "max": 27.3202
+   },
+   "fps_mean": 93.6,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "C2-open",
+   "arm": "C",
+   "case": "open",
+   "pid": 34868,
+   "procStartUtc": "2026-10-23T20:40:57.5434438Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C3-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x157DDA3F520",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.974,
+   "cpu_busy_ms": {
+    "n": 2830,
+    "mean": 10.263,
+    "p50": 10.1315,
+    "p95": 12.0915,
+    "p99": 13.5761,
+    "p999": 26.1052,
+    "max": 77.0409
+   },
+   "gpu_busy_ms": {
+    "n": 2830,
+    "mean": 10.526,
+    "p50": 10.4723,
+    "p95": 10.8809,
+    "p99": 11.4915,
+    "p999": 23.6382,
+    "max": 24.617
+   },
+   "frames": 2830,
+   "frametime_ms": {
+    "n": 2830,
+    "mean": 10.596,
+    "p50": 10.4576,
+    "p95": 12.4032,
+    "p99": 13.9295,
+    "p999": 26.3932,
+    "max": 77.30420000000001
+   },
+   "fps_mean": 94.4,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "C3-closed",
+   "arm": "C",
+   "case": "closed",
+   "pid": 17928,
+   "procStartUtc": "2026-10-23T21:18:09.1389405Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C3-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x157DDA3F520",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.956,
+   "cpu_busy_ms": {
+    "n": 2633,
+    "mean": 11.049,
+    "p50": 10.5541,
+    "p95": 14.7254,
+    "p99": 17.3014,
+    "p999": 28.1357,
+    "max": 79.0027
+   },
+   "gpu_busy_ms": {
+    "n": 2633,
+    "mean": 11.321,
+    "p50": 10.7603,
+    "p95": 14.4696,
+    "p99": 14.9577,
+    "p999": 26.5838,
+    "max": 27.2949
+   },
+   "frames": 2633,
+   "frametime_ms": {
+    "n": 2633,
+    "mean": 11.383,
+    "p50": 10.8903,
+    "p95": 15.0743,
+    "p99": 17.5702,
+    "p999": 28.4337,
+    "max": 79.7052
+   },
+   "fps_mean": 87.8,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "C3-nav",
+   "arm": "C",
+   "case": "nav",
+   "pid": 17928,
+   "procStartUtc": "2026-10-23T21:18:09.1389405Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "C3-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x157DDA3F520",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.962,
+   "cpu_busy_ms": {
+    "n": 2815,
+    "mean": 10.322,
+    "p50": 10.2355,
+    "p95": 12.0503,
+    "p99": 13.3923,
+    "p999": 24.9636,
+    "max": 26.3532
+   },
+   "gpu_busy_ms": {
+    "n": 2815,
+    "mean": 10.616,
+    "p50": 10.5682,
+    "p95": 10.9386,
+    "p99": 11.4481,
+    "p999": 23.7138,
+    "max": 26.4601
+   },
+   "frames": 2815,
+   "frametime_ms": {
+    "n": 2815,
+    "mean": 10.647,
+    "p50": 10.56,
+    "p95": 12.3613,
+    "p99": 13.8065,
+    "p999": 25.3032,
+    "max": 26.7007
+   },
+   "fps_mean": 93.9,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "C3-open",
+   "arm": "C",
+   "case": "open",
+   "pid": 17928,
+   "procStartUtc": "2026-10-23T21:18:09.1389405Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\v2\\art-version.txt",
+    "\\Assets\\v2\\center.png",
+    "\\Assets\\v2\\skill.png",
+    "\\Assets\\v2\\skill_active.png",
+    "\\Assets\\v2\\spell.png",
+    "\\Assets\\v2\\spell_active.png",
+    "\\Assets\\v2\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "39dc0bd8c57001dc",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D1-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1D973F0E780",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.973,
+   "cpu_busy_ms": {
+    "n": 2815,
+    "mean": 10.318,
+    "p50": 10.2099,
+    "p95": 12.264,
+    "p99": 13.7661,
+    "p999": 32.3232,
+    "max": 33.6721
+   },
+   "gpu_busy_ms": {
+    "n": 2815,
+    "mean": 10.596,
+    "p50": 10.538,
+    "p95": 10.974,
+    "p99": 11.431,
+    "p999": 24.1943,
+    "max": 26.2677
+   },
+   "frames": 2815,
+   "frametime_ms": {
+    "n": 2815,
+    "mean": 10.651,
+    "p50": 10.5566,
+    "p95": 12.5592,
+    "p99": 14.1419,
+    "p999": 32.7338,
+    "max": 34.0186
+   },
+   "fps_mean": 93.9,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "D1-closed",
+   "arm": "D",
+   "case": "closed",
+   "pid": 41064,
+   "procStartUtc": "2026-10-23T20:14:03.7784549Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D1-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1D973F0E780",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.972,
+   "cpu_busy_ms": {
+    "n": 2729,
+    "mean": 10.632,
+    "p50": 10.5505,
+    "p95": 12.1485,
+    "p99": 13.3278,
+    "p999": 26.5535,
+    "max": 28.4271
+   },
+   "gpu_busy_ms": {
+    "n": 2729,
+    "mean": 10.96,
+    "p50": 10.9228,
+    "p95": 11.2981,
+    "p99": 11.8117,
+    "p999": 25.2985,
+    "max": 27.2029
+   },
+   "frames": 2729,
+   "frametime_ms": {
+    "n": 2729,
+    "mean": 10.986,
+    "p50": 10.9181,
+    "p95": 12.4671,
+    "p99": 13.6015,
+    "p999": 26.861,
+    "max": 28.7077
+   },
+   "fps_mean": 91.0,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "D1-nav",
+   "arm": "D",
+   "case": "nav",
+   "pid": 41064,
+   "procStartUtc": "2026-10-23T20:14:03.7784549Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D1-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1D973F0E780",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.955,
+   "cpu_busy_ms": {
+    "n": 2753,
+    "mean": 10.552,
+    "p50": 10.4679,
+    "p95": 12.4107,
+    "p99": 13.8009,
+    "p999": 24.7127,
+    "max": 27.2502
+   },
+   "gpu_busy_ms": {
+    "n": 2753,
+    "mean": 10.861,
+    "p50": 10.8218,
+    "p95": 11.1574,
+    "p99": 11.6656,
+    "p999": 25.414,
+    "max": 26.161
+   },
+   "frames": 2753,
+   "frametime_ms": {
+    "n": 2753,
+    "mean": 10.885,
+    "p50": 10.7999,
+    "p95": 12.726,
+    "p99": 14.1182,
+    "p999": 25.1374,
+    "max": 27.5517
+   },
+   "fps_mean": 91.9,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "D1-open",
+   "arm": "D",
+   "case": "open",
+   "pid": 41064,
+   "procStartUtc": "2026-10-23T20:14:03.7784549Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D2-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x2DE14033BC0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.963,
+   "cpu_busy_ms": {
+    "n": 2826,
+    "mean": 10.267,
+    "p50": 10.1393,
+    "p95": 12.1393,
+    "p99": 13.6243,
+    "p999": 25.5664,
+    "max": 61.355
+   },
+   "gpu_busy_ms": {
+    "n": 2826,
+    "mean": 10.554,
+    "p50": 10.4977,
+    "p95": 10.9027,
+    "p99": 11.4146,
+    "p999": 24.4292,
+    "max": 25.8836
+   },
+   "frames": 2826,
+   "frametime_ms": {
+    "n": 2826,
+    "mean": 10.606,
+    "p50": 10.4899,
+    "p95": 12.4866,
+    "p99": 13.9292,
+    "p999": 27.6685,
+    "max": 61.72170000000001
+   },
+   "fps_mean": 94.3,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "D2-closed",
+   "arm": "D",
+   "case": "closed",
+   "pid": 24656,
+   "procStartUtc": "2026-10-23T20:47:39.6384992Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D2-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x2DE14033BC0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.968,
+   "cpu_busy_ms": {
+    "n": 2648,
+    "mean": 10.986,
+    "p50": 10.7191,
+    "p95": 13.8607,
+    "p99": 16.0931,
+    "p999": 28.692,
+    "max": 77.5754
+   },
+   "gpu_busy_ms": {
+    "n": 2648,
+    "mean": 11.242,
+    "p50": 11.0013,
+    "p95": 13.2826,
+    "p99": 15.0386,
+    "p999": 25.0979,
+    "max": 27.413
+   },
+   "frames": 2648,
+   "frametime_ms": {
+    "n": 2648,
+    "mean": 11.323,
+    "p50": 11.0518,
+    "p95": 14.1994,
+    "p99": 16.4278,
+    "p999": 29.3128,
+    "max": 77.8608
+   },
+   "fps_mean": 88.3,
+   "hitch_ge50": 2,
+   "hitch_ge100": 0,
+   "label": "D2-nav",
+   "arm": "D",
+   "case": "nav",
+   "pid": 24656,
+   "procStartUtc": "2026-10-23T20:47:39.6384992Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D2-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x2DE14033BC0",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.968,
+   "cpu_busy_ms": {
+    "n": 2737,
+    "mean": 10.615,
+    "p50": 10.5405,
+    "p95": 12.7134,
+    "p99": 13.9662,
+    "p999": 25.9985,
+    "max": 27.4562
+   },
+   "gpu_busy_ms": {
+    "n": 2737,
+    "mean": 10.923,
+    "p50": 10.8789,
+    "p95": 11.2959,
+    "p99": 11.6903,
+    "p999": 24.9256,
+    "max": 25.5836
+   },
+   "frames": 2737,
+   "frametime_ms": {
+    "n": 2737,
+    "mean": 10.954,
+    "p50": 10.8796,
+    "p95": 13.0475,
+    "p99": 14.2875,
+    "p999": 26.8204,
+    "max": 27.9195
+   },
+   "fps_mean": 91.3,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "D2-open",
+   "arm": "D",
+   "case": "open",
+   "pid": 24656,
+   "procStartUtc": "2026-10-23T20:47:39.6384992Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D3-closed.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1406B667860",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.972,
+   "cpu_busy_ms": {
+    "n": 2809,
+    "mean": 10.343,
+    "p50": 10.222,
+    "p95": 12.2494,
+    "p99": 14.5407,
+    "p999": 26.5928,
+    "max": 35.2939
+   },
+   "gpu_busy_ms": {
+    "n": 2809,
+    "mean": 10.61,
+    "p50": 10.5546,
+    "p95": 10.9207,
+    "p99": 11.5864,
+    "p999": 24.9479,
+    "max": 25.5805
+   },
+   "frames": 2809,
+   "frametime_ms": {
+    "n": 2809,
+    "mean": 10.674,
+    "p50": 10.5505,
+    "p95": 12.554,
+    "p99": 14.8595,
+    "p999": 26.8732,
+    "max": 35.6524
+   },
+   "fps_mean": 93.7,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "D3-closed",
+   "arm": "D",
+   "case": "closed",
+   "pid": 41820,
+   "procStartUtc": "2026-10-23T21:00:47.4165067Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D3-nav.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1406B667860",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.956,
+   "cpu_busy_ms": {
+    "n": 2647,
+    "mean": 10.972,
+    "p50": 10.7355,
+    "p95": 13.4332,
+    "p99": 16.058,
+    "p999": 27.9511,
+    "max": 76.9646
+   },
+   "gpu_busy_ms": {
+    "n": 2647,
+    "mean": 11.27,
+    "p50": 11.0677,
+    "p95": 13.1732,
+    "p99": 14.9543,
+    "p999": 25.2553,
+    "max": 27.6175
+   },
+   "frames": 2647,
+   "frametime_ms": {
+    "n": 2647,
+    "mean": 11.322,
+    "p50": 11.0825,
+    "p95": 13.7544,
+    "p99": 16.4272,
+    "p999": 28.3665,
+    "max": 77.2866
+   },
+   "fps_mean": 88.3,
+   "hitch_ge50": 1,
+   "hitch_ge100": 0,
+   "label": "D3-nav",
+   "arm": "D",
+   "case": "nav",
+   "pid": 41820,
+   "procStartUtc": "2026-10-23T21:00:47.4165067Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  },
+  {
+   "file": "D3-open.csv",
+   "schema": "presentmon-2.6.0-default",
+   "header_sha": "f56423696e8e8f3f",
+   "excluded": {
+    "other_pid": 0,
+    "other_swapchain": 0,
+    "warmup": 0,
+    "frametime_na": 0
+   },
+   "timestamp_column": "CPUStartTimeInMs",
+   "timestamp_unit": "ms",
+   "swapchain": "0x1406B667860",
+   "frame_type_filter": "FrameType column absent (frame generation must be off; see run settings)",
+   "duration_s": 29.971,
+   "cpu_busy_ms": {
+    "n": 2725,
+    "mean": 10.668,
+    "p50": 10.5589,
+    "p95": 12.823,
+    "p99": 14.3823,
+    "p999": 27.5587,
+    "max": 29.5801
+   },
+   "gpu_busy_ms": {
+    "n": 2725,
+    "mean": 10.966,
+    "p50": 10.9159,
+    "p95": 11.2981,
+    "p99": 12.1373,
+    "p999": 25.8002,
+    "max": 27.9359
+   },
+   "frames": 2725,
+   "frametime_ms": {
+    "n": 2725,
+    "mean": 11.003,
+    "p50": 10.9029,
+    "p95": 13.1588,
+    "p99": 14.9537,
+    "p999": 27.8968,
+    "max": 29.8766
+   },
+   "fps_mean": 90.9,
+   "hitch_ge50": 0,
+   "hitch_ge100": 0,
+   "label": "D3-open",
+   "arm": "D",
+   "case": "open",
+   "pid": 41820,
+   "procStartUtc": "2026-10-23T21:00:47.4165067Z",
+   "clientBuild": "26162923",
+   "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+   "aliveAfter": true,
+   "computer": "SUDOBLADE",
+   "scene": "standard-temple-fixture-v1",
+   "generatedFiles": [
+    "\\Assets\\art-version.txt",
+    "\\Assets\\center.png",
+    "\\Assets\\skill.png",
+    "\\Assets\\skill_active.png",
+    "\\Assets\\spell.png",
+    "\\Assets\\spell_active.png",
+    "\\Assets\\tooltip.png"
+   ],
+   "activation": {
+    "logFresh": true,
+    "BetterSpellWheel": 1,
+    "BetterSpellWheel-failures": 0,
+    "AllSpellsOneWheel": 0,
+    "AllSpellsOneWheel-failures": 0,
+    "ok": true
+   },
+   "wheel_files": 25,
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "context_fields": {
+    "computer": "SUDOBLADE",
+    "clientBuild": "26162923",
+    "exeHash": "A1BA2F510458B47BDDA073658AE8795036F32D4753169A05C96610C51BD1B29F",
+    "schema": "presentmon-2.6.0-default",
+    "captureSettings": {
+     "tool": "PresentMon-2.6.0-x64.exe",
+     "sha256": "B2A706BC6AD475749E3B7E3409263AA1E6906D45BDCF993F6DBC0F660188F1AF",
+     "seconds": 30,
+     "flags": [
+      "--terminate_after_timed",
+      "--no_console_stats",
+      "--stop_existing_session",
+      "--session_name",
+      "prtest712"
+     ],
+     "warmupS": 60
+    },
+    "scene": "standard-temple-fixture-v1",
+    "configDigest": "0239868C08563953A3E2105F026ECB521BBC6442F31BBD613086A053191F13FC",
+    "ue4ssConfig": {
+     "UE4SS-settings.ini": "4FC0F039A679E53BDC12C9D54CF435D00BF5C71925467625D13D3BEE8F3FE9F0"
+    },
+    "otherModsDigest": "44136FA355B3678A1146AD16F7E8649E94FB4FC21FE77E8310C060F61CAAFF8A",
+    "modsTxtNonWheel": [
+     "PlayerTrading : 1",
+     "FrameProbe : 1"
+    ],
+    "header_sha": "f56423696e8e8f3f"
+   },
+   "context": "1cb23bf2f0b1"
+  }
+ ],
+ "summary": [
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "closed",
+   "arm": "B",
+   "runs": 3,
+   "labels": [
+    "B2-closed",
+    "B3-closed",
+    "B4-closed"
+   ],
+   "pids": [
+    "21684",
+    "27104",
+    "27476"
+   ],
+   "wheel_digest": "506f69ac057c4c70",
+   "p50": {
+    "median": 10.5294,
+    "min": 10.5161,
+    "max": 10.5603
+   },
+   "p95": {
+    "median": 12.5841,
+    "min": 12.5572,
+    "max": 12.7963
+   },
+   "p99": {
+    "median": 14.2135,
+    "min": 13.9285,
+    "max": 14.2274
+   },
+   "p999": {
+    "median": 25.7418,
+    "min": 25.6093,
+    "max": 28.5026
+   },
+   "max": {
+    "median": 52.8477,
+    "min": 28.4288,
+    "max": 55.62260000000001
+   },
+   "mean": {
+    "median": 10.66,
+    "min": 10.621,
+    "max": 10.685
+   },
+   "hitch_ge50": 2,
+   "cpu_busy": {
+    "median_p99": 13.9193,
+    "min": 13.562,
+    "max": 13.9322
+   },
+   "gpu_busy": {
+    "median_p99": 11.5171,
+    "min": 11.4213,
+    "max": 11.7127
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "closed",
+   "arm": "C",
+   "runs": 3,
+   "labels": [
+    "C1-closed",
+    "C2-closed",
+    "C3-closed"
+   ],
+   "pids": [
+    "17928",
+    "34292",
+    "34868"
+   ],
+   "wheel_digest": "39dc0bd8c57001dc",
+   "p50": {
+    "median": 10.5196,
+    "min": 10.4576,
+    "max": 10.5315
+   },
+   "p95": {
+    "median": 12.5272,
+    "min": 12.4032,
+    "max": 12.5392
+   },
+   "p99": {
+    "median": 13.9295,
+    "min": 13.8375,
+    "max": 14.1256
+   },
+   "p999": {
+    "median": 26.989,
+    "min": 26.3932,
+    "max": 26.9901
+   },
+   "max": {
+    "median": 55.5951,
+    "min": 33.1407,
+    "max": 77.30420000000001
+   },
+   "mean": {
+    "median": 10.611,
+    "min": 10.596,
+    "max": 10.661
+   },
+   "hitch_ge50": 2,
+   "cpu_busy": {
+    "median_p99": 13.5761,
+    "min": 13.5508,
+    "max": 13.8525
+   },
+   "gpu_busy": {
+    "median_p99": 11.4915,
+    "min": 11.3926,
+    "max": 11.5328
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "closed",
+   "arm": "D",
+   "runs": 3,
+   "labels": [
+    "D1-closed",
+    "D2-closed",
+    "D3-closed"
+   ],
+   "pids": [
+    "24656",
+    "41064",
+    "41820"
+   ],
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "p50": {
+    "median": 10.5505,
+    "min": 10.4899,
+    "max": 10.5566
+   },
+   "p95": {
+    "median": 12.554,
+    "min": 12.4866,
+    "max": 12.5592
+   },
+   "p99": {
+    "median": 14.1419,
+    "min": 13.9292,
+    "max": 14.8595
+   },
+   "p999": {
+    "median": 27.6685,
+    "min": 26.8732,
+    "max": 32.7338
+   },
+   "max": {
+    "median": 35.6524,
+    "min": 34.0186,
+    "max": 61.72170000000001
+   },
+   "mean": {
+    "median": 10.651,
+    "min": 10.606,
+    "max": 10.674
+   },
+   "hitch_ge50": 1,
+   "cpu_busy": {
+    "median_p99": 13.7661,
+    "min": 13.6243,
+    "max": 14.5407
+   },
+   "gpu_busy": {
+    "median_p99": 11.431,
+    "min": 11.4146,
+    "max": 11.5864
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "nav",
+   "arm": "B",
+   "runs": 3,
+   "labels": [
+    "B2-nav",
+    "B3-nav",
+    "B4-nav"
+   ],
+   "pids": [
+    "21684",
+    "27104",
+    "27476"
+   ],
+   "wheel_digest": "506f69ac057c4c70",
+   "p50": {
+    "median": 11.2413,
+    "min": 11.1391,
+    "max": 11.2627
+   },
+   "p95": {
+    "median": 15.1396,
+    "min": 14.0877,
+    "max": 15.3869
+   },
+   "p99": {
+    "median": 17.4568,
+    "min": 17.054,
+    "max": 17.7461
+   },
+   "p999": {
+    "median": 30.0078,
+    "min": 27.5844,
+    "max": 30.9149
+   },
+   "max": {
+    "median": 75.6203,
+    "min": 49.9827,
+    "max": 114.3503
+   },
+   "mean": {
+    "median": 11.723,
+    "min": 11.444,
+    "max": 11.735
+   },
+   "hitch_ge50": 2,
+   "cpu_busy": {
+    "median_p99": 17.1534,
+    "min": 16.7978,
+    "max": 17.4297
+   },
+   "gpu_busy": {
+    "median_p99": 15.1798,
+    "min": 15.0883,
+    "max": 15.399
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "nav",
+   "arm": "C",
+   "runs": 3,
+   "labels": [
+    "C1-nav",
+    "C2-nav",
+    "C3-nav"
+   ],
+   "pids": [
+    "17928",
+    "34292",
+    "34868"
+   ],
+   "wheel_digest": "39dc0bd8c57001dc",
+   "p50": {
+    "median": 10.8637,
+    "min": 10.6159,
+    "max": 10.8903
+   },
+   "p95": {
+    "median": 14.1472,
+    "min": 12.0616,
+    "max": 15.0743
+   },
+   "p99": {
+    "median": 17.2915,
+    "min": 13.6478,
+    "max": 17.5702
+   },
+   "p999": {
+    "median": 28.4337,
+    "min": 26.8456,
+    "max": 29.718
+   },
+   "max": {
+    "median": 51.8064,
+    "min": 29.4474,
+    "max": 79.7052
+   },
+   "mean": {
+    "median": 11.197,
+    "min": 10.712,
+    "max": 11.383
+   },
+   "hitch_ge50": 2,
+   "cpu_busy": {
+    "median_p99": 17.0102,
+    "min": 13.3637,
+    "max": 17.3014
+   },
+   "gpu_busy": {
+    "median_p99": 14.8874,
+    "min": 11.4934,
+    "max": 14.9577
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "nav",
+   "arm": "D",
+   "runs": 3,
+   "labels": [
+    "D1-nav",
+    "D2-nav",
+    "D3-nav"
+   ],
+   "pids": [
+    "24656",
+    "41064",
+    "41820"
+   ],
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "p50": {
+    "median": 11.0518,
+    "min": 10.9181,
+    "max": 11.0825
+   },
+   "p95": {
+    "median": 13.7544,
+    "min": 12.4671,
+    "max": 14.1994
+   },
+   "p99": {
+    "median": 16.4272,
+    "min": 13.6015,
+    "max": 16.4278
+   },
+   "p999": {
+    "median": 28.3665,
+    "min": 26.861,
+    "max": 29.3128
+   },
+   "max": {
+    "median": 77.2866,
+    "min": 28.7077,
+    "max": 77.8608
+   },
+   "mean": {
+    "median": 11.322,
+    "min": 10.986,
+    "max": 11.323
+   },
+   "hitch_ge50": 3,
+   "cpu_busy": {
+    "median_p99": 16.058,
+    "min": 13.3278,
+    "max": 16.0931
+   },
+   "gpu_busy": {
+    "median_p99": 14.9543,
+    "min": 11.8117,
+    "max": 15.0386
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "open",
+   "arm": "B",
+   "runs": 3,
+   "labels": [
+    "B2-open",
+    "B3-open",
+    "B4-open"
+   ],
+   "pids": [
+    "21684",
+    "27104",
+    "27476"
+   ],
+   "wheel_digest": "506f69ac057c4c70",
+   "p50": {
+    "median": 10.9158,
+    "min": 10.904,
+    "max": 10.9527
+   },
+   "p95": {
+    "median": 13.0455,
+    "min": 13.0361,
+    "max": 13.1746
+   },
+   "p99": {
+    "median": 14.523,
+    "min": 14.3819,
+    "max": 14.6241
+   },
+   "p999": {
+    "median": 25.5569,
+    "min": 25.381,
+    "max": 28.2622
+   },
+   "max": {
+    "median": 27.4655,
+    "min": 27.4654,
+    "max": 31.1808
+   },
+   "mean": {
+    "median": 10.996,
+    "min": 10.984,
+    "max": 11.015
+   },
+   "hitch_ge50": 0,
+   "cpu_busy": {
+    "median_p99": 14.1591,
+    "min": 14.0673,
+    "max": 14.2206
+   },
+   "gpu_busy": {
+    "median_p99": 11.7344,
+    "min": 11.7075,
+    "max": 11.879
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "open",
+   "arm": "C",
+   "runs": 3,
+   "labels": [
+    "C1-open",
+    "C2-open",
+    "C3-open"
+   ],
+   "pids": [
+    "17928",
+    "34292",
+    "34868"
+   ],
+   "wheel_digest": "39dc0bd8c57001dc",
+   "p50": {
+    "median": 10.56,
+    "min": 10.5256,
+    "max": 10.6201
+   },
+   "p95": {
+    "median": 12.3613,
+    "min": 12.1353,
+    "max": 12.6319
+   },
+   "p99": {
+    "median": 13.8065,
+    "min": 13.677,
+    "max": 13.9485
+   },
+   "p999": {
+    "median": 25.4044,
+    "min": 25.3032,
+    "max": 26.1091
+   },
+   "max": {
+    "median": 27.3202,
+    "min": 26.7007,
+    "max": 28.2119
+   },
+   "mean": {
+    "median": 10.647,
+    "min": 10.614,
+    "max": 10.689
+   },
+   "hitch_ge50": 0,
+   "cpu_busy": {
+    "median_p99": 13.3923,
+    "min": 13.3507,
+    "max": 13.6207
+   },
+   "gpu_busy": {
+    "median_p99": 11.4481,
+    "min": 11.4019,
+    "max": 11.5266
+   }
+  },
+  {
+   "context": "1cb23bf2f0b1",
+   "case": "open",
+   "arm": "D",
+   "runs": 3,
+   "labels": [
+    "D1-open",
+    "D2-open",
+    "D3-open"
+   ],
+   "pids": [
+    "24656",
+    "41064",
+    "41820"
+   ],
+   "wheel_digest": "8a6ab99f4fa409c7",
+   "p50": {
+    "median": 10.8796,
+    "min": 10.7999,
+    "max": 10.9029
+   },
+   "p95": {
+    "median": 13.0475,
+    "min": 12.726,
+    "max": 13.1588
+   },
+   "p99": {
+    "median": 14.2875,
+    "min": 14.1182,
+    "max": 14.9537
+   },
+   "p999": {
+    "median": 26.8204,
+    "min": 25.1374,
+    "max": 27.8968
+   },
+   "max": {
+    "median": 27.9195,
+    "min": 27.5517,
+    "max": 29.8766
+   },
+   "mean": {
+    "median": 10.954,
+    "min": 10.885,
+    "max": 11.003
+   },
+   "hitch_ge50": 0,
+   "cpu_busy": {
+    "median_p99": 13.9662,
+    "min": 13.8009,
+    "max": 14.3823
+   },
+   "gpu_busy": {
+    "median_p99": 11.6903,
+    "min": 11.6656,
+    "max": 12.1373
+   }
+  }
+ ]
+}
