@@ -383,21 +383,21 @@ return function(E, model, L, art)
    -- Per-rune counts (PR6), kept for 1 s within one opening: a newly hovered
    -- spell's runes are counted at once; runes counted recently are not re-queried.
    local now=os.clock()
-   local staleItems,seen={},{}
+   local staleItems,staleKeys,seen={},{},{}
    u.runeCounts=u.runeCounts or {}
    for _,entry in ipairs(entries) do
-    local item=entry.item
-    local cached=u.runeCounts[item]
-    if item and (force or not cached or now-cached.at>=1.0) and not seen[item] then
-     seen[item]=true;staleItems[#staleItems+1]=item
+    local key=entry.key
+    local cached=key and u.runeCounts[key]
+    if key and (force or not cached or now-cached.at>=1.0) and not seen[key] then
+     seen[key]=true;staleItems[#staleItems+1]=entry.item;staleKeys[#staleKeys+1]=key
     end
    end
    if #staleItems>0 then
     local counts=playerRuneCounts(staleItems)
-    for i,item in ipairs(staleItems) do u.runeCounts[item]={count=counts[i],at=now} end
+    for i,key in ipairs(staleKeys) do u.runeCounts[key]={count=counts[i],at=now} end
    end
    for i,e in ipairs(entries) do
-    local cached=e.item and u.runeCounts[e.item]
+    local cached=e.key and u.runeCounts[e.key]
     local available=cached and cached.count
     -- Unknown inventory state shows white.
     local color=available==nil and WHITE or (available>=e.count and ENOUGH or INSUFFICIENT)
@@ -519,7 +519,11 @@ return function(E, model, L, art)
       module.ItemsCostInfo:ForEach(function(_,entryRef)
        local entry=entryRef:get()
        if entry and E.valid(entry.ItemData) then
-        entries[#entries+1]={item=entry.ItemData,count=tonumber(entry.Count) or tonumber(tostring(entry.Count)) or 0}
+        -- key: the rune's address, read once here. Two spells can return different
+        -- Lua wrappers of the same rune; the per-rune count cache is shared by key.
+        local item=entry.ItemData
+        local okA,addr=pcall(function() return item:GetAddress() end)
+        entries[#entries+1]={item=item,key=okA and addr or item,count=tonumber(entry.Count) or tonumber(tostring(entry.Count)) or 0}
        end
       end)
      end

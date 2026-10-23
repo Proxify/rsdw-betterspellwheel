@@ -94,7 +94,8 @@ local function add(id,skill,level,desc,costs,tool,unlocked)
 end
 local long=string.rep('A long spell description that wraps over several lines in the tooltip bar. ',4)
 add('USD_Windstep','Agility',5,'Dash forward.',{{air,2}})
-add('USD_PhaseDash','Agility',44,long,{{air,2},{law,1}},'Logging Axe')
+-- (a separate wrapper of the same Air rune: the engine can hand out a new wrapper per read)
+add('USD_PhaseDash','Agility',44,long,{{item('Air',true),2},{law,1}},'Logging Axe')
 add('USD_Recall','Agility',57,'Return to a spot.',{{law,1},{nature,2},{air,3}},nil,false)
 for i=1,7 do add('USD_Mining'..i,'Mining',i*10,'Mining spell '..i..'. '..(i%2==0 and long or ''),{{nature,i}},i==3 and 'Pickaxe' or nil) end
 local groups=model.catalogue(records)
@@ -196,7 +197,7 @@ assert(new.u.costCounts[1].__state.SetColorAndOpacity:find('R=0.25',1,true),'suf
 -- Per-rune cache: hovering a spell queries only runes not counted in the last second.
 local queriesBeforeDash=runeCountQueries
 state.spell=2;frame(nil,'hover phase dash (tool, long tip)',1)
-assert(runeCountQueries-queriesBeforeDash==1,'only the uncached Law rune is queried, got '..(runeCountQueries-queriesBeforeDash))
+assert(runeCountQueries-queriesBeforeDash==1,'only the uncached Law rune is queried (Air shared by address across wrappers), got '..(runeCountQueries-queriesBeforeDash))
 assert(new.u.costCounts[2].__state.SetColorAndOpacity:find('R=0.25',1,true),'newly hovered Law count is green at once')
 frame(nil,'hover phase dash (tool, long tip)',69)
 held.Law=0;frame(nil,'rune count drops',70)
