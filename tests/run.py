@@ -8,7 +8,7 @@ lua = LuaRuntime(unpack_returned_tuples=True)
 for path in sorted(root.rglob("*.lua")):
     error = lua.execute("local f,e=load(...); return e", path.read_text())
     assert error is None, f"{path}: {error}"
-lua.globals().arg = lua.table_from([str(root / "Scripts/model.lua")])
+lua.globals().arg = lua.table_from([str(root / "Scripts/model.lua").replace("\\", "/")])
 lua.execute((root / "tests/model_test.lua").read_text())
 lua.globals().snapshot_path = str(root / "tests/live_catalogue_snapshot.lua")
 lua.execute("""
