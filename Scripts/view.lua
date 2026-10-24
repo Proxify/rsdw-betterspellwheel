@@ -1,6 +1,11 @@
 -- Radial-only view for BetterSpellWheel.
-return function(E, model, L)
+return function(E, model, L, art)
  local R={}
+ -- How cropped ring sectors (Scripts/art.lua) turn about the wheel centre:
+ -- 'pivot' sets a render-transform pivot outside the crop (one call at
+ -- creation); 'offset' keeps the default centre pivot and moves the slot for
+ -- each angle instead. Both show the same pixels as the full 848 px frame.
+ R.placement='pivot'
  local GOLD={R=.86,G=.73,B=.46,A=1}
  local MUTED={R=.56,G=.63,B=.65,A=1}
  local RED={R=.92,G=.32,B=.30,A=1}
@@ -92,28 +97,53 @@ return function(E, model, L)
    return u.textures[path]
   end
 
-  for _,n in ipairs({'skill','skill_active','spell','spell_active','center','tooltip'}) do
-   local t=E.render:ImportFileAsTexture2D(pc,folder..'/Assets/'..n..'.png')
+  assert(art,'missing ring artwork module')
+  for _,n in ipairs(art.names) do
+   local t=E.render:ImportFileAsTexture2D(pc,art.path(folder,n))
    assert(E.valid(t),'missing ring artwork: '..n)
    u.textures[n]=t
   end
 
   -- 1440x960 design space, with the radial exactly centered at (720,480).
+  -- Each texture is a crop of the 848x848 ring frame at this position.
   local ring={x=296,y=56,w=848,h=848}
+  local placement=R.placement
+  local function cropBox(name)
+   local c=art.crops[name]
+   return {x=ring.x+c[1],y=ring.y+c[2],w=c[3],h=c[4]}
+  end
+  -- Slot position that shows crop 'name' turned by angle a about the wheel
+  -- centre, for the default centre pivot ('offset' placement).
+  local function turnedPosition(name,a)
+   local c=art.crops[name]
+   local x,y=c[1]+c[3]/2-424,c[2]+c[4]/2-424
+   local cs,sn=math.cos(a),math.sin(a)
+   return {X=L.cx+x*cs-y*sn-c[3]/2,Y=L.cy+x*sn+y*cs-c[4]/2}
+  end
+  R.turnedPosition=turnedPosition
+  local function sector(name,z)
+   local im=img(u.textures[name],cropBox(name),z)
+   if placement=='pivot' then im:SetRenderTransformPivot(art.pivot(name)) end
+   return im
+  end
+  local function turn(im,name,a)
+   im:SetRenderTransformAngle(math.deg(a))
+   if placement~='pivot' then im.Slot:SetPosition(turnedPosition(name,a)) end
+  end
 
   for i,g in ipairs(model.skills) do
    local a=model.skillAngle(i,#model.skills)
-   local base=img(u.textures.skill,ring)
-   base:SetRenderTransformAngle(math.deg(a))
-   local hi=img(u.textures.skill_active,ring)
-   hi:SetRenderTransformAngle(math.deg(a));hi:SetRenderOpacity(0)
+   local base=sector('skill')
+   turn(base,'skill',a)
+   local hi=sector('skill_active')
+   turn(hi,'skill_active',a);hi:SetRenderOpacity(0)
    local icon=img(u.texture(icons.skills[g.id]),L.icon(model,a,model.geometry.skillRadius,64),10)
    u.skills[i]={highlight=hi,icon=icon,alpha=0}
   end
 
   for i=1,model.geometry.maxBranch do
-   local b=img(u.textures.spell,ring)
-   local h=img(u.textures.spell_active,ring)
+   local b=sector('spell')
+   local h=sector('spell_active')
    local icon=img(nil,{x=0,y=0,w=64,h=64},10)
    local number=text(tostring(i),{x=0,y=0,w=22,h=28},12,'DescriptionTextStyle',MUTED,true,false)
    -- Cooldown strings can be longer than the slot number (e.g. '1m 02s').
@@ -125,7 +155,7 @@ return function(E, model, L)
    for _,w in ipairs({b,h,icon,number,cooldownText}) do w:SetVisibility(2) end
   end
 
-  img(u.textures.center,ring)
+  img(u.textures.center,cropBox('center'))
 
   -- Native-style spell detail panel in the centre of the radial.
   -- Costs are read from the selected UtilitySpellData, so modified rune costs
@@ -145,7 +175,7 @@ return function(E, model, L)
   u.costNames={}
   u.costEntries={}
   u.costColors={}
-        u.runeCounts={}
+  u.runeCounts={}
   for i=1,4 do
    local icon=img(nil,{x=0,y=0,w=34,h=34},30)
    -- Rune name is its own compact label above the icon. Do not print raw UObject
@@ -165,8 +195,10 @@ return function(E, model, L)
   u.toolRequirement:SetVisibility(2)
 
   -- Tooltip bar under the wheel: spell description (what it does).
-  -- Tooltip bar artwork: Assets/tooltip.png (780x96 design space).
-  u.tipParts={img(u.textures.tooltip,L.tooltip,5)}
+  -- Tooltip bar artwork: Assets/v2/tooltip.png, a crop of the 1560x192 frame.
+  -- The cropped texture keeps the full image's scale and offset within L.tooltip.
+  local tc,ts=art.crops.tooltip,L.tooltip.w/1560
+  u.tipParts={img(u.textures.tooltip,{x=L.tooltip.x+tc[1]*ts,y=L.tooltip.y+tc[2]*ts,w=tc[3]*ts,h=tc[4]*ts},5)}
   u.tipText=text('',L.tipText,11,'DescriptionTextStyle',WHITE,true,false)
   u.tipAlpha=0;u.tipHas=false;u.tipShown=false
   u.tipAll={u.tipText}
@@ -220,7 +252,7 @@ return function(E, model, L)
   function u.show()
    u.resize(true);u.root:SetVisibility(3);u.root:SetRenderOpacity(1)
    u.fade=1;u.appliedFade=nil;u.last='';u.branchKey='';u.appliedBranchFade=nil;u.tipAlpha=0;u.tipAppliedAlpha=nil;u.lastSkillLabel=nil;u.lastSkillVisibility=nil;u.detailSkillAppliedOpacity=nil
-        u.inventories=nil;u.runeCounts={}
+   u.inventories=nil;u.runeCounts={}
    -- Spell costs, tool text and rune icons are read once per opening.
    -- Measured text fits remain valid across openings; resize invalidates them.
    u.details={}
@@ -348,23 +380,25 @@ return function(E, model, L)
   local function updateRuneCountColours(force)
    local entries=u.costEntries or {}
    if #entries==0 then return end
-         local now=os.clock()
-         local staleItems,seen={},{}
-         u.runeCounts=u.runeCounts or {}
-         for _,entry in ipairs(entries) do
-                local item=entry.item
-                local cached=u.runeCounts[item]
-                if item and (force or not cached or now-cached.at>=1.0) and not seen[item] then
-                 seen[item]=true;staleItems[#staleItems+1]=item
-                end
-         end
-         if #staleItems>0 then
-                local counts=playerRuneCounts(staleItems)
-                for i,item in ipairs(staleItems) do u.runeCounts[item]={count=counts[i],at=now} end
-         end
+   -- Per-rune counts (PR6), kept for 1 s within one opening: a newly hovered
+   -- spell's runes are counted at once; runes counted recently are not re-queried.
+   local now=os.clock()
+   local staleItems,staleKeys,seen={},{},{}
+   u.runeCounts=u.runeCounts or {}
+   for _,entry in ipairs(entries) do
+    local key=entry.key
+    local cached=key and u.runeCounts[key]
+    if key and (force or not cached or now-cached.at>=1.0) and not seen[key] then
+     seen[key]=true;staleItems[#staleItems+1]=entry.item;staleKeys[#staleKeys+1]=key
+    end
+   end
+   if #staleItems>0 then
+    local counts=playerRuneCounts(staleItems)
+    for i,key in ipairs(staleKeys) do u.runeCounts[key]={count=counts[i],at=now} end
+   end
    for i,e in ipairs(entries) do
-                local cached=e.item and u.runeCounts[e.item]
-                local available=cached and cached.count
+    local cached=e.key and u.runeCounts[e.key]
+    local available=cached and cached.count
     -- Unknown inventory state shows white.
     local color=available==nil and WHITE or (available>=e.count and ENOUGH or INSUFFICIENT)
     if u.costColors[i]~=color then
@@ -485,7 +519,11 @@ return function(E, model, L)
       module.ItemsCostInfo:ForEach(function(_,entryRef)
        local entry=entryRef:get()
        if entry and E.valid(entry.ItemData) then
-        entries[#entries+1]={item=entry.ItemData,count=tonumber(entry.Count) or tonumber(tostring(entry.Count)) or 0}
+        -- key: the rune's address, read once here. Two spells can return different
+        -- Lua wrappers of the same rune; the per-rune count cache is shared by key.
+        local item=entry.ItemData
+        local okA,addr=pcall(function() return item:GetAddress() end)
+        entries[#entries+1]={item=item,key=okA and addr or item,count=tonumber(entry.Count) or tonumber(tostring(entry.Count)) or 0}
        end
       end)
      end
@@ -643,8 +681,8 @@ return function(E, model, L)
       local a=b.center-b.span/2+b.step*(i-.5)
       if n.angle~=a then
        n.angle=a
-       n.base:SetRenderTransformAngle(math.deg(a))
-       n.highlight:SetRenderTransformAngle(math.deg(a))
+       turn(n.base,'spell',a)
+       turn(n.highlight,'spell_active',a)
        local iconBox=L.icon(model,a,model.geometry.spellRadius,64)
        n.icon.Slot:SetPosition({X=iconBox.x,Y=iconBox.y})
        local x,y=model.point(a,385)

@@ -10,6 +10,7 @@ local model=dofile(root..'/Scripts/model.lua')
 local L=dofile(root..'/Scripts/layout.lua')
 local icons=dofile(root..'/Scripts/icons.lua')
 local cooldownsModule=dofile(root..'/Scripts/cooldowns.lua')
+local art=dofile(root..'/Scripts/art.lua')
 local fake=0
 local realClock=os.clock
 os.clock=function() return fake end
@@ -93,7 +94,8 @@ local function add(id,skill,level,desc,costs,tool,unlocked)
 end
 local long=string.rep('A long spell description that wraps over several lines in the tooltip bar. ',4)
 add('USD_Windstep','Agility',5,'Dash forward.',{{air,2}})
-add('USD_PhaseDash','Agility',44,long,{{air,2},{law,1}},'Logging Axe')
+-- (a separate wrapper of the same Air rune: the engine can hand out a new wrapper per read)
+add('USD_PhaseDash','Agility',44,long,{{item('Air',true),2},{law,1}},'Logging Axe')
 add('USD_Recall','Agility',57,'Return to a spot.',{{law,1},{nature,2},{air,3}},nil,false)
 for i=1,7 do add('USD_Mining'..i,'Mining',i*10,'Mining spell '..i..'. '..(i%2==0 and long or ''),{{nature,i}},i==3 and 'Pickaxe' or nil) end
 local groups=model.catalogue(records)
@@ -137,7 +139,7 @@ local function instance(path)
  local rec=newRecorder()
  recorder=rec
  local E=makeE(rec)
- local R=dofile(path)(E,model,L)
+ local R=dofile(path)(E,model,L,art)
  local u=R.new(pc,'/mod',icons)
  return {rec=rec,u=u,cool=cooldownsModule.new(),E=E}
 end
@@ -157,10 +159,12 @@ local function compare(label)
  -- deliberate removal of interpolation. These references identify the same UI.
  local function widget(a,b,name)
   for _,key in ipairs({'SetVisibility','SetText','SetFont','SetColorAndOpacity','SetBrushFromTexture','SetRenderTransformAngle'}) do
-   if not (name=='tipText' and key=='SetVisibility') then
-  if not (key=='SetColorAndOpacity' and name:match('^costCounts')) then
-   assert(a.__state[key]==b.__state[key],label..' '..name..' '..key..': '..tostring(a.__state[key])..' != '..tostring(b.__state[key]))
-  end
+   -- Rune count colours now update on the first hover (per-rune cache), so they may
+   -- differ from the 0.4.2 reference; they are asserted separately below.
+   if not (name=='tipText' and key=='SetVisibility') and not (key=='SetColorAndOpacity' and name:match('^costCounts')) then
+   -- Same ring texture, now a crop cached under Assets/v2 (placement: art_view_test).
+   local bv=b.__state[key] and b.__state[key]:gsub('/Assets/v2/','/Assets/')
+   assert(a.__state[key]==bv,label..' '..name..' '..key..': '..tostring(a.__state[key])..' != '..tostring(bv))
    end
   end
  end
@@ -190,8 +194,16 @@ state.group=12;state.zone='skill';frame(nil,'agility',10)
 state.zone='spell';state.spell=1;local queriesBeforeHover=runeCountQueries;frame(nil,'hover windstep',10)
 assert(runeCountQueries>queriesBeforeHover,'first rune hover queries inventory immediately after empty wheel')
 assert(new.u.costCounts[1].__state.SetColorAndOpacity:find('R=0.25',1,true),'sufficient rune count turns green immediately')
-state.spell=2;frame(nil,'hover phase dash (tool, long tip)',70)
+-- Per-rune cache: hovering a spell queries only runes not counted in the last second.
+local queriesBeforeDash=runeCountQueries
+state.spell=2;frame(nil,'hover phase dash (tool, long tip)',1)
+assert(runeCountQueries-queriesBeforeDash==1,'only the uncached Law rune is queried (Air shared by address across wrappers), got '..(runeCountQueries-queriesBeforeDash))
+assert(new.u.costCounts[2].__state.SetColorAndOpacity:find('R=0.25',1,true),'newly hovered Law count is green at once')
+frame(nil,'hover phase dash (tool, long tip)',69)
 held.Law=0;frame(nil,'rune count drops',70)
+local function colour(v,i) return v.u.costCounts[i].__state.SetColorAndOpacity end
+assert(colour(new,2):find('R=1.0',1,true) or colour(new,2):find('R=1,',1,true),'Law count turns red once the cached count expires: '..tostring(colour(new,2)))
+for i=1,2 do assert(colour(old,i)==colour(new,i),'after the 1 s window rune colours match the 0.4.2 reference ('..i..')') end
 both(function(v) v.cool:start(groups[12].spells[1],now) end)
 frame(nil,'cooldown ticking',200)
 state.spell=3;frame('On cooldown. Ready in 12s.','refusal message',20)

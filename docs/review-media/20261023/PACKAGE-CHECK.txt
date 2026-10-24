@@ -1,0 +1,1 @@
+Final docs/media validation: 18 ZIP entries, only .lua/.txt; no docs media/dev console; production sources unchanged from tested a8553ad. Temporary ZIP directory removed.

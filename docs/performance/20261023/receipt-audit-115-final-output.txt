@@ -1,0 +1,45 @@
+receipt computer: 1 distinct 
+receipt clientBuild: 1 distinct 
+receipt exeHash: 1 distinct 
+receipt configDigest: 1 distinct 
+receipt configDigestPolicy: 1 distinct 
+receipt otherModsDigest: 1 distinct 
+receipt scene: 1 distinct 
+receipt ue4ssConfig: 1 distinct 
+arm B: 1 payload variant(s); main.lua ['BE0E3C3ECC']; generated [7] files
+arm C: 1 payload variant(s); main.lua ['52E9D25017']; generated [7] files
+arm D: 1 payload variant(s); main.lua ['DC2445870F']; generated [7] files
+processes:
+  20:14:03 pid 41064: D1-closed@20:16:07 -> D1-open@20:17:18 -> D1-nav@20:18:19
+  20:19:50 pid 34292: C1-closed@20:21:53 -> C1-open@20:23:03 -> C1-nav@20:24:02
+  20:30:16 pid 21684: B2-closed@20:32:19 -> B2-opening@20:33:29 -> B2-open@20:34:40 -> B2-nav@20:35:40
+  20:40:57 pid 34868: C2-closed@20:43:00 -> C2-opening@20:44:08 -> C2-open@20:45:20 -> C2-nav@20:46:21
+  20:47:39 pid 24656: D2-closed@20:49:42 -> D2-opening@20:50:51 -> D2-open@20:52:03 -> D2-nav@20:53:03
+  20:54:02 pid 27476: B3-closed@20:56:05 -> B3-opening@20:57:15 -> B3-open@20:58:29 -> B3-nav@20:59:30
+  21:00:47 pid 41820: D3-closed@21:02:50 -> D3-opening@21:03:57 -> D3-open@21:05:09 -> D3-nav@21:06:09
+  21:09:53 pid 27104: B4-closed@21:11:56 -> B4-opening@21:13:08 -> B4-open@21:14:21 -> B4-nav@21:15:20
+  21:18:09 pid 17928: C3-closed@21:20:13 -> C3-opening@21:21:25 -> C3-open@21:22:37 -> C3-nav@21:23:37
+scenes: 27 files, distinct pos 1 rot 1
+steady: 27 runs recomputed, worst |mine - primary-final| = 0.000000 ms
+steady per-arm median over runs (p50 / p99 / max), FULL table and MATCHED subset:
+  closed B full n=3 10.529/14.213/52.848  matched n=3 10.529/14.213/52.848  [B2,B3,B4]
+  closed C full n=3 10.520/13.930/55.595  matched n=3 10.520/13.930/55.595  [C1,C2,C3]
+  closed D full n=3 10.550/14.142/35.652  matched n=3 10.550/14.142/35.652  [D1,D2,D3]
+  open   B full n=3 10.916/14.523/27.465  matched n=3 10.916/14.523/27.465  [B2,B3,B4]
+  open   C full n=3 10.560/13.806/27.320  matched n=2 10.590/13.877/27.010  [C2,C3]
+  open   D full n=3 10.880/14.287/27.919  matched n=2 10.891/14.621/28.898  [D2,D3]
+  nav    B full n=3 11.241/17.457/75.620  matched n=3 11.241/17.457/75.620  [B2,B3,B4]
+  nav    C full n=3 10.864/17.291/51.806  matched n=2 10.877/17.431/65.756  [C2,C3]
+  nav    D full n=3 11.052/16.427/77.287  matched n=2 11.067/16.428/77.574  [D2,D3]
+opening B2-opening: mapping cpu/pres 0.0000/0.0000 ms, 6 events, 0 mismatches
+opening B3-opening: mapping cpu/pres 0.0000/0.0000 ms, 6 events, 0 mismatches
+opening B4-opening: mapping cpu/pres 0.0000/0.0000 ms, 6 events, 0 mismatches
+opening C2-opening: mapping cpu/pres 0.0000/0.0000 ms, 6 events, 0 mismatches
+opening C3-opening: mapping cpu/pres 0.0000/0.0000 ms, 6 events, 0 mismatches
+opening D2-opening: mapping cpu/pres 0.0000/0.0000 ms, 6 events, 0 mismatches
+opening D3-opening: mapping cpu/pres 0.0000/0.0000 ms, 6 events, 0 mismatches
+first open per cold process (label, class, cpu max ms, cpu excess ms, coldProcess, artCache):
+  B n=3 median excess 7.649 ms: [('B2-opening', 'first-in-process', 18.065, 7.649, True, 'present'), ('B3-opening', 'first-in-process', 18.736, 8.257, True, 'present'), ('B4-opening', 'first-in-process', 18.139, 7.631, True, 'present')]
+  C n=2 median excess 12.154 ms: [('C2-opening', 'first-in-process', 20.921, 10.326, True, 'present'), ('C3-opening', 'first-in-process', 24.48, 13.981, True, 'present')]
+  D n=2 median excess 10.197 ms: [('D2-opening', 'first-in-process', 19.792, 9.165, True, 'present'), ('D3-opening', 'first-in-process', 21.801, 11.229, True, 'present')]
+ISSUES: none

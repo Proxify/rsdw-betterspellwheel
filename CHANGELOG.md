@@ -1,3 +1,19 @@
+# Unreleased — Lighter wheel artwork
+
+- Wheel textures are cropped to their artwork (with a transparent filtering margin) instead of full 848 px
+  frames. This preserves the generated pixels while reducing decoded pixel data from 15.58 MB to 1.45 MB.
+  Cached in `Assets/v2/`; older cached PNGs in `Assets/` are left untouched for switching back.
+- Handing input back after a cast reads only the five buttons it waits for (was 17 key queries per tick).
+- From community PR #6 by dhenriques: the spell list is read once per World instead of on every open (it scanned
+  all game objects twice), with unlocks refreshed per skill as you hover (at most every 10 s) and checked again when
+  you cast; cooldown durations are still read fresh each open. Rune counts colour as soon as you hover a spell. The
+  cursor is centred before it is shown. The hidden native wheel is no longer re-hidden on every open (provisional,
+  pending an in-game no-flash check). Optional open-time profiling sections. The controller and native-panel
+  liveness checks from 0.4.2–0.4.5 are kept.
+- Native three-build results are mixed: lower open-idle p99, overlapping closed-idle results, worse navigation than
+  PR #6 and longer opening-event frames. This remains a draft with partial functional coverage; see
+  `docs/performance/20261023/NATIVE-RESULTS.md` and `tests/cropped-art-evidence.md`.
+
 # 0.4.5 — Join crash fix
 
 - Fix a crash a few seconds after joining a server. The wheel now waits until the World has finished loading (5 s
@@ -136,4 +152,3 @@ The wheel now uses larger icons and compact slot numbers. A matching spell list
 keeps full names and required levels in a fixed panel, with separate space for
 the selected spell's description, cost, cooldown and feedback. Text is fitted
 using the game's rendered font metrics. No full spell name crosses a wheel slice.
-

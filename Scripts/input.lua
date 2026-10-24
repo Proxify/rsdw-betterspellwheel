@@ -11,6 +11,8 @@ return function(E)
  local keys={}
  for k,n in pairs(names) do keys[k]={KeyName=FName(n)} end
  local analog={x=true,y=true,rx=true,ry=true,mx=true,my=true}
+ -- The only buttons release() waits on (toggle also counts as close).
+ local RELEASE_KEYS={'accept','back','close','toggle','mouseLeft'}
  function I.new(pc)
   local i={pc=pc,quiet=0}
   -- Each key query is a UFunction call (~10 us). 'only' limits the sample to
@@ -82,7 +84,7 @@ return function(E)
   function i.release(force,passthrough)
    if not i.captured then return end
    if not force then
-    local s=i.sample()
+    local s=i.sample(RELEASE_KEYS)
     -- Do not leak the button that cast/closed the wheel into gameplay or the
     -- native spell-confirmation screen. Wait until it is released AND has
     -- stayed released for HOLD_TICKS, so a fast click can't reach the game.

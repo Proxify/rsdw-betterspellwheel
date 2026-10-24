@@ -51,12 +51,13 @@ end
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
-local view=dofile(folder..'/Scripts/view.lua')(E,model,layout)
--- The wheel artwork is drawn on first launch and cached in Assets/ (no image
+-- The wheel artwork is drawn on first launch and cached in Assets/v2/ (no image
 -- files are shipped). If this fails the view can't load its textures and the
 -- mod falls back to the native wheel.
+local artOk,art=pcall(dofile,folder..'/Scripts/art.lua')
+local view=dofile(folder..'/Scripts/view.lua')(E,model,layout,artOk and art or nil)
 do
- local ok,drawn=pcall(function() return dofile(folder..'/Scripts/art.lua').ensure(folder) end)
+ local ok,drawn=pcall(function() assert(artOk,art);return art.ensure(folder) end)
  if not ok then print('[BetterSpellWheel] Could not draw wheel artwork: '..tostring(drawn)..'\n')
  elseif drawn>0 then print('[BetterSpellWheel] Drew '..drawn..' wheel textures\n') end
 end
@@ -87,7 +88,7 @@ local perfTick
 local function mark(name)
  local now=os.clock()
  perf.sections[name]=(perf.sections[name] or 0)+(now-perf.last);perf.last=now
-end 
+end
 local pc,radial,panel,input,component,ui,state,pending,device,pad,catalogueGroups
 local unlockRefreshAt={}
 local nativeWasOpen=false
@@ -112,8 +113,12 @@ end
 -- The native selector is suppressed at its visibility request, before it renders.
 -- Hide the radial's grandparent panel, exactly like 0.3.0. The radial itself is
 -- left live so its slices keep processing notify/highlight/select normally.
--- The game can animate/reset opacity and visibility on open and close. Render
--- translation is stable, so park it off-screen at bind/close and leave it there.
+-- The game can animate/reset the panel's opacity and visibility on open and close.
+-- With KeepNativeHidden (default) the panel is parked far off-screen with a render
+-- translation at bind and close (the game doesn't animate that) and not re-hidden
+-- on open or every few frames (PR6). PROVISIONAL: needs the native no-flash check
+-- (first open, reopen, after a cast or emote, resolution change, respawn).
+-- With KeepNativeHidden=false, visibility and opacity are still re-asserted.
 -- The native panel is a game-owned widget that can be destroyed and rebuilt
 -- (HUD changes, casting modes). Calling a UFunction on a freed widget is a
 -- native fault pcall can't catch: a 0.4.0 test build crashed in
@@ -154,6 +159,7 @@ local function hideNativeWheel(panelIsAlive)
  if cfg.KeepNativeHidden then return end
  if not panelIsAlive and not panelAlive() then return end
  pcall(function() panel:SetVisibility(2) end)
+ pcall(function() panel:SetRenderOpacity(0) end)
 end
 -- KeepNativeHidden (default on): the native panel stays at opacity 0 permanently,
 -- so neither the open nor the close of the native wheel can ever flash on screen.
@@ -212,7 +218,7 @@ function M.close()
  nativeWasOpen=false
  if cfg.KeepNativeHidden then keepNativeOffscreen()
  else restoreNativePanel() end
- if nativeOpen() and panelAlive() then pcall(function() panel:SetVisibility(0) end) end
+ if panelAlive() and nativeOpen() then pcall(function() panel:SetVisibility(0) end) end
  if M.open then
   M.open=false
   if state then model.close(state) end
@@ -225,10 +231,30 @@ function M.close()
  end
  M.queue={};M.message=nil
 end
--- FindFirstOf walks the UObject array, so a bound controller is rescanned only
--- every BIND_VERIFY seconds. Cached UObject validity is checked on each tick.
+-- FindFirstOf walks the whole UObject array (hundreds of thousands of objects)
+-- and was called every tick: the mod's main per-frame cost. The bound controller
+-- is now checked with a hash lookup of its own path (same object address), and
+-- the scan runs only every BIND_VERIFY seconds while bound, or every BIND_RETRY
+-- seconds while unbound (menus, loading, respawn).
 local BIND_VERIFY,BIND_RETRY=2,.25
 local scannedAt=-1e9
+local pcPath,pcAddr
+local function rememberPc()
+ pcPath,pcAddr=nil,nil
+ pcall(function()
+  local addr=pc:GetAddress()
+  local path=pc:GetFullName():match('^%S+%s+(.+)$')
+  -- Only use the path if it resolves to this very controller.
+  local o=StaticFindObject(path)
+  if o and o:IsValid() and o:GetAddress()==addr then pcPath,pcAddr=path,addr end
+ end)
+end
+-- Without a usable path there is no safe cheap check: rescan (0.4.2 behaviour).
+local function pcAlive()
+ if not pcPath then return false end
+ local ok,o=pcall(StaticFindObject,pcPath)
+ return ok and o~=nil and o:IsValid() and o:GetAddress()==pcAddr
+end
 -- World entry settle (0.4.5): a client crashed ~2 s after joining a server (native AV reading 0x0 under ProcessEvent,
 -- called from UE4SS; 3 of 10 joins with BetterSpellWheel, 0 without, 2026-10-15). In the first seconds of a world the
 -- previous (menu) world's UI objects are still around and IsValid() stays true for them until garbage collection, and
@@ -249,7 +275,7 @@ local function liveOf(className, widget)
 end
 local function bindWorld()
  if pc and radial then
-   if elapsed-scannedAt<BIND_VERIFY and E.valid(pc) and E.valid(pc.Pawn) and E.valid(radial) then return true end
+  if elapsed-scannedAt<BIND_VERIFY and pcAlive() and E.valid(pc.Pawn) and E.valid(radial) then return true end
  elseif elapsed-scannedAt<BIND_RETRY and not (M.open or pending) then
   -- (While the wheel is open or a cast is pending, rebind/close at once.)
   return false
@@ -258,17 +284,21 @@ local function bindWorld()
  local found=FindFirstOf('BP_PlayerController_C')
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
-   restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil
+  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;pcPath=nil
+  catalogueGroups=nil;unlockRefreshAt={}
   pawnSeen,pawnSince=nil,nil
   return false
  end
  -- (settle: the same pawn for SETTLE s before anything else is read or called)
  local okP,pawnAddr=pcall(function() return found:GetAddress()..':'..found.Pawn:GetAddress() end)
  if not okP then return false end
- if pawnSeen~=pawnAddr then pawnSeen,pawnSince=pawnAddr,elapsed;if M.open then pcall(M.close) end;return false end
+ -- A new pawn (respawn, travel) with the same controller skips the rebind below, so
+ -- the per-world catalogue cache is dropped here too.
+ if pawnSeen~=pawnAddr then pawnSeen,pawnSince=pawnAddr,elapsed;catalogueGroups=nil;unlockRefreshAt={};if M.open then pcall(M.close) end;return false end
  if elapsed-pawnSince<SETTLE then return false end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
+ rememberPc()
  -- A previous world's catalogue must not be polled in the background.
  state=nil;M.state=nil;catalogueGroups=nil;unlockRefreshAt={}
  radial=liveOf('WBP_SurvivalSorcery_RadialSelector_C',true)
@@ -501,8 +531,13 @@ local function setSpellUnlocked(group,spell,unlocked)
  spell.unlocked=unlocked
  group.available=math.max(0,(group.available or 0)+(unlocked and 1 or -1))
 end
+-- The catalogue is scanned once per world (two FindAllOf scans; PR6). Unlocks made
+-- since are picked up per hovered skill at most every 10 s, and at selection.
+-- Cooldown durations are not taken from it: liveCooldown re-reads each spell's
+-- data asset and perk on every open.
 local function refreshGroupUnlocks(group)
  if not group or elapsed-(unlockRefreshAt[group.id] or -1e9)<10 then return end
+ if not pcAlive() then return end
  local progress=pc:GetProgressComponent()
  catalogue.refresh({group},function(spell) return progress:IsSpellUnlocked(spell.data) end)
  unlockRefreshAt[group.id]=elapsed
@@ -512,8 +547,8 @@ local function open()
  -- This is called from the native spell-wheel open lifecycle (or its
  -- state-transition fallback). Replace only the spell selector's visuals; keep
  -- the game-owned selector object alive for spell selection/casting internals.
- -- If the native panel was rebuilt, rebind before touching its widgets.
- if not cfg.KeepNativeHidden and not panelAlive() then return end
+ -- If the native panel was rebuilt, rebind first instead of using stale widgets.
+ if not panelAlive() then return end
  if perf then mark('openPanelCheck') end
  hideNativeWheel(true)
  if perf then mark('openHide') end
@@ -568,6 +603,8 @@ local function selectSpell()
   if reason=='locked' then M.message='This spell has not been unlocked yet.';radial:InvalidSelectAudioTrigger() end
   return
  end
+ -- (model.selection returns the hovered spell checked above; anything else is checked here)
+ if spell~=selected and not pc:GetProgressComponent():IsSpellUnlocked(spell.data) then M.message='This spell has not been unlocked yet.';return end
  -- The game is authoritative for cooldowns: never refuse a cast on the wheel's
  -- own estimate (other mods, e.g. UtilitySpellsNoCooldown, change the game's
  -- cast times). Always attempt it; the game refuses it if it must.
@@ -911,7 +948,7 @@ perfTick=function(started)
  local spent=now-started
  perf.ticks=perf.ticks+1;perf.total=perf.total+spent;perf.max=math.max(perf.max,spent)
  pcall(function()
-   if pc and radial and E.valid(pc) and E.valid(pc.Pawn) and E.valid(radial) then
+  if pc and radial and pcAlive() then
    local dt=E.stats:GetWorldDeltaSeconds(pc)
    perf.frames=perf.frames+1;perf.frameSum=perf.frameSum+dt;perf.frameMax=math.max(perf.frameMax,dt)
   end

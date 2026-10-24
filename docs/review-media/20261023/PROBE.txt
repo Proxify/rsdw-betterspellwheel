@@ -1,0 +1,10 @@
+== bsw-pr7-performance.mp4 9637429 bytes
+codec_name=h264 profile=High width=1920 height=1080 pix_fmt=yuv420p r_frame_rate=30/1 nb_frames=3540 codec_name=aac profile=LC sample_rate=48000 channels=2 r_frame_rate=0/0 nb_frames=5535 duration=118.058000 bit_rate=653064 
+full decode: exit 0, no errors
+ I: -20.0 LUFS  LRA: 5.2 LU  Peak: -9.0 dBFS 
+== bsw-pr7-performance-hq.mp4 16123790 bytes
+codec_name=h264 profile=High width=1920 height=1080 pix_fmt=yuvj420p r_frame_rate=30/1 nb_frames=3540 codec_name=aac profile=LC sample_rate=48000 channels=2 r_frame_rate=0/0 nb_frames=5534 duration=118.058667 bit_rate=1092595 
+full decode: exit 0, no errors
+ I: -20.0 LUFS  LRA: 5.1 LU  Peak: -9.7 dBFS 
+bsw-pr7-performance.mp4 ['ftyp', 'moov', 'free', 'mdat'] faststart
+bsw-pr7-performance-hq.mp4 ['ftyp', 'moov', 'free', 'mdat'] faststart

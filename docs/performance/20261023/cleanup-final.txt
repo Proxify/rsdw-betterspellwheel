@@ -1,0 +1,14 @@
+verify ok: Mods, mods.txt and Saved (excluding Logs/Crashes) identical to the init manifest
+	"buildid"		"26162923"
+{
+    "Hash":  "4AACDA811790FE3109E2B3150A0DF5BD68E2CA3A85CF3D47321E120F12E59010"
+}
+Owned task/tools/repl/fixtures/staging/recordings/screens removed; verified archives retained NAS.
+No game/Steam/ffmpeg processes remain. Preexisting PresentMonService2576 not touched.
+Final follow-up (quser unavailable; no cleanup action failed):
+{
+    "Id":  27160,
+    "ProcessName":  "explorer",
+    "SessionId":  2
+}
+END cleanup UTC=2026-10-23T21:36:09.0008755Z
