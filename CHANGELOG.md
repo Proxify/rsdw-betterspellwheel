@@ -1,4 +1,4 @@
-# Unreleased — Lighter wheel artwork
+# 0.4.6 — Smaller wheel artwork and cached spell data
 
 - Wheel textures are cropped to their artwork (with a transparent filtering margin) instead of full 848 px
   frames. This preserves the generated pixels while reducing decoded pixel data from 15.58 MB to 1.45 MB.
@@ -11,7 +11,7 @@
   pending an in-game no-flash check). Optional open-time profiling sections. The controller and native-panel
   liveness checks from 0.4.2–0.4.5 are kept.
 - Native three-build results are mixed: lower open-idle p99, overlapping closed-idle results, worse navigation than
-  PR #6 and longer opening-event frames. This remains a draft with partial functional coverage; see
+  PR #6 and longer opening-event frames. Native functional coverage is partial; see
   `docs/performance/20261023/NATIVE-RESULTS.md` and `tests/cropped-art-evidence.md`.
 
 # 0.4.5 — Join crash fix
