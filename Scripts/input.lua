@@ -39,14 +39,14 @@ return function(E)
    return s
   end
   function i.device()
-   local sub=(E.findFirst or FindFirstOf)('CommonInputSubsystem')
+   local sub=E.localSubsystem and E.localSubsystem(pc,'/Script/CommonInput.CommonInputSubsystem') or FindFirstOf('CommonInputSubsystem')
    if not E.valid(sub) then return false,'xbox' end
    local name=sub:GetCurrentGamepadName():ToString():lower()
    return sub:GetCurrentInputType()==1,(name:find('ps') or name:find('playstation') or name:find('dualsense') or name:find('dualshock')) and 'playstation' or 'xbox'
   end
   function i.capture()
    if not E.valid(i.actor) then
-    local gs=StaticFindObject('/Script/Engine.Default__GameplayStatics')
+    local gs=E.stats or StaticFindObject('/Script/Engine.Default__GameplayStatics')
     local tr={Rotation={X=0,Y=0,Z=0,W=1},Translation={X=0,Y=0,Z=0},Scale3D={X=1,Y=1,Z=1}}
     i.actor=gs:BeginDeferredActorSpawnFromClass(pc,E.class('/Script/Engine.Actor'),tr,1,pc,0)
     assert(E.valid(i.actor),'Could not create wheel input blocker')
@@ -56,7 +56,7 @@ return function(E)
     i.actor=gs:FinishSpawningActor(i.actor,tr,0)
    end
    if not E.valid(i.mapping) then
-    i.sub=FindFirstOf('EnhancedInputLocalPlayerSubsystem')
+    i.sub=E.localSubsystem and E.localSubsystem(pc,'/Script/EnhancedInput.EnhancedInputLocalPlayerSubsystem') or FindFirstOf('EnhancedInputLocalPlayerSubsystem')
     assert(E.valid(i.sub),'Missing local input subsystem')
     i.mapping=StaticConstructObject(E.class('/Script/EnhancedInput.InputMappingContext'),pc)
     i.action=StaticConstructObject(E.class('/Script/EnhancedInput.InputAction'),i.mapping)

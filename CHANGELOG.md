@@ -1,3 +1,17 @@
+# 0.4.7 — Frame rate fix for older UE4SS builds
+
+- The closed wheel no longer looks up any game object per frame. 0.4.2–0.4.6 checked the player controller with
+  `StaticFindObject` every tick. UE4SS builds from before late August 2026 (the 3.0.1 release and experimental
+  builds such as `0196ef29`) walk every object for that call: about 12 ms each, measured in game. On fast PCs this
+  cost a large share of the frame (a community report: 75–100 fps without the mod, 35–45 with it). The controller is now
+  checked through the engine's local player (`LocalPlayer.PlayerController`, about 1 µs). A replaced or removed
+  controller is still noticed on the next frame, and a respawn now is too. The previous path check remains as the
+  fallback.
+- Opening, hovering and casting no longer look objects up either: native classes are cached, the magic component
+  comes from the pawn, and the input subsystems and game state come from engine library calls. The native-panel
+  guard runs at most once per frame.
+- No change on current UE4SS builds (hash-table lookups, about 3 µs), which the easy installer ships.
+
 # 0.4.6 — Smaller wheel artwork and cached spell data
 
 - Wheel textures are cropped to their artwork (with a transparent filtering margin) instead of full 848 px

@@ -27,8 +27,8 @@ browse its spells, and cast without reaching for the mouse.
 
 | Download | Installation |
 | --- | --- |
-| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.6/BetterSpellWheel-0.4.6-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
-| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.6/BetterSpellWheel-0.4.6.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
+| [Easy installer (.exe)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.7/BetterSpellWheel-0.4.7-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
+| [Manual install (.zip)](https://github.com/Proxify/rsdw-betterspellwheel/releases/download/v0.4.7/BetterSpellWheel-0.4.7.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
 
 The EXE is a separate download. Setup preserves other mods and your existing
 settings on update; run it again to update or uninstall. The installer is unsigned.

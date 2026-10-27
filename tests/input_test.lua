@@ -72,5 +72,18 @@ down.Gamepad_FaceButton_Bottom=false
 queries=0;input.sample();assert(queries==17,'navigation still samples all 17 keys')
 pc.IsInputKeyDown,pc.GetInputAnalogKeyState=isDown,analogState
 input.capture();down.Gamepad_FaceButton_Right=true;input.shutdown();assert(mapRemoved==removed+2 and destroyed==1)
+-- 0.4.7: with E.localSubsystem, both local-player subsystems come from the
+-- engine for this controller; no FindFirstOf/StaticFindObject (each a walk of
+-- every object on pre-September-2026 UE4SS).
+local scans,asked=0,{}
+FindFirstOf=function()scans=scans+1;return sub end
+StaticFindObject=function()scans=scans+1;return obj({BeginDeferredActorSpawnFromClass=function()return actor end,FinishSpawningActor=function()return actor end})end
+local E2={valid=E.valid,class=E.class,stats=obj({BeginDeferredActorSpawnFromClass=function()return actor end,FinishSpawningActor=function()return actor end}),
+ localSubsystem=function(p,path)assert(p==pc);asked[#asked+1]=path;return path:find('CommonInput',1,true) and common or sub end}
+local input2=dofile(root..'/Scripts/input.lua')(E2).new(pc)
+local pad2,style2=input2.device();assert(pad2 and style2=='playstation')
+input2.capture();input2.shutdown()
+assert(scans==0,'input subsystems without object scans, got '..scans)
+assert(asked[1]=='/Script/CommonInput.CommonInputSubsystem' and asked[2]=='/Script/EnhancedInput.EnhancedInputLocalPlayerSubsystem','asked for the local player subsystems')
 FindFirstOf,StaticFindObject,StaticConstructObject,FName=oldFind,oldStatic,oldConstruct,oldFName
 print('PASS: raw input, right-stick-only navigation, movement passthrough, scoped mapping, B/Y interception, quiet-tick release drain (5 queries per tick), emote passthrough and forced shutdown cleanup')

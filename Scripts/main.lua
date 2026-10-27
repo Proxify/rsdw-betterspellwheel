@@ -3,7 +3,7 @@ local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.4.6',open=false,folder=folder,disabled=false,queue={}}
+local M={version='0.4.7',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
@@ -17,36 +17,37 @@ function E.asset(path)
  if not E.valid(a) then a=LoadAsset(path) end
  return E.valid(a) and a or nil
 end
+-- UE4SS builds before late August 2026 (the 3.0.1 release and experimental builds
+-- such as 0196ef29) have no hashed StaticFindObject: each call walks every UObject,
+-- about 12 ms on a reporter's Ryzen 7 7700X (0.4.5 log, 2026-10-17), and a per-tick
+-- lookup halved their frame rate. Newer builds (f6d5f942) use the engine's hash
+-- tables (3 us). So nothing below looks an object up per tick, hover or opening:
+-- native (/Script) classes live for the whole process and are found once.
+local nativeClasses={}
 function E.class(path)
- local c=StaticFindObject(path)
+ local c=nativeClasses[path]
+ if E.valid(c) then return c end
+ c=StaticFindObject(path)
  if not E.valid(c) then LoadAsset(path:gsub('_C$',''));c=StaticFindObject(path) end
- assert(E.valid(c),'Missing class '..path);return c
+ assert(E.valid(c),'Missing class '..path)
+ if path:sub(1,8)=='/Script/' then nativeClasses[path]=c end
+ return c
 end
 E.lib=StaticFindObject('/Script/UMG.Default__WidgetBlueprintLibrary')
 E.layout=StaticFindObject('/Script/UMG.Default__WidgetLayoutLibrary')
 E.render=StaticFindObject('/Script/Engine.Default__KismetRenderingLibrary')
 E.clock=StaticFindObject('/Script/Engine.Default__KismetSystemLibrary')
 E.stats=StaticFindObject('/Script/Engine.Default__GameplayStatics')
--- FindFirstOf scans every UObject. Singletons (input subsystem, game state) are
--- remembered by object path and address and re-resolved with a hash lookup.
-local singletons={}
-function E.findFirst(className)
- local ref=singletons[className]
- if ref then
-  local ok,o=pcall(StaticFindObject,ref.path)
-  if ok and o and o:IsValid() and o:GetAddress()==ref.addr then return o end
-  singletons[className]=nil
+E.subsystems=StaticFindObject('/Script/Engine.Default__SubsystemBlueprintLibrary')
+-- A local-player subsystem (input type, Enhanced Input) of this controller,
+-- asked from the engine instead of a FindFirstOf scan of every object.
+function E.localSubsystem(pc,path)
+ local s
+ if E.valid(E.subsystems) and E.valid(pc) then
+  pcall(function() s=E.subsystems:GetLocalPlayerSubSystemFromPlayerController(pc,E.class(path)) end)
  end
- local o=FindFirstOf(className)
- if E.valid(o) then
-  pcall(function()
-   local addr=o:GetAddress()
-   local path=o:GetFullName():match('^%S+%s+(.+)$')
-   local c=StaticFindObject(path)
-   if c and c:IsValid() and c:GetAddress()==addr then singletons[className]={path=path,addr=addr} end
-  end)
- end
- return o
+ if E.valid(s) then return s end
+ return FindFirstOf(path:match('[^.]+$'))
 end
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
@@ -124,11 +125,14 @@ end
 -- native fault pcall can't catch: a 0.4.0 test build crashed in
 -- panel:SetVisibility while re-hiding it every tick. So: touch it only while
 -- the wheel is open (and once on bind/close), and confirm it is still a live
--- object right before each write. The cheap check is a hash lookup of its
--- own object path; a class scan is the fallback if that form doesn't resolve.
+-- object right before each write. The check is a lookup of its own object
+-- path (a hash lookup on current UE4SS, a full object walk on older builds); a
+-- class scan is the fallback if that form doesn't resolve. One tick never
+-- checks it twice: the game can't free it during our tick (0.4.7).
 local panelPath,panelClass,panelAddr,panelFast
+local tickId,inTick,panelSeenTick=0,false,nil
 local function rememberPanel()
- panelPath,panelClass,panelAddr,panelFast=nil,nil,nil,nil
+ panelPath,panelClass,panelAddr,panelFast,panelSeenTick=nil,nil,nil,nil,nil
  pcall(function()
   panelAddr=panel:GetAddress()
   panelClass=panel:GetClass():GetFName():ToString()
@@ -137,14 +141,15 @@ local function rememberPanel()
 end
 local function panelAlive()
  if not panelAddr then return false end
+ if inTick and panelSeenTick==tickId then return true end
  if panelFast~=false and panelPath then
   local ok,o=pcall(StaticFindObject,panelPath)
-  if ok and o and o:IsValid() and o:GetAddress()==panelAddr then panelFast=true;return true end
+  if ok and o and o:IsValid() and o:GetAddress()==panelAddr then panelFast=true;panelSeenTick=inTick and tickId or nil;return true end
   if panelFast then panel,radial,panelAddr=nil,nil,nil;return false end
  end
  local ok,list=pcall(FindAllOf,panelClass)
  if ok and type(list)=='table' then
-  for _,w in ipairs(list) do if w:GetAddress()==panelAddr then panelFast=false;return true end end
+  for _,w in ipairs(list) do if w:GetAddress()==panelAddr then panelFast=false;panelSeenTick=inTick and tickId or nil;return true end end
  end
  -- Gone: drop the cached widgets so bindWorld finds the new ones.
  panel,radial,panelAddr=nil,nil,nil
@@ -231,29 +236,74 @@ function M.close()
  end
  M.queue={};M.message=nil
 end
--- FindFirstOf walks the whole UObject array (hundreds of thousands of objects)
--- and was called every tick: the mod's main per-frame cost. The bound controller
--- is now checked with a hash lookup of its own path (same object address), and
--- the scan runs only every BIND_VERIFY seconds while bound, or every BIND_RETRY
--- seconds while unbound (menus, loading, respawn).
+-- FindFirstOf walks the whole UObject array (hundreds of thousands of objects).
+-- It runs only to find the first controller, and every BIND_RETRY seconds while
+-- unbound (menus, loading) until the local player is known.
+-- The bound controller is checked every tick. 0.4.2-0.4.6 looked it up by its
+-- object path: on older UE4SS builds that walks every object, ~12 ms per tick.
+-- 0.4.7 reads the engine's own record instead. The local player (owned by the
+-- game instance for the whole session) holds the current controller in a
+-- UPROPERTY, which never points at a freed controller (GC clears it or keeps the
+-- object). That is a property read: a replaced or removed controller is noticed
+-- on the next tick, and the new one is taken from it too, with no scan. Without
+-- a verified local player, the path check and a rescan every BIND_VERIFY
+-- seconds remain (0.4.6 behaviour).
 local BIND_VERIFY,BIND_RETRY=2,.25
 local scannedAt=-1e9
-local pcPath,pcAddr
-local function rememberPc()
- pcPath,pcAddr=nil,nil
+local localPlayer,pcAnchored,pcPath,pcAddr,pawnAddrBound
+-- the controller's local player, if that player's current controller is this one
+local function playerOf(controller)
+ local lp
  pcall(function()
-  local addr=pc:GetAddress()
+  local p=controller.Player
+  local current=E.valid(p) and p.PlayerController
+  if E.valid(current) and current:GetAddress()==controller:GetAddress() then lp=p end
+ end)
+ return lp
+end
+local function rememberPc()
+ pcPath,pcAddr,pcAnchored=nil,nil,false
+ pcall(function() pcAddr=pc:GetAddress() end)
+ if not pcAddr then return end
+ local lp=playerOf(pc)
+ if lp then localPlayer,pcAnchored=lp,true;return end
+ pcall(function()
   local path=pc:GetFullName():match('^%S+%s+(.+)$')
   -- Only use the path if it resolves to this very controller.
   local o=StaticFindObject(path)
-  if o and o:IsValid() and o:GetAddress()==addr then pcPath,pcAddr=path,addr end
+  if o and o:IsValid() and o:GetAddress()==pcAddr then pcPath=path end
  end)
+ log('controller check: no verified local player, using path lookups')
 end
--- Without a usable path there is no safe cheap check: rescan (0.4.2 behaviour).
 local function pcAlive()
+ if not pcAddr then return false end
+ if pcAnchored then
+  local ok,same=pcall(function()
+   local current=E.valid(localPlayer) and localPlayer.PlayerController
+   return E.valid(current) and current:GetAddress()==pcAddr
+  end)
+  return ok and same==true
+ end
+ -- Without a usable path there is no safe cheap check: rescan (0.4.2 behaviour).
  if not pcPath then return false end
  local ok,o=pcall(StaticFindObject,pcPath)
  return ok and o~=nil and o:IsValid() and o:GetAddress()==pcAddr
+end
+-- The world's player controller: the local player's own once it is known.
+local function currentController()
+ if E.valid(localPlayer) then
+  local c
+  pcall(function() c=localPlayer.PlayerController end)
+  if not E.valid(c) then return nil end
+  local ok,name=pcall(function() return c:GetClass():GetFName():ToString() end)
+  return ok and name=='BP_PlayerController_C' and c or nil
+ end
+ localPlayer=nil
+ return FindFirstOf('BP_PlayerController_C')
+end
+local function samePawn()
+ local ok,same=pcall(function() local p=pc.Pawn;return E.valid(p) and p:GetAddress()==pawnAddrBound end)
+ return ok and same==true
 end
 -- World entry settle (0.4.5): a client crashed ~2 s after joining a server (native AV reading 0x0 under ProcessEvent,
 -- called from UE4SS; 3 of 10 joins with BetterSpellWheel, 0 without, 2026-10-15). In the first seconds of a world the
@@ -275,30 +325,35 @@ local function liveOf(className, widget)
 end
 local function bindWorld()
  if pc and radial then
-  if elapsed-scannedAt<BIND_VERIFY and pcAlive() and E.valid(pc.Pawn) and E.valid(radial) then return true end
+  if (pcAnchored or elapsed-scannedAt<BIND_VERIFY) and pcAlive() and samePawn() and E.valid(radial) then return true end
  elseif elapsed-scannedAt<BIND_RETRY and not (M.open or pending) then
   -- (While the wheel is open or a cast is pending, rebind/close at once.)
   return false
  end
  scannedAt=elapsed
- local found=FindFirstOf('BP_PlayerController_C')
+ local found=currentController()
  if not E.valid(found) or not E.valid(found.Pawn) then
   if M.open then M.close() end
-  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil;pcPath=nil
+  restore();if device then device.shutdown();device=nil end;pc=nil;radial=nil;M.radial=nil
+  pcPath,pcAddr,pcAnchored,pawnAddrBound=nil,nil,false,nil
   catalogueGroups=nil;unlockRefreshAt={}
   pawnSeen,pawnSince=nil,nil
   return false
  end
  -- (settle: the same pawn for SETTLE s before anything else is read or called)
- local okP,pawnAddr=pcall(function() return found:GetAddress()..':'..found.Pawn:GetAddress() end)
+ local okP,pawnAddr,pawnOnly=pcall(function() local a=found.Pawn:GetAddress();return found:GetAddress()..':'..a,a end)
  if not okP then return false end
  -- A new pawn (respawn, travel) with the same controller skips the rebind below, so
  -- the per-world catalogue cache is dropped here too.
- if pawnSeen~=pawnAddr then pawnSeen,pawnSince=pawnAddr,elapsed;catalogueGroups=nil;unlockRefreshAt={};if M.open then pcall(M.close) end;return false end
+ if pawnSeen~=pawnAddr then
+  pawnSeen,pawnSince=pawnAddr,elapsed;catalogueGroups=nil;unlockRefreshAt={};if M.open then pcall(M.close) end
+  if pc and pcAddr==found:GetAddress() then pawnAddrBound=pawnOnly end
+  return false
+ end
  if elapsed-pawnSince<SETTLE then return false end
- if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then return true end
+ if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then pawnAddrBound=pawnOnly;return true end
  M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
- rememberPc()
+ rememberPc();pawnAddrBound=pawnOnly
  -- A previous world's catalogue must not be polled in the background.
  state=nil;M.state=nil;catalogueGroups=nil;unlockRefreshAt={}
  radial=liveOf('WBP_SurvivalSorcery_RadialSelector_C',true)
@@ -332,38 +387,22 @@ function E.alive(x)
  local ok,alive=pcall(function() return E.clock:IsValid(x) end)
  return ok and alive==true
 end
--- The magic component is remembered by address and object path and re-resolved
--- with a hash lookup, never kept as a userdata; found through the pawn
--- (GetComponentByClass) instead of a FindAllOf scan.
-local magicRef={}
+-- The magic component is asked from the live pawn each time (GetComponentByClass,
+-- a short walk of the pawn's own components), never kept as a userdata. 0.4.7:
+-- no object-path lookup either (a full object walk on older UE4SS). A FindAllOf
+-- scan is the fallback if the pawn doesn't return it.
 local function magicComponent()
  local pawn=pc and pc.Pawn
  if not E.alive(pawn) then return nil end
- local pawnAddr=pawn:GetAddress()
- if magicRef.pawn==pawnAddr and magicRef.path then
-  local ok,c=pcall(StaticFindObject,magicRef.path)
-  if ok and E.alive(c) and c:GetAddress()==magicRef.addr then return c end
- end
- magicRef={}
  local found
  pcall(function()
-  local class=StaticFindObject('/Script/Dominion.PlayerUtilityMagicComponent')
-  if not E.valid(class) then return end
-  local c=pawn:GetComponentByClass(class)
+  local c=pawn:GetComponentByClass(E.class('/Script/Dominion.PlayerUtilityMagicComponent'))
   if E.alive(c) and sameObject(c:GetOwner(),pawn) then found=c end
  end)
  if not found then
   for _,c in ipairs(FindAllOf('PlayerUtilityMagicComponent') or {}) do
    if E.valid(c) and sameObject(c:GetOwner(),pawn) then found=c;break end
   end
- end
- if found then
-  pcall(function()
-   local addr=found:GetAddress()
-   local path=found:GetFullName():match('^%S+%s+(.+)$')
-   local o=StaticFindObject(path)
-   if o and o:IsValid() and o:GetAddress()==addr then magicRef={pawn=pawnAddr,path=path,addr=addr} end
-  end)
  end
  return found
 end
@@ -380,7 +419,7 @@ local function nativeCastTimes()
  return times
 end
 local function serverTime()
- local ok,t=pcall(function() return E.findFirst('GameStateBase'):GetServerWorldTimeSeconds() end)
+ local ok,t=pcall(function() return E.stats:GetGameState(pc):GetServerWorldTimeSeconds() end)
  return ok and tonumber(t) or nil
 end
 -- The spell's cooldown, read from its data asset (other mods may change
@@ -990,7 +1029,9 @@ M.handle=LoopInGameThreadWithDelay(1,function()
  if not M.open and not pending and clockNow-lastTickClock<.0159 then return end
  local started=perf and clockNow
  if perf then perf.last=started end
+ tickId=tickId+1;inTick=true
  local ok,err=pcall(tick)
+ inTick=false
  if perf then perfTick(started) end
  if not ok then
   log('Disabled after error; restoring native controls: '..tostring(err));M.disabled=true
