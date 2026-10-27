@@ -1,4 +1,4 @@
-# Unreleased — Frame rate fix for older UE4SS builds
+# 0.4.7 — Frame rate fix for older UE4SS builds
 
 - The closed wheel no longer looks up any game object per frame. 0.4.2–0.4.6 checked the player controller with
   `StaticFindObject` every tick. UE4SS builds from before late August 2026 (the 3.0.1 release and experimental
