@@ -6,7 +6,8 @@ process.
 
 ## Setup
 
-- SudoDesk (Windows 11, 4K). Client build 26162923, user's own Steam account, test character TradeTester.
+- SudoDesk: AMD Ryzen 9 9950X3D, NVIDIA RTX 5090, 94 GB RAM, Windows 11, 4K. Client build 26162923, user's own
+  Steam account, test character TradeTester.
 - Only BetterSpellWheel plus a test-only frame sampler mod (`B47Probe`) were loaded. The user's other mods were
   disabled for the runs and restored afterwards (hash-verified).
 - UE4SS builds:
@@ -93,10 +94,11 @@ On `0196ef29`, cold bind with the branch build also used the local-player check 
 
 ## Limits
 
-- **Single PC, small sample:** one Intel/NVIDIA PC; one or two 45 s samples per arm. The time of day drifted
-  between runs.
-- **No AMD CPU tested.** The reporter's CPU is a Ryzen 7 7700X. The cause measured here is the UE4SS build, not the
-  CPU.
+- **Single PC, small sample:** one AMD PC (Ryzen 9 9950X3D); one or two 45 s samples per arm. The time of day
+  drifted between runs.
+- **AMD and the UE4SS build:** the reporter's CPU is a Ryzen 7 7700X (Zen 4), this one a Zen 5 X3D. On this AMD CPU,
+  0.4.6 runs at full speed on UE4SS `f6d5f942` and loses about 60% on `0196ef29`. The drop follows the UE4SS build,
+  not the CPU vendor. Intel CPUs were not measured in this run.
 - **Not tested in game:** respawn (covered by the offline tests), physical controller, multiplayer, emote
   hand-off, and opening-event hitches on `0196ef29`. The native-panel guard still costs one lookup per
   open/select/close, about 12 ms on that build.
