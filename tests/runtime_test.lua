@@ -23,6 +23,11 @@ local gameUnlocked,perkUnlocked=nil,false
 function pc:GetSkillPerkComponent()local p=obj("perks");p.IsPerkUnlocked=function()return perkUnlocked end;return p end
 function pc:GetProgressComponent()return {IsSpellUnlocked=function()unlockChecks=unlockChecks+1;if gameUnlocked~=nil then return gameUnlocked end;return record.unlocked end}end
 function pc:RefreshInputMode()end
+local function classNamed(name)return {GetFName=function()return {ToString=function()return name end}end}end
+function pc:GetClass()return classNamed('BP_PlayerController_C')end
+-- The engine's local player (0.4.7 controller check). pc.Player stays nil until
+-- the perf section: the earlier sections cover the path-lookup fallback.
+local localPlayer=obj('local-player');localPlayer.PlayerController=pc
 function pc:SetMouseLocation()end
 local calls=0
 local component=obj('component');component.SelectedSpells={};component.NumSpellSlotsPerRadial=12
@@ -279,20 +284,55 @@ local findAll,findFirst,findStatic,gameTimeFn,isOpen=FindAllOf,FindFirstOf,Stati
 FindAllOf=counted('FindAllOf',findAll);FindFirstOf=counted('FindFirstOf',findFirst)
 StaticFindObject=counted('StaticFindObject',findStatic)
 lib.GetGameTimeInSeconds=counted('GetGameTimeInSeconds',gameTimeFn);input.IsOpen=counted('IsOpen',isOpen)
+-- (a) Path-lookup fallback (no verified local player): the 0.4.6 behaviour.
 mod.shutdown();mod=realDofile(root..'/Scripts/main.lua');ticks(340)
 open();keys[0x1B]();ticks();assert(not mod.open and mod.state)
 ticks(700) -- past the post-activity cooldown watch window
 counts={}
 ticks(625) -- ten seconds
-assert((counts.FindAllOf or 0)==0,'closed wheel: no FindAllOf')
-assert((counts.FindFirstOf or 0)<=5,'closed wheel: controller re-verified at most every 2 s, got '..tostring(counts.FindFirstOf))
+assert((counts.FindAllOf or 0)==0,'fallback, closed wheel: no FindAllOf')
+assert((counts.FindFirstOf or 0)<=5,'fallback, closed wheel: controller re-verified at most every 2 s, got '..tostring(counts.FindFirstOf))
 assert((counts.GetGameTimeInSeconds or 0)==0,'closed wheel: no game-time reads without a notice or a recent cast')
 assert(counts.IsOpen==625,'closed wheel: one native open check per tick')
 -- The controller is checked by path every tick: a replacement or removal at
 -- that path is noticed on the next tick, not after the 2 s verification.
-counts={};pcAtPath=obj('pc-replacement');ticks();assert(counts.FindFirstOf==1,'replaced controller: rescan at once')
-pcAtPath=nil;ticks(130);counts={};pcAtPath=false;ticks();assert(counts.FindFirstOf==1,'controller path gone: rescan at once')
-pcAtPath=nil;ticks(130)
+counts={};pcAtPath=obj('pc-replacement');ticks();assert(counts.FindFirstOf==1,'fallback: replaced controller: rescan at once')
+pcAtPath=nil;ticks(130);counts={};pcAtPath=false;ticks();assert(counts.FindFirstOf==1,'fallback: controller path gone: rescan at once')
+pcAtPath=nil;ticks(130);mod.shutdown()
+print('PASS: path-lookup fallback keeps the 0.4.6 controller checks')
+-- (b) 0.4.7: the controller is checked through the engine's local player. A
+-- closed wheel makes no object lookups at all: on UE4SS 3.0.1 each one walks
+-- every object (about 12 ms on a reporter's PC, every tick in 0.4.2-0.4.6).
+pc.Player=localPlayer
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
+open();keys[0x1B]();ticks();assert(not mod.open and mod.state)
+ticks(700)
+counts={}
+ticks(625)
+assert((counts.FindAllOf or 0)==0 and (counts.FindFirstOf or 0)==0 and (counts.StaticFindObject or 0)==0,
+ 'closed wheel: no FindAllOf/FindFirstOf/StaticFindObject, got '..tostring(counts.FindAllOf)..'/'..tostring(counts.FindFirstOf)..'/'..tostring(counts.StaticFindObject))
+assert((counts.GetGameTimeInSeconds or 0)==0,'closed wheel: no game-time reads without a notice or a recent cast')
+assert(counts.IsOpen==625,'closed wheel: one native open check per tick')
+-- A replaced controller is noticed on the next tick and never called again; the
+-- new one is taken from the local player (no scan) once its pawn has settled.
+local other=obj('pc-replacement');other.GetClass=pc.GetClass
+other.Pawn=empty -- (a fresh controller before its pawn is possessed)
+counts={};isOpenCalls=0;localPlayer.PlayerController=other;ticks()
+assert(mod.radial==nil and isOpenCalls==0,'replaced controller: unbound at once, old one not called')
+assert((counts.FindFirstOf or 0)==0,'replaced controller: no scan, the local player names the new one')
+localPlayer.PlayerController=nil;ticks(5);assert(mod.radial==nil,'no controller: stays unbound')
+localPlayer.PlayerController=pc;ticks(340);assert(mod.radial==radial,'rebinds the current controller after the settle')
+assert((counts.FindFirstOf or 0)==0,'rebind without a FindFirstOf scan')
+-- A menu controller (another class) is never bound.
+local menu=obj('menu-pc');menu.GetClass=function()return classNamed('BP_MenuPlayerController_C')end;menu.Pawn=obj('menu-pawn')
+localPlayer.PlayerController=menu;ticks(340);assert(mod.radial==nil,'menu controller class: not bound')
+localPlayer.PlayerController=pc;ticks(340);assert(mod.radial==radial)
+-- A new pawn (respawn) is noticed on the next tick: the catalogue is rescanned.
+local scansBeforeRespawn=catalogueScans
+local pawnBefore=pc.Pawn;pc.Pawn=obj('pawn-respawn');pc.Pawn.GetComponentByClass=pawnBefore.GetComponentByClass;ticks()
+native=true;ticks(4);assert(mod.open,'still opens after a respawn');keys[0x1B]();ticks()
+assert(catalogueScans==scansBeforeRespawn+1,'respawn: catalogue rescanned')
+pc.Pawn=pawnBefore;ticks(2)
 -- ...but a notice arriving while closed is still applied, and opening syncs at once.
 record.cooldown=30
 mod.cooldownNotices[#mod.cooldownNotices+1]={address='spell',since=10};ticks()
@@ -300,22 +340,34 @@ assert(math.abs(cd()-20)<.1,'closed: queued notice applied')
 mod.cooldowns:clear(record);castTimes[spell]=clock-5;counts={}
 open();assert(math.abs(cd()-25)<1,'open syncs immediately');keys[0x1B]();ticks()
 castTimes={};mod.cooldowns:clear(record);record.cooldown=0
--- The magic component comes from the pawn, then from its path; a new pawn
--- (respawn) is looked up again. No FindAllOf in either case.
-counts={};magicComponentLookups=0;record.cooldown=30;aim=false;instant=true
+-- The magic component comes from the live pawn on each sync, never from an
+-- object-path lookup; a new pawn (respawn) is asked, too. No FindAllOf.
+counts={};magicComponentLookups=0;record.cooldown=30;aim=false;instant=true;local panelBefore=panelPathLookups
 open();select();ticks(25);keys[0x1B]();ticks(130)
-assert((counts.FindAllOf or 0)==0 and magicComponentLookups<=1,'magic component resolved by the pawn, then by path')
+assert((counts.FindAllOf or 0)==0 and magicComponentLookups>=1,'magic component resolved by the pawn')
+assert((counts.StaticFindObject or 0)==panelPathLookups-panelBefore,'only the native panel guard looks objects up (open/cast/close), got '..tostring(counts.StaticFindObject)..' vs '..(panelPathLookups-panelBefore))
+assert(panelPathLookups-panelBefore<=3,'panel guard: at most one lookup per open, cast and close, got '..(panelPathLookups-panelBefore))
 local lookups=magicComponentLookups
 local oldPawn=pc.Pawn;pc.Pawn=obj('pawn-2');pc.Pawn.GetComponentByClass=oldPawn.GetComponentByClass
 open();keys[0x1B]();ticks()
-assert(magicComponentLookups==lookups+1 and (counts.FindAllOf or 0)==0,'new pawn: component looked up again')
-pc.Pawn=oldPawn;instant=false;record.cooldown=0;mod.cooldowns:clear(record)
--- Unbound (menu/loading): the controller scan is retried a few times a second, not per tick.
+assert(magicComponentLookups>lookups and (counts.FindAllOf or 0)==0,'new pawn: component asked from it')
+pc.Pawn=oldPawn;ticks(2);instant=false;record.cooldown=0;mod.cooldowns:clear(record)
+-- One parent-panel check per tick at most: open, cast and close each cost one.
+counts={};native=true;x,y=0,0;ticks(4);assert(mod.open);local checksOpen=counts.StaticFindObject or 0
+keys[0x1B]();ticks();assert((counts.StaticFindObject or 0)-checksOpen<=1,'close: one panel check')
+assert(checksOpen<=1,'open: one panel check, got '..checksOpen)
+-- Unbound (menu/loading): no scans at all once the local player is known.
 local pawn=pc.Pawn;pc.Pawn=nil;ticks(5);counts={}
 ticks(125)
-assert((counts.FindFirstOf or 0)<=9 and (counts.FindAllOf or 0)==0,'unbound: throttled scans, got '..tostring(counts.FindFirstOf))
+assert((counts.FindFirstOf or 0)==0 and (counts.FindAllOf or 0)==0,'unbound: no scans, got '..tostring(counts.FindFirstOf))
 pc.Pawn=pawn;ticks(340);native=true;ticks(4);assert(mod.open,'rebinds after the pawn returns (after the 5 s settle)');keys[0x1B]();ticks()
-mod.shutdown()
+-- The local player itself gone: back to the FindFirstOf scan, throttled.
+local lpValid=localPlayer.IsValid;localPlayer.IsValid=function()return false end
+pc.Pawn=nil;ticks(5);counts={};ticks(125)
+assert((counts.FindFirstOf or 0)>=1 and counts.FindFirstOf<=9,'no local player: throttled scans, got '..tostring(counts.FindFirstOf))
+localPlayer.IsValid=lpValid;pc.Pawn=pawn;ticks(340);native=true;ticks(4);assert(mod.open);keys[0x1B]();ticks()
+mod.shutdown();pc.Player=nil
+print('PASS: 0.4.7 closed wheel: no object lookups per tick; local-player controller check notices replacement/removal/respawn at once; magic component and panel checks without per-call lookups')
 FindAllOf,FindFirstOf,StaticFindObject,lib.GetGameTimeInSeconds,input.IsOpen=findAll,findFirst,findStatic,gameTimeFn,isOpen
 -- PR6 port: the catalogue is cached per world; unlocks and cooldowns stay fresh.
 mod=realDofile(root..'/Scripts/main.lua');ticks(340);aim=false;instant=true;denied=false;book=0;record.cooldown=0;record.unlocked=true
