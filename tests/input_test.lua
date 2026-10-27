@@ -74,7 +74,7 @@ pc.IsInputKeyDown,pc.GetInputAnalogKeyState=isDown,analogState
 input.capture();down.Gamepad_FaceButton_Right=true;input.shutdown();assert(mapRemoved==removed+2 and destroyed==1)
 -- 0.4.7: with E.localSubsystem, both local-player subsystems come from the
 -- engine for this controller; no FindFirstOf/StaticFindObject (each a walk of
--- every object on UE4SS 3.0.1).
+-- every object on pre-September-2026 UE4SS).
 local scans,asked=0,{}
 FindFirstOf=function()scans=scans+1;return sub end
 StaticFindObject=function()scans=scans+1;return obj({BeginDeferredActorSpawnFromClass=function()return actor end,FinishSpawningActor=function()return actor end})end

@@ -301,7 +301,7 @@ pcAtPath=nil;ticks(130);counts={};pcAtPath=false;ticks();assert(counts.FindFirst
 pcAtPath=nil;ticks(130);mod.shutdown()
 print('PASS: path-lookup fallback keeps the 0.4.6 controller checks')
 -- (b) 0.4.7: the controller is checked through the engine's local player. A
--- closed wheel makes no object lookups at all: on UE4SS 3.0.1 each one walks
+-- closed wheel makes no object lookups at all: on pre-September-2026 UE4SS each one walks
 -- every object (about 12 ms on a reporter's PC, every tick in 0.4.2-0.4.6).
 pc.Player=localPlayer
 mod=realDofile(root..'/Scripts/main.lua');ticks(340)

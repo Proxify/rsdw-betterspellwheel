@@ -17,11 +17,12 @@ function E.asset(path)
  if not E.valid(a) then a=LoadAsset(path) end
  return E.valid(a) and a or nil
 end
--- UE4SS 3.0.1 (the current stable release) has no hashed StaticFindObject: each
--- call walks every UObject, about 12 ms on a reporter's Ryzen 7 7700X (0.4.5 log,
--- 2026-10-17), and a per-tick lookup halved their frame rate. Experimental UE4SS
--- builds hash it (3 us). So nothing below looks an object up per tick, hover or
--- opening: native (/Script) classes live for the whole process and are found once.
+-- UE4SS builds before late August 2026 (the 3.0.1 release and experimental builds
+-- such as 0196ef29) have no hashed StaticFindObject: each call walks every UObject,
+-- about 12 ms on a reporter's Ryzen 7 7700X (0.4.5 log, 2026-10-17), and a per-tick
+-- lookup halved their frame rate. Newer builds (f6d5f942) use the engine's hash
+-- tables (3 us). So nothing below looks an object up per tick, hover or opening:
+-- native (/Script) classes live for the whole process and are found once.
 local nativeClasses={}
 function E.class(path)
  local c=nativeClasses[path]
@@ -125,7 +126,7 @@ end
 -- panel:SetVisibility while re-hiding it every tick. So: touch it only while
 -- the wheel is open (and once on bind/close), and confirm it is still a live
 -- object right before each write. The check is a lookup of its own object
--- path (a hash lookup on experimental UE4SS, a full object walk on 3.0.1); a
+-- path (a hash lookup on current UE4SS, a full object walk on older builds); a
 -- class scan is the fallback if that form doesn't resolve. One tick never
 -- checks it twice: the game can't free it during our tick (0.4.7).
 local panelPath,panelClass,panelAddr,panelFast
@@ -239,7 +240,7 @@ end
 -- It runs only to find the first controller, and every BIND_RETRY seconds while
 -- unbound (menus, loading) until the local player is known.
 -- The bound controller is checked every tick. 0.4.2-0.4.6 looked it up by its
--- object path: on UE4SS 3.0.1 that walks every object, about 12 ms per tick.
+-- object path: on older UE4SS builds that walks every object, ~12 ms per tick.
 -- 0.4.7 reads the engine's own record instead. The local player (owned by the
 -- game instance for the whole session) holds the current controller in a
 -- UPROPERTY, which never points at a freed controller (GC clears it or keeps the
@@ -388,7 +389,7 @@ function E.alive(x)
 end
 -- The magic component is asked from the live pawn each time (GetComponentByClass,
 -- a short walk of the pawn's own components), never kept as a userdata. 0.4.7:
--- no object-path lookup either (a full object walk on UE4SS 3.0.1). A FindAllOf
+-- no object-path lookup either (a full object walk on older UE4SS). A FindAllOf
 -- scan is the fallback if the pawn doesn't return it.
 local function magicComponent()
  local pawn=pc and pc.Pawn
