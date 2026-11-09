@@ -7,7 +7,13 @@ return function(E)
   accept='Gamepad_FaceButton_Bottom',back='Gamepad_FaceButton_Right',close='Gamepad_Special_Right',
   toggle='Gamepad_FaceButton_Top',previous='Gamepad_LeftShoulder',next='Gamepad_RightShoulder',
   up='Gamepad_DPad_Up',down='Gamepad_DPad_Down',left='Gamepad_DPad_Left',right='Gamepad_DPad_Right',
-  open='Q',mouseLeft='LeftMouseButton',emote='Gamepad_FaceButton_Left'}
+  open='Q',mouseLeft='LeftMouseButton',emote='Gamepad_FaceButton_Left',
+  -- Number row 1..12 for the quick-pick. Mapped + consumed while the wheel is open, so the game's
+  -- hotbar never sees them; read back through sample() in the wheel tick (single-threaded, no race).
+  num1='One',num2='Two',num3='Three',num4='Four',num5='Five',num6='Six',num7='Seven',num8='Eight',
+  num9='Nine',num10='Zero',num11='Hyphen',num12='Equals'}
+ -- The quick-pick number inputs, in order (num1..num12). Exposed so callers can iterate them.
+ I.NUMBER_KEYS={'num1','num2','num3','num4','num5','num6','num7','num8','num9','num10','num11','num12'}
  local keys={}
  for k,n in pairs(names) do keys[k]={KeyName=FName(n)} end
  local analog={x=true,y=true,rx=true,ry=true,mx=true,my=true}

@@ -3,7 +3,9 @@ local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
-local M={version='0.4.7',open=false,folder=folder,disabled=false,queue={}}
+-- Modified (local build): added integrated Spell Hotkeys (Scripts/hotkeys.lua + the integration
+-- functions below). Original BetterSpellWheel by Proxify, Apache-2.0. See NOTICE.txt.
+local M={version='0.4.7+hotkeys',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
 local model=dofile(folder..'/Scripts/model.lua')
 local controller=dofile(folder..'/Scripts/controller.lua')(model)
@@ -52,6 +54,11 @@ end
 function E.create(pc,path) return E.lib:Create(pc,E.class(path),pc) end
 local layout=dofile(folder..'/Scripts/layout.lua')
 local inputAdapter=dofile(folder..'/Scripts/input.lua')(E)
+-- Spell Hotkeys (integrated). Loaded after M exists so the module can call M.hotkeyContext /
+-- M.hoveredSpellData / M.castSpellData. Those are defined further down but only invoked at
+-- key-press and tick time, by which point they exist. Keybinds are registered now.
+local hotkeysModule=dofile(folder..'/Scripts/hotkeys.lua')
+M.hotkeys=hotkeysModule(E,M)
 -- The wheel artwork is drawn on first launch and cached in Assets/v2/ (no image
 -- files are shipped). If this fails the view can't load its textures and the
 -- mod falls back to the native wheel.
@@ -338,6 +345,7 @@ local function bindWorld()
   pcPath,pcAddr,pcAnchored,pawnAddrBound=nil,nil,false,nil
   catalogueGroups=nil;unlockRefreshAt={}
   pawnSeen,pawnSince=nil,nil
+  if M.hotkeys then pcall(M.hotkeys.dropWorld) end
   return false
  end
  -- (settle: the same pawn for SETTLE s before anything else is read or called)
@@ -617,6 +625,7 @@ local function open()
  -- Native wheel suppression already happened at the very start of open().
  radial:StopRadialSelection()
  M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed
+ if M.quickPickReset then M.quickPickReset() end
  if ui then ui.last='' end
  ui.show()
  if perf then mark('openView') end
@@ -722,6 +731,168 @@ local function selectSpell()
   M.queue={}
  end
 end
+
+-- === Spell Hotkeys integration ===================================================================
+-- Bind a utility spell to a key and cast it with one press, without opening the wheel. Casting reuses
+-- the exact native path selectSpell() uses (write the spell into native radial slot 0, SelectSlice),
+-- so unlocks, runes, cooldowns, animation, placement and networking all behave as the wheel does.
+-- Read-only on game state apart from the native slot write the game itself does when the wheel casts.
+
+-- The UtilitySpellData the pointer is on right now while BetterSpellWheel's wheel is open, or nil.
+-- Read straight from the live model state (same fields the tick's hover code reads), so no cross-mod
+-- global and no stale native CachedSectionId is involved. Returns a locked spell too (caller decides).
+function M.hoveredSpellData()
+ if not M.open or type(state)~='table' then return nil end
+ local group=state.group and state.groups and state.groups[state.group]
+ local record=group and state.spell and group.spells and group.spells[state.spell]
+ if type(record)~='table' then return nil end
+ if state.zone~='spell' then return nil end          -- pointer not on a spell slice (centre/bridge/skill)
+ local data=record.data
+ if E.valid(data) then return data,record end
+ return nil
+end
+
+-- Cast a given UtilitySpellData as if the player picked it from the wheel. Closed-wheel only: if the
+-- wheel is open or a cast/placement is already pending, do nothing (the wheel owns input then).
+-- Returns true if the cast was dispatched. Never blocks on the mod's own cooldown estimate; the game
+-- decides. Mirrors selectSpell()'s casting half, minus the custom-wheel UI/state.
+function M.castSpellData(data)
+ if M.open or pending then return false end
+ if not E.alive(data) then return false end
+ -- E.alive (not just E.valid): during a world teardown an object can still pass IsValid() while being
+ -- pending-kill; touching it is a native crash. E.alive also rejects pending-kill. Same guard the wheel uses.
+ if not (E.alive(pc) and E.alive(radial) and E.alive(component)) then return false end
+ if not panelAlive() then return false end
+ -- A menu / chat / Mod Menu is open (mouse cursor shown): never cast underneath it.
+ local cursor=false
+ pcall(function() cursor=pc.bShowMouseCursor end)
+ if cursor then return false end
+ -- The game is already preparing/placing another spell: let it finish (never stack casts). The field
+ -- lives on the pawn's PlayerUtilityMagicComponent; read it read-only, bail if a spell is in progress.
+ local busy=false
+ pcall(function()
+  local pawn=pc.Pawn
+  local um=E.valid(pawn) and pawn:GetComponentByClass(E.class('/Script/Dominion.PlayerUtilityMagicComponent'))
+  if E.valid(um) then busy=E.valid(um.SpellBeingPreparedOrCast.SpellBeingPreparedOrCastData) end
+ end)
+ if busy then return false end
+ -- Resolve the native slot the wheel uses (slice 0 of the current book), exactly like selectSpell().
+ local slot=radial.RadialSlice_0.SpellSlotNum
+ local book=radial.SpellbookSelector.RadioGroup:GetSelectedValue()
+ local index=book*component.NumSpellSlotsPerRadial+slot+1
+ local original=component.SelectedSpells[index]
+ local spellId='hotkey'
+ pcall(function() spellId=data:GetFName():ToString() end)
+ local record={data=data,id=spellId}
+ pending={component=component,original=original,spell=data,spellId=spellId,record=record,slot=slot,index=index,book=book,since=elapsed}
+ pcall(function() pending.instant=data.CastType==0 end)
+ -- Write the spell into native slot 0 and select it (component:Client_NotifySelectedSpell + Highlight).
+ local okBind=pcall(bindSlot,record,slot,index)
+ if not okBind then restore();return false end
+ muteSelectSound()
+ local selOk=pcall(function() radial:SelectSlice() end)
+ if not selOk then unmuteSelectSound();restore();return false end
+ -- Mirror selectSpell()'s post-select bookkeeping so the slot is cleaned up and targeting is tracked.
+ local name=''
+ pcall(function() local m=pc.CurrentInputMode;name=E.valid(m) and m:GetFName():ToString() or '' end)
+ if name:find('SpellPlacement') or name:find('Spellcasting') then
+  pending.awaitingConfirm=true
+  pending.confirmArmed=true   -- require a fresh confirm press (player just tapped the hotkey)
+  pending.cancelArmed=true
+ else
+  pending.detectingMode=true  -- let tick() classify instant vs. targeting once the mode settles
+ end
+ return true
+end
+
+-- Context accessor for the hotkey module (read-only snapshot of the live binding).
+function M.hotkeyContext()
+ return { pc=pc, component=component, radial=radial, open=M.open, pending=pending~=nil,
+          groups=catalogueGroups, elapsed=elapsed, gameTime=(E.valid(pc) and E.clock:GetGameTimeInSeconds(pc) or 0) }
+end
+
+-- Teardown drop, called from the LoadMap pre/post hook the instant the engine starts changing maps
+-- (exit to menu, travel, respawn-with-reload). The world is being freed, so this NULLS our references
+-- and forgets state WITHOUT calling any method on a game object (pc/radial/panel/component may already
+-- be dangling). Our own widgets are left for the engine to GC. bindWorld() rebuilds everything cleanly
+-- on the next world. This is the safe half of close()/shutdown() with every game-object call removed.
+function M.forceDropWorld()
+ M.open=false
+ M.queue={}
+ M.message=nil
+ M.radial=nil
+ M.state=nil
+ -- Drop every cached handle so no tick touches an object from the world being freed.
+ pc=nil; radial=nil; panel=nil; input=nil; component=nil; ui=nil; state=nil
+ pending=nil
+ catalogueGroups=nil
+ pcAddr=nil; pcAnchored=false; pcPath=nil; pawnAddrBound=nil; pawnSeen=nil; pawnSince=nil
+ panelAddr=nil
+ nativeWasOpen=false
+end
+
+-- === Quick pick: number keys on the open wheel (CS buy-menu style) ===============================
+-- Read ENTIRELY from device.sample() inside the wheel tick (single-threaded). The number keys are
+-- mapped+consumed by input.lua while the wheel is open, so the game's hotbar never sees them -- the
+-- fix for the earlier "a number also triggered the hotbar" bug. Two-step chord: first number picks a
+-- skill, second number casts that spell, exactly as clicking the slice does.
+M.quickPickEnabled = (M.quickPickEnabled ~= false)   -- toggled by the hotkey module from its config
+local qpStage = 0           -- 0 = next number picks a skill; 1 = next number casts a spell
+local qpAt = 0
+local qpDown = {}           -- edge-detect: num key -> was it held last tick
+local QP_RESET = 4          -- seconds idle before the chord forgets the chosen skill
+-- Map the 12 sample fields to positions 1..12.
+local QP_FIELDS = {'num1','num2','num3','num4','num5','num6','num7','num8','num9','num10','num11','num12'}
+
+-- Called from the wheel tick (mouse branch), with the current sample. Returns true if a number took
+-- control this frame (so the caller can skip the mouse model.update and avoid clobbering the choice).
+function M.quickPickStep(sample)
+ if not (M.open and M.quickPickEnabled and type(state)=='table' and type(sample)=='table') then return false end
+ -- Teardown guard: if the wheel's own live objects are gone/pending-kill, do nothing this frame.
+ if not (E.alive(pc) and E.alive(radial) and E.alive(component)) then return false end
+ -- Find a freshly-pressed number (edge, not hold). One per frame is enough.
+ local pos=nil
+ for i=1,#QP_FIELDS do
+  local f=QP_FIELDS[i]
+  local down=sample[f]==true
+  if down and not qpDown[f] then pos=i end
+  qpDown[f]=down
+ end
+ if not pos then
+  -- No fresh press. Keep manual control briefly after a press so a slow second key still lands.
+  return (elapsed - qpAt) < 0.75 and qpStage==1
+ end
+ if elapsed-qpAt > QP_RESET then qpStage=0 end
+ qpAt=elapsed
+ if qpStage==0 or state.group==nil then
+  -- Step 1: select the skill under this number.
+  if state.groups and state.groups[pos] then
+   model.setGroup(state,pos)      -- sets group, clears spell, page=1
+   state.zone='skill'
+   M.message=nil
+   qpStage=1
+  end
+  return true
+ else
+  -- Step 2: cast spell at this fan position, exactly as clicking it.
+  local branch=model.branch(state)
+  if branch and branch.count>0 and pos>=1 and pos<=branch.count then
+   state.spell=branch.first+(pos-1)
+   state.zone='spell'
+   M.queue[#M.queue+1]='select'
+  else
+   M.message='No spell '..tostring(pos)..' here.'
+  end
+  qpStage=0
+  return true
+ end
+end
+
+-- Reset the chord state (called when the wheel opens).
+function M.quickPickReset()
+ qpStage=0; qpAt=0; qpDown={}
+end
+
 local ESCAPE,RIGHT_MOUSE -- key structs, made once on first use
 local NO_ACTIONS={}
 local PAD_KEYS={'accept','back','close','previous','next','up','down','left','right'}
@@ -741,7 +912,13 @@ local function tick()
  -- responsible for replacing the spell selector only when the game opens it.
  local bound=bindWorld()
  if perf then mark('bind') end
- if not bound then return end
+ if not bound then
+  if M.hotkeys then pcall(M.hotkeys.tick,nil) end   -- not bound: let the hotkey bar tear down cleanly
+  return
+ end
+ -- Spell Hotkeys: keep the bar in sync every tick (open and closed), using the live binding.
+ if M.hotkeys then pcall(M.hotkeys.tick,M.hotkeyContext()) end
+ if perf then mark('hotkeys') end
  -- The emote wheel is a separate native UI. If the player opens it while
  -- BetterSpellWheel is active, yield input ownership without resetting the
  -- game's input mode (controls(false) would force GameOnly and dismiss emotes).
@@ -929,7 +1106,11 @@ local function tick()
  else
   controller.prime(pad,sample)
   if M.back and x*x+y*y<model.geometry.outer^2 then M.back=false end
-  if not M.back then model.update(state,x,y,now) end
+  -- Quick pick: a number key (read from the consumed sample) drives selection this frame. When it is
+  -- in control, skip the mouse update so it does not wipe the chosen skill/spell.
+  local qp=false
+  if M.quickPickStep then local ok,r=pcall(M.quickPickStep,sample); qp=ok and r==true end
+  if not qp and not M.back then model.update(state,x,y,now) end
  end
  local group=state.groups[state.group];local spell=group and group.spells[state.spell]
  local hover=spell and spell.id or tostring(state.group)
@@ -969,6 +1150,25 @@ function M.shutdown()
  if device then device.shutdown() end
  if M.handle then CancelDelayedAction(M.handle);M.handle=nil end
 end
+-- Exit-to-menu / world unload is the classic UE4SS teardown crash: the game starts freeing the world
+-- and anything still pointing at it reads a dangling address. BetterSpellWheel only notices a world
+-- change on its NEXT tick (polling), which leaves a gap. This pre-hook fires the instant the engine
+-- begins loading a new map, so we drop our widgets and cached pointers FIRST, before the game frees
+-- the world. Registered once (survives script reloads); resolves the live mod from _G; touches only
+-- our own objects, never the dying game objects; every step pcall-guarded.
+if not _G.BetterSpellWheelLoadMapHook then
+ _G.BetterSpellWheelLoadMapHook=true
+ local function onUnload()
+  local m=_G.BetterSpellWheel
+  if not m then return end
+  -- Hand the hotkey bar down first (our own widget), then let the mod drop its wheel state.
+  pcall(function() if m.hotkeys and m.hotkeys.dropWorld then m.hotkeys.dropWorld() end end)
+  pcall(function() if m.forceDropWorld then m.forceDropWorld() end end)
+ end
+ pcall(RegisterLoadMapPreHook,function() onUnload() end)
+ pcall(RegisterLoadMapPostHook,function() onUnload() end)
+end
+
 -- Q is a mod-level toggle. Register the dispatcher once so script reloads
 -- do not leave an old Q callback behind; the callback always resolves the
 -- current BetterSpellWheel instance from _G.

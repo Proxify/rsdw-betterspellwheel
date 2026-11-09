@@ -1,0 +1,53 @@
+# BetterSpellWheel - Spell Hotkeys
+#
+# Bind a utility spell to a key and cast it with one press, no wheel needed.
+# Edit this file, then restart the game. Lines starting with # are ignored.
+#
+# How to bind in game: give a slot a key below, open the spell wheel (Q),
+# point at a spell and press that slot's key. The slot takes that spell.
+# Point at the centre (no spell) and press the key to clear the slot.
+# Close the wheel and press the key to cast.
+#
+# Slot spells: the spell's in-game name, e.g. Rocksplosion, Windstep, Harvest. None = empty.
+# Slot keys: UE4SS key names, e.g. Z, T, F5, NUM_ONE, XBUTTON_ONE (mouse 4). none = unbound.
+# Unbound keys in Dragonwilds: I L N O T U Z. Avoid F10 (UE4SS console) and F11 (fullscreen).
+#
+# Read-only: casting a hotkey does exactly what picking the spell from the wheel does.
+# The game checks unlocks, runes and cooldowns itself. Your save is never touched.
+
+# Master switch for the per-slot hotkeys and their on-screen bar. Set false to turn them off
+# (the QuickPick number keys below are independent and stay on unless you turn them off too).
+SlotHotkeys = false
+
+Slot1Spell = None
+Slot1Key = none
+Slot2Spell = None
+Slot2Key = none
+Slot3Spell = None
+Slot3Key = none
+Slot4Spell = None
+Slot4Key = none
+Slot5Spell = None
+Slot5Key = none
+Slot6Spell = None
+Slot6Key = none
+Slot7Spell = None
+Slot7Key = none
+Slot8Spell = None
+Slot8Key = none
+
+# Hotkey bar
+ShowHud = true
+HideEmptySlots = true
+ShowKeyLabels = true
+ShowCooldownText = true
+HudScale = 100
+HudX = 0
+HudY = 150
+
+# Quick pick (CS buy-menu style). With the spell wheel OPEN, the number row picks a skill then a spell:
+#   first number  = pick a skill (1..12 = keys 1 2 3 4 5 6 7 8 9 0 - =, clockwise from the top of the ring)
+#   second number = cast that spell in the opened skill's fan (same as clicking it)
+# While the wheel is open these number keys are captured, so they do not switch your item hotbar.
+# Set false to turn the quick pick off (the number keys then behave normally).
+QuickPick = false

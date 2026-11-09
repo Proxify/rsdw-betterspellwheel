@@ -1,3 +1,16 @@
+# Unreleased - Slot hotkeys and quick pick (feature branch)
+
+- **Slot hotkeys** (`Scripts/hotkeys.lua`, `hotkeys.txt`): up to 8 slots, each a key plus a utility spell. With the
+  wheel open, press a slot key while pointing at a spell to bind it (point at the centre to clear). With the wheel
+  closed, the key casts that spell through the wheel's own cast path. A bar above the hotbar shows icon, key and
+  cooldown. Master toggle `SlotHotkeys` (default off).
+- **Quick pick**: with the wheel open, the number row (1 2 3 4 5 6 7 8 9 0 - =) picks a skill, then a spell, like a
+  buy menu. The keys are captured by the wheel's input mapping while it is open, so they never reach the item hotbar.
+  Toggle `QuickPick` (default off).
+- **Mod Menu page** (`modmenu.json`): both toggles, one key picker per slot, and the bar options.
+- **Teardown safety**: a LoadMap pre/post hook drops all cached game objects the moment the engine changes map
+  (exit to menu, travel), and the new code uses `E.alive` before touching live objects.
+- Both features are off and no slot is assigned by default.
 # 0.4.7 — Frame rate fix for older UE4SS builds
 
 - The closed wheel no longer looks up any game object per frame. 0.4.2–0.4.6 checked the player controller with
