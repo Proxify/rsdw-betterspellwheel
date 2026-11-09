@@ -20,6 +20,10 @@ browse its spells, and cast without reaching for the mouse.
 - **Controller navigation:** right stick or D-pad, with matching button hints.
 - **Normal game rules:** your unlocks, rune requirements and targeting still apply.
   Saved spellbook assignments are preserved.
+- **Optional slot hotkeys:** bind up to 8 spells to single keys and cast them without
+  opening the wheel, with an on-screen bar showing icons and cooldowns. Off by default.
+- **Optional quick pick:** with the wheel open, pick a skill and then a spell with the
+  number row, like a buy menu. Off by default.
 
 ## Download and install
 
@@ -77,6 +81,47 @@ To hide cooldown timers, set `ShowCooldowns=false` in `config.txt`.
 `PerfLog=true` writes the mod's per-second cost to UE4SS.log (troubleshooting only).
 To disable the mod, set `Enabled=false` in `config.txt` and restart the game.
 
+## Slot hotkeys and quick pick (optional)
+
+Both features are **off by default**, and no slot is assigned. Turn them on in
+`hotkeys.txt` (`SlotHotkeys=true`, `QuickPick=true`) or, with
+[Mod Menu](https://www.nexusmods.com/runescapedragonwilds/mods/548) installed, in
+**Esc > MODS > BetterSpellWheel**. Mod Menu changes apply without a restart. Without Mod
+Menu, edit `hotkeys.txt` and restart the game.
+
+### Slot hotkeys
+
+Each of the 8 slots holds one key and one utility spell.
+
+| Situation | Action |
+| --- | --- |
+| Wheel open, pointer on a spell, press a slot key | Binds that spell to the slot |
+| Wheel open, pointer on no spell (centre), press a slot key | Clears the slot |
+| Wheel closed, press a slot key | Casts the slot's spell, like picking it from the wheel |
+
+- Give a slot a key in Mod Menu (one key picker per slot) or with `Slot1Key = Z` in
+  `hotkeys.txt`. Key names are UE4SS names such as `Z`, `F5`, `NUM_ONE` or `XBUTTON_ONE`
+  (mouse 4). In vanilla Dragonwilds the keys I, L, N, O, T, U and Z are free. Avoid F10
+  (UE4SS console) and F11 (fullscreen).
+- The game still checks unlocks, runes, cooldowns and targeting. A hotkey does nothing the
+  wheel could not do.
+- A bar above the item hotbar shows each slot's icon, key and cooldown. Hide it, hide
+  empty slots, or change its scale and position in Mod Menu or `hotkeys.txt`
+  (`ShowHud`, `HideEmptySlots`, `HudScale`, `HudX`, `HudY`).
+
+### Quick pick
+
+With the wheel open, the number row picks a skill, then a spell:
+
+| Press | Result |
+| --- | --- |
+| First number `1 2 3 4 5 6 7 8 9 0 - =` | Opens skill 1 to 12, clockwise from the top of the ring |
+| Second number | Casts that spell in the open skill's fan, like clicking it |
+
+The chord resets when you reopen the wheel or after a few seconds. While the wheel is
+open these keys are captured, so they do not switch your item hotbar. Spells you have not
+unlocked behave as with a click: the wheel shows its normal "not unlocked" message.
+
 ## Credits
 
 Version 0.4.0 brings in improvements first made in a community fork by jackisace
@@ -94,6 +139,10 @@ open, and saved spellbook slots.
 0.4.2 was checked in-game with and without Utility Spells - No Cooldowns (see
 `tests/live-cooldowns-0.4.2.txt`). 0.4.3's performance and cooldown changes were
 measured and checked in-game (`tests/live-perf-0.4.3.txt`, `docs/COOLDOWN-VALIDATION.md`).
+
+Slot hotkeys and quick pick were checked in-game on keyboard and mouse, in solo and in a
+co-op world. They have not been tested with a gamepad, on a dedicated server or on
+ultrawide displays. Quick pick is keyboard only.
 
 Not yet verified for 0.4.0: gamepads (the new right-stick and emote hand-off
 behaviour), playing on a dedicated server, ultrawide displays and other spell-wheel
