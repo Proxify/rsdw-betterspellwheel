@@ -623,7 +623,7 @@ local function open(direct)
  controller.prime(pad,device.sample());state.controllerStage=pad.stage
  if perf then mark('openSetup') end
  -- Build the custom view after the native wheel has been suppressed.
- if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons) end
+ if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons,shortcutConfig.quick) end
  -- Native wheel suppression already happened at the very start of open().
  radial:StopRadialSelection()
  M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed
@@ -905,7 +905,7 @@ local function tick()
   -- Construct the retained view and warm its icons while closed, during world
   -- entry. Never move asset loads into the high-frequency hover path.
   if not pending then
-   if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons)
+   if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons,shortcutConfig.quick)
    elseif ui.warm then ui.warm() end
   end
   -- (Closed and not handing over to emotes: no input is sampled at all.)

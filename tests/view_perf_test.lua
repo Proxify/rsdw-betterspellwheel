@@ -135,12 +135,12 @@ local function makeE(rec)
  return E
 end
 
-local function instance(path)
+local function instance(path,quickPick)
  local rec=newRecorder()
  recorder=rec
  local E=makeE(rec)
  local R=dofile(path)(E,model,L,art)
- local u=R.new(pc,'/mod',icons)
+ local u=R.new(pc,'/mod',icons,quickPick)
  return {rec=rec,u=u,cool=cooldownsModule.new(),E=E}
 end
 local old=instance(root..'/tests/reference/view-0.4.2.lua')
@@ -250,3 +250,21 @@ for _,path in pairs(icons.spells) do new.u.texture(path) end
 assert(loadCount==loadsBefore,'reopening must reuse warmed spell textures')
 assert(new.u.tipFits[next(new.u.tipFits)]~=nil,'tooltip measurements survive reopening')
 print('PASS: asset brush retention, prewarming and cache reuse across reopen')
+
+-- Optional keyboard labels must exist before the construction-only font donors
+-- can be collected; drawing a wheel must never dereference those donors again.
+local quick=instance(root..'/Scripts/view.lua',true)
+assert(#quick.u.quickLabels==12,'all quick-pick labels built with the view')
+for _,o in ipairs(quick.rec.objects) do
+ if o.__kind:find('WBP_DomTextBlock',1,true) then
+  local mt=getmetatable(o);local previous=mt.__index
+  mt.__index=function(self,key)
+   assert(key~='Font','drawing read a retired font donor')
+   return previous(self,key)
+  end
+ end
+end
+local qs=model.new(groups);qs.quickPick=true;qs.shortcutHint='Choose skill 1-0, - or ='
+quick.u.show();quick.u.draw(qs,.016,nil,now,quick.cool,nil)
+quick.u.hide();quick.u.show();quick.u.draw(qs,.016,nil,now,quick.cool,nil)
+print('PASS: quick-pick labels survive retired construction donors and reopen')
