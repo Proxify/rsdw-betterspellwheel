@@ -1,3 +1,26 @@
+# 0.4.8 — Optional keyboard shortcuts (2026-11-14)
+
+- Optional quick pick: open the wheel, press a number-row key to choose a skill,
+  then a spell number to cast. Holding a key makes only one selection; mouse
+  movement takes over normally. Enable with `QuickPick=true` in `config.txt`.
+- Optional saved spell keys: enable `SlotHotkeys=true`, configure an unused
+  `Slot1Key`–`Slot8Key`, then hover a spell and press that key to assign it.
+  Press it with the wheel closed to use the native casting flow. Hover the
+  centre and press it to clear. See README for supported keys and conflicts.
+- Both features default off. Existing configurations are preserved on update;
+  add the new options manually to opt in. Assignments use stable spell IDs,
+  survive reload/restart and are shared across local characters, with each
+  character's unlocks and native costs rechecked.
+- Native targeting, cancel and saved spellbook slots are preserved. Shortcuts
+  ignore menus, targeting and modifier combinations. Input stays on the existing
+  game-thread tick without a separate HUD or loop. First-use layout and delayed
+  label construction were corrected during native testing.
+- Thanks to nachobenedetto for the proposal in PR #9; implemented independently
+  through the existing adapter in PR #10. Native evidence covers keyboard/mouse
+  in one Standard TEST World. Two-player/dedicated-server/current Together
+  combination, controller hardware, other resolutions and wider compatibility
+  remain unverified; see `docs/SHORTCUTS-VALIDATION.md`.
+
 # 0.4.7 — Frame rate fix for older UE4SS builds
 
 - The closed wheel no longer looks up any game object per frame. 0.4.2–0.4.6 checked the player controller with
