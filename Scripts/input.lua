@@ -13,8 +13,28 @@ return function(E)
  local analog={x=true,y=true,rx=true,ry=true,mx=true,my=true}
  -- The only buttons release() waits on (toggle also counts as close).
  local RELEASE_KEYS={'accept','back','close','toggle','mouseLeft'}
- function I.new(pc)
+ function I.new(pc,shortcuts)
   local i={pc=pc,quiet=0}
+  local extra,slotKeys={},{}
+  if shortcuts then
+   if shortcuts.quick then
+    local numbers={'One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Zero','Hyphen','Equals'}
+    for n,name in ipairs(numbers) do extra['quick'..n]={KeyName=FName(name)} end
+   end
+   if shortcuts.slots then for n,name in pairs(shortcuts.keys) do
+    local k='slot'..n;extra[k]={KeyName=FName(name)};slotKeys[k]=extra[k]
+   end end
+  end
+  local modifiers={}
+  if next(extra) then for _,name in ipairs({'LeftControl','RightControl','LeftShift','RightShift','LeftAlt','RightAlt'}) do
+   modifiers[#modifiers+1]={KeyName=FName(name)}
+  end end
+  function i.shortcuts(closed)
+   local s={}
+   for k,key in pairs(closed and slotKeys or extra) do s[k]=pc:IsInputKeyDown(key) end
+   if next(s) then for _,key in ipairs(modifiers) do if pc:IsInputKeyDown(key) then s.shortcutModifier=true end end end
+   return s
+  end
   -- Each key query is a UFunction call (~10 us). 'only' limits the sample to
   -- the keys a caller reads (e.g. confirm/cancel while a cast is pending).
   -- The left stick is not queried: x/y are replaced by the right stick below.
@@ -74,6 +94,7 @@ return function(E)
     end
     -- The game's look binding may use the combined 2D key rather than X/Y.
     i.mapping:MapKey(i.action,{KeyName=FName('Gamepad_Right2D')})
+    for _,key in pairs(extra) do i.mapping:MapKey(i.action,key) end
    end
    if not i.captured then
     i.actor:EnableInput(pc);i.captured=true
@@ -88,7 +109,9 @@ return function(E)
     -- Do not leak the button that cast/closed the wheel into gameplay or the
     -- native spell-confirmation screen. Wait until it is released AND has
     -- stayed released for HOLD_TICKS, so a fast click can't reach the game.
-    if s.accept or s.back or s.close or s.mouseLeft then i.draining=true;i.quiet=0;return end
+    local held=s.accept or s.back or s.close or s.mouseLeft
+    for _,key in pairs(extra) do if pc:IsInputKeyDown(key) then held=true end end
+    if held then i.draining=true;i.quiet=0;return end
     i.quiet=i.quiet+1
     if i.quiet<HOLD_TICKS then i.draining=true;return end
    end

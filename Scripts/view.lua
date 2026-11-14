@@ -13,7 +13,7 @@ return function(E, model, L, art)
  local ENOUGH={R=.25,G=.88,B=.38,A=1}
  local INSUFFICIENT={R=1.0,G=.24,B=.22,A=1}
 
- function R.new(pc,folder,icons)
+ function R.new(pc,folder,icons,quickPick)
   local u={pc=pc,skills={},spells={},textures={},last=''}
   u.root=E.create(pc,'/Game/UI/Panels/WBP_Panel.WBP_Panel_C')
   local tree=u.root.WidgetTree
@@ -205,6 +205,16 @@ return function(E, model, L, art)
   for _,w in ipairs(u.tipParts) do u.tipAll[#u.tipAll+1]=w end
   for _,w in ipairs(u.tipAll) do w:SetVisibility(2);w:SetRenderOpacity(0) end
 
+  -- Build optional labels with the rest of the tree. Font donors are temporary
+  -- construction helpers, not engine-held objects safe to read after a GC.
+  if quickPick then
+   u.quickLabels={}
+   local labels={'1','2','3','4','5','6','7','8','9','0','-','='}
+   for i,label in ipairs(labels) do
+    local x,y=model.point(model.skillAngle(i,#model.skills),155)
+    u.quickLabels[i]=text(label,{x=L.cx+x-14,y=L.cy+y-14,w=28,h=28},14,'DescriptionTextStyle',GOLD,true,false)
+   end
+  end
   u.root:SetVisibility(2)
   u.root:AddToViewport(9000)
 
@@ -626,11 +636,16 @@ return function(E, model, L, art)
    local detailKey=selectedSpell and (tostring(selectedSpell.id)..':'..tostring(selectedSpell.name)..':'..tostring(selectedSpell.skill)) or 'none'
    -- A refusal (on cooldown, missing runes or tool) replaces the description in
    -- the tooltip bar, in red, until the pointer moves to another target.
-   local messageKey=detailKey..'|'..tostring(message)
+   local messageKey=detailKey..'|'..tostring(message)..'|'..tostring(state.shortcutNotice)..'|'..tostring(state.shortcutHint)
    if detailKey~=u.detailKey or messageKey~=u.messageKey then
     u.detailKey=detailKey;u.messageKey=messageKey
     drawDetails(selectedSpell)
     if message and message~='' then layoutTip(message,RED);u.tipHas=true end
+    if not message and state.shortcutNotice then layoutTip(state.shortcutNotice,GOLD);u.tipHas=true end
+    if not message and not state.shortcutNotice and state.shortcutHint then
+     local description=selectedSpell and selectedSpell.description or ''
+     layoutTip((description~='' and description..'  |  ' or '')..state.shortcutHint,WHITE);u.tipHas=true
+    end
    end
    local tipTarget=u.tipHas and 1 or 0
    u.tipAlpha=tipTarget

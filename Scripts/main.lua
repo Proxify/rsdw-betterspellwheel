@@ -67,6 +67,13 @@ local cfg={Enabled=true,ControllerPrompts="auto",KeepNativeHidden=true,ShowCoold
 local file=io.open(folder..'/config.txt','r')
 if file then for line in file:lines() do local k,v=line:match('^%s*(%w+)%s*=%s*(%w+)');if k=='Enabled' then cfg.Enabled=v:lower()~='false' elseif k=='ControllerPrompts' and (v:lower()=='xbox' or v:lower()=='playstation') then cfg.ControllerPrompts=v:lower() elseif k=='KeepNativeHidden' then cfg.KeepNativeHidden=v:lower()~='false' elseif k=='ShowCooldowns' then cfg.ShowCooldowns=v:lower()~='false' elseif k=='PerfLog' then cfg.PerfLog=v:lower()=='true' end end;file:close() end
 M.cfg=cfg
+local shortcutModule=dofile(folder..'/Scripts/shortcuts.lua')
+local shortcutConfig=shortcutModule.load(folder..'/config.txt')
+local shortcuts=shortcutModule.new(shortcutConfig,model)
+for _,warning in ipairs(shortcutConfig.warnings) do log(warning) end
+M.shortcuts=shortcuts
+local hasSlotKeys=shortcutConfig.slots and next(shortcutConfig.keys)~=nil
+local hasShortcuts=shortcutConfig.quick or hasSlotKeys
 -- Opt-in profiler (PerfLog=true in config.txt): once a second, logs the time the
 -- mod spent on the game thread (total, worst tick, per section), the frame time,
 -- object-scan calls and the Lua heap. Off by default: no cost when off.
@@ -234,7 +241,7 @@ function M.close()
   end
   if E.valid(pc) then controls(false) end
  end
- M.queue={};M.message=nil
+ M.queue={};M.message=nil;M.notice=nil;shortcuts.reset()
 end
 -- FindFirstOf walks the whole UObject array (hundreds of thousands of objects).
 -- It runs only to find the first controller, and every BIND_RETRY seconds while
@@ -352,7 +359,8 @@ local function bindWorld()
  end
  if elapsed-pawnSince<SETTLE then return false end
  if E.valid(pc) and pc:GetAddress()==found:GetAddress() and E.valid(radial) then pawnAddrBound=pawnOnly;return true end
- M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc);radial=nil;ui=nil;nativeWasOpen=false
+ M.close();restore();if device then device.shutdown() end;pc=found;device=inputAdapter.new(pc,shortcutConfig);radial=nil;ui=nil;nativeWasOpen=false
+ shortcuts.reset()
  rememberPc();pawnAddrBound=pawnOnly
  -- A previous world's catalogue must not be polled in the background.
  state=nil;M.state=nil;catalogueGroups=nil;unlockRefreshAt={}
@@ -581,7 +589,7 @@ local function refreshGroupUnlocks(group)
  catalogue.refresh({group},function(spell) return progress:IsSpellUnlocked(spell.data) end)
  unlockRefreshAt[group.id]=elapsed
 end
-local function open()
+local function open(direct)
  unmuteSelectSound()
  -- This is called from the native spell-wheel open lifecycle (or its
  -- state-transition fallback). Replace only the spell selector's visuals; keep
@@ -608,25 +616,28 @@ local function open()
   lastSync=elapsed;refusedId=nil
  if perf then mark('openCooldown') end
  state=model.new(groups);M.state=state
+ state.quickPick=shortcutConfig.quick
+ shortcuts.reset(hasShortcuts and device.shortcuts(false) or nil)
  pad=controller.new()
  local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
  controller.prime(pad,device.sample());state.controllerStage=pad.stage
  if perf then mark('openSetup') end
  -- Build the custom view after the native wheel has been suppressed.
- if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons) end
+ if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons,shortcutConfig.quick) end
  -- Native wheel suppression already happened at the very start of open().
  radial:StopRadialSelection()
  M.open=true;M.message=nil;M.hover=nil;M.back=false;M.queue={};M.since=elapsed
+ M.notice=nil
  if ui then ui.last='' end
- ui.show()
+ if direct then ui.resize(true) else ui.show() end
  if perf then mark('openView') end
  emoteHandoffAt=nil;emoteWheelActive=false;emoteWheelSeen=false
  emoteWasDown=device.sample(EMOTE_KEYS).emote==true
  local dpi=E.layout:GetViewportScale(pc)
  -- Start at the wheel's centre (the dead zone), so opening never pre-selects a skill.
- pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor((ui.height/2+ui.offsetY)*dpi))
+ if not direct then pc:SetMouseLocation(math.floor(ui.width/2*dpi),math.floor((ui.height/2+ui.offsetY)*dpi)) end
  pointerX,pointerY=ui.pointer()
- controls(true)
+ if not direct then controls(true) end
  if perf then mark('openInput') end
 end
 local function selectSpell()
@@ -722,6 +733,25 @@ local function selectSpell()
   M.queue={}
  end
 end
+-- The hotkey route uses exactly the normal native handoff and restoration.
+-- A refusal reveals the normal wheel with the game's reason; no hidden HUD.
+local function castShortcut(slot)
+ local id=shortcutConfig.ids[slot]
+ if not id then return end
+ input:OpenWidgetIfClosed(pc,21,false,true)
+ if not nativeOpen() then return end
+ nativeWasOpen=true
+ open(true)
+ if not M.open then input:CloseWidgetIfOpen(pc,21);return end
+ local gi,si=shortcuts.find(state.groups,id)
+ if gi then
+  model.setGroup(state,gi);state.spell=si;state.zone='spell'
+  state.input='keyboard'
+  state.page=math.floor((si-1)/model.geometry.maxBranch)+1
+  selectSpell()
+ else M.message='Assigned spell is unavailable. Open the wheel and assign another spell.' end
+ if M.open then ui.show();controls(true) end
+end
 local ESCAPE,RIGHT_MOUSE -- key structs, made once on first use
 local NO_ACTIONS={}
 local PAD_KEYS={'accept','back','close','previous','next','up','down','left','right'}
@@ -742,6 +772,15 @@ local function tick()
  local bound=bindWorld()
  if perf then mark('bind') end
  if not bound then return end
+ local shortcutEdges={}
+ if hasShortcuts then
+  if M.open or hasSlotKeys then
+   local mode=pc.CurrentInputMode
+   local gameplay=E.valid(mode) and mode:GetFName():ToString()=='DIM_Gameplay'
+   local active=M.open or (gameplay and not pc.bShowMouseCursor and not pending and not device.draining and not emoteWheelActive and not emoteHandoffAt)
+   shortcutEdges=shortcuts.edges(device.shortcuts(not M.open),active)
+  else shortcuts.reset() end
+ end
  -- The emote wheel is a separate native UI. If the player opens it while
  -- BetterSpellWheel is active, yield input ownership without resetting the
  -- game's input mode (controls(false) would force GameOnly and dismiss emotes).
@@ -866,7 +905,7 @@ local function tick()
   -- Construct the retained view and warm its icons while closed, during world
   -- entry. Never move asset loads into the high-frequency hover path.
   if not pending then
-   if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons)
+   if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons,shortcutConfig.quick)
    elseif ui.warm then ui.warm() end
   end
   -- (Closed and not handing over to emotes: no input is sampled at all.)
@@ -883,6 +922,8 @@ local function tick()
   elseif not isNativeOpen and not M.open then
    nativeWasOpen=false
   end
+  local slot=shortcuts.slot(shortcutEdges)
+  if slot then castShortcut(slot);return end
   -- Legacy keybind dispatchers can survive UE4SS script reloads. Ignore their
   -- old 'toggle'/'open' queue entries; native state above is the only opener.
   if M.queue[1]~=nil then M.queue={} end
@@ -915,6 +956,11 @@ local function tick()
  pointerX,pointerY=x,y
  local padActivity=sample.x*sample.x+sample.y*sample.y>=controller.deadzone^2
  for _,k in ipairs(PAD_KEYS) do if sample[k] then padActivity=true end end
+ local quickAction=shortcuts.quick(state,shortcutEdges,elapsed,moved or padActivity)
+ if quickAction then
+  state.input='keyboard';M.back=false;M.message=nil;M.notice=nil
+  if quickAction=='select' then M.queue[#M.queue+1]='select' end
+ end
  if padActivity and state.input~='controller' then
   state.input='controller';pad=controller.new();state.spell=nil;M.back=false
   local _,style=device.device();state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
@@ -926,7 +972,7 @@ local function tick()
   state.controllerStage=pad.stage
   if action=='select' or action=='close' then M.queue[#M.queue+1]=action end
   if action=='back' or action=='enter' then M.message=nil end
- else
+ elseif state.input~='keyboard' then
   controller.prime(pad,sample)
   if M.back and x*x+y*y<model.geometry.outer^2 then M.back=false end
   if not M.back then model.update(state,x,y,now) end
@@ -934,14 +980,34 @@ local function tick()
  local group=state.groups[state.group];local spell=group and group.spells[state.spell]
  local hover=spell and spell.id or tostring(state.group)
  if hover~=M.hover then
-  M.hover=hover;M.message=nil
+  M.hover=hover;M.message=nil;M.notice=nil
   refreshGroupUnlocks(group)
+ end
+ local slot=shortcuts.slot(shortcutEdges)
+ if slot and (spell or state.zone=='center') then
+  local id=spell and spell.id or nil
+  local ok,err=shortcutModule.save(folder..'/config.txt',slot,id)
+  if ok then
+   shortcutConfig.ids[slot]=id;M.message=nil
+   M.notice=shortcutConfig.keys[slot]..(spell and (' assigned to '..spell.name) or ' assignment cleared')
+  else M.notice=nil;M.message=err end
+ end
+ state.shortcutNotice=M.notice
+ state.shortcutHint=nil
+ if hasSlotKeys and spell then
+  local labels={}
+  for i=1,8 do if shortcutConfig.keys[i] then labels[#labels+1]=shortcutConfig.keys[i] end end
+  state.shortcutHint=table.concat(labels,' / ')..': assign this spell'
+ elseif hasSlotKeys and state.zone=='center' then
+  state.shortcutHint='Hover a spell to assign  |  Press a slot key here to clear'
+ elseif shortcutConfig.quick then
+  state.shortcutHint=state.quickStage=='spells' and 'Choose spell 1-6  |  F / G: page' or 'Choose skill 1-0, - or ='
  end
  local queue=M.queue
  if queue[1]==nil then queue=NO_ACTIONS else M.queue={} end
  for _,action in ipairs(queue) do
   if action=='toggle' or action=='close' then M.close();return
-  elseif action=='back' then state.group=nil;state.spell=nil;state.candidate=nil;state.page=1;M.message=nil;M.back=true
+  elseif action=='back' then state.group=nil;state.spell=nil;state.candidate=nil;state.page=1;M.message=nil;M.back=true;shortcuts.stage='skills';state.input='mouse'
   elseif action=='previous' then model.turnPage(state,-1)
   elseif action=='next' then model.turnPage(state,1)
   elseif action=='select' and elapsed-M.since>.15 then
@@ -960,6 +1026,7 @@ local function tick()
  if perf then mark('draw') end
 end
 function M.shutdown()
+ M.disabled=true
  unmuteSelectSound()
  M.close()
  restoreNativePanel()

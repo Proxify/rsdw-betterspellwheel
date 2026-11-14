@@ -17,3 +17,33 @@ ShowCooldowns=true
 # Troubleshooting only: log the mod's per-second game-thread cost and the frame
 # time to UE4SS.log. Leave false for normal play.
 PerfLog=false
+
+# Optional keyboard shortcuts. Both remain OFF on existing/missing configs.
+# Restart the game after changing these settings (development reload is supported).
+# Open Q, then press a skill key (1-0, -, =) and a spell key (1-6).
+# Release between presses. After four seconds the next key selects a skill again.
+QuickPick=false
+
+# Choose unused keys: F1-F8, Z, X, C or V; None disables a slot.
+# Check your game and other mods' bindings first. Duplicate/unsupported keys
+# are ignored. Ctrl/Shift/Alt combinations never trigger these shortcuts.
+# Hover a spell in the open wheel and press the slot key to assign it.
+# Press it over the centre to clear. In gameplay it uses native casting rules.
+# Assignments are saved here by stable spell ID and preserved by the installer.
+SlotHotkeys=false
+Slot1Key=None
+Slot2Key=None
+Slot3Key=None
+Slot4Key=None
+Slot5Key=None
+Slot6Key=None
+Slot7Key=None
+Slot8Key=None
+Slot1Spell=None
+Slot2Spell=None
+Slot3Spell=None
+Slot4Spell=None
+Slot5Spell=None
+Slot6Spell=None
+Slot7Spell=None
+Slot8Spell=None
