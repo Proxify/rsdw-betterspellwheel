@@ -15,7 +15,7 @@ end
 local empty={IsValid=function()return false end}
 local original=obj('original');local spell=obj('spell');local newer=obj('server-update')
 spell.GetModulesOfType=function()return{}end
-local record={id='test',name='Test Spell',skill='Woodcutting',level=1,unlocked=true,data=spell,cooldown=0,description='Test'}
+local record={id='USD_Test',name='Test Spell',skill='Woodcutting',level=1,unlocked=true,data=spell,cooldown=0,description='Test'}
 local unlockChecks=0
 local pc=obj('pc');pc.Pawn=obj('pawn');pc.PlayerState=obj('state');pc.CurrentInputMode=obj('DIM_Gameplay')
 -- gameUnlocked/perkUnlocked: the game's state when it differs from the cached catalogue record
@@ -64,6 +64,7 @@ local archRadial=obj('arch-radial');archRadial.Slices={GetArrayNum=function()ret
 function archRadial:GetFullName()return 'WBP_SurvivalSorcery_RadialSelector_C /Game/UI/HUD/WBP_X.WBP_X_C:WidgetTree.Radial' end
 function archRadial:GetOuter()error('archetype radial read') end
 function input:CloseWidgetIfOpen()native=false;pc.CurrentInputMode=obj('DIM_Gameplay')end
+function input:OpenWidgetIfClosed()native=true end
 local lib=obj('lib');function lib:SetInputMode_UIOnlyEx()end;function lib:SetInputMode_GameOnly()end
 function lib:SetInputMode_GameAndUIEx()end
 function lib:GetGameTimeInSeconds()return clock end
@@ -95,9 +96,14 @@ keys={};function RegisterKeyBind(key,fn)keys[key]=fn end
 function LoopInGameThreadWithDelay(_,fn)callback=fn;return 1 end
 function CancelDelayedAction()end
 local catalogueScans=0
+local shortcutTestConfig,shortcutSample=nil,{}
 function dofile(path)
+ if path:find('/shortcuts.lua',1,true) and shortcutTestConfig then
+  local S=realDofile(path);S.load=function()return S.parse(shortcutTestConfig)end;return S
+ end
  if path:find('/input.lua',1,true)then return function()return {new=function()return {
   sample=function()local s={x=0,y=0};for k,v in pairs(padSample)do s[k]=v end;return s end, device=function()return usingPad,'xbox' end,
+  shortcuts=function()return shortcutSample end,
   capture=function()captured=true end,release=function()captured=false end,shutdown=function()captured=false end,
  }end}end end
  if path:find('/catalogue.lua',1,true)then return function()return {
@@ -119,7 +125,10 @@ function dofile(path)
  }end end
  if path:find('/view.lua',1,true)then return function()return {new=function()
   assert(not failView,'test missing artwork')
-  return {root=obj("root"),width=1920,height=1080,scale=1,offsetY=0,show=function()end,hide=function()end,resize=function()end,pointer=function()return x,y end,draw=function()end}
+  local sized=false
+  return {root=obj("root"),width=1920,height=1080,scale=1,offsetY=0,
+   show=function()sized=true end,hide=function()end,resize=function()sized=true end,
+   pointer=function()assert(sized,'first-use pointer needs viewport layout');return x,y end,draw=function()end}
  end}end end
  return realDofile(path)
 end
@@ -406,6 +415,32 @@ assert(catalogueScans==scans,'no rescan needed for fresh durations')
 spell.CooldownDuration=nil;spell.CooldownModifierPerk=nil;record.cooldown=0;mod.cooldowns:clear(record);perkUnlocked=false
 mod.shutdown()
 print('PASS: PR6 catalogue cache: one scan per world, cleared on unbind and new pawn; close guards the panel before IsOpen; 10 s hover unlock refresh only through a verified controller; selection revalidates; live perk cooldowns')
+-- Run the new entry points through the real adapter, not a second casting model.
+shortcutTestConfig='QuickPick=true\nSlotHotkeys=true\nSlot1Key=Z\nSlot2Key=X\nSlot1Spell=USD_Test'
+native=false;pc.bShowMouseCursor=false;pc.CurrentInputMode=obj('DIM_Gameplay')
+shortcutSample={};mod=realDofile(root..'/Scripts/main.lua');ticks(340)
+before=calls;shortcutSample={slot1=true};ticks();assert(calls>before and not mod.open,'hotkey uses native selection');finish();sameSlots()
+before=calls;ticks(30);assert(calls==before,'held shortcut never repeats')
+shortcutSample={};ticks();pc.CurrentInputMode=obj('DIM_Inventory');shortcutSample={slot1=true};ticks()
+pc.CurrentInputMode=obj('DIM_Gameplay');ticks();assert(calls==before,'menu-held key cannot cast on return')
+shortcutSample={};ticks();pc.bShowMouseCursor=true;shortcutSample={slot1=true};ticks();assert(calls==before,'cursor/menu guard')
+pc.bShowMouseCursor=false;shortcutSample={};ticks();denied=true;shortcutSample={slot1=true};ticks()
+assert(mod.open and mod.message and captured,'native refusal displays normal feedback and owns input');sameSlots()
+mod.close();denied=false;shortcutSample={};ticks()
+gameUnlocked=false;before=calls;shortcutSample={slot1=true};ticks();assert(mod.open and calls==before and mod.message:find('not been unlocked',1,true),'native unlock revalidation')
+mod.close();gameUnlocked=true;shortcutSample={};ticks()
+native=true;x,y=0,0;ticks(15);before=calls
+shortcutSample={quick1=true};ticks();assert(mod.state.group==1 and calls==before)
+ticks(15);assert(calls==before,'held skill key cannot cast')
+shortcutSample={};ticks();shortcutSample={quick1=true};ticks();assert(calls>before and not mod.open,'second press casts');finish();sameSlots()
+-- New generation reads the new configuration; no callback closes over old keys.
+shortcutTestConfig='SlotHotkeys=true\nSlot1Key=X\nSlot2Key=Z\nSlot2Spell=USD_Test'
+shortcutSample={slot2=true};mod=realDofile(root..'/Scripts/main.lua');ticks(340);before=calls
+ticks(3);assert(calls==before,'reload-held key primes')
+shortcutSample={};ticks();shortcutSample={slot1=true};ticks();assert(calls==before,'old slot assignment is gone')
+shortcutSample={};ticks();shortcutSample={slot2=true};ticks();assert(calls>before,'current slot resolves after reload');finish();sameSlots()
+mod.shutdown();shortcutTestConfig=nil;shortcutSample={};gameUnlocked=nil
+print('PASS: shortcut native cast/refusal/unlock, slots restored, held/menu/cursor guards, two-stage quick pick and fresh reload configuration')
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
 for _=1,300 do clock=clock+.02;callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')

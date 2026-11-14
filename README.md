@@ -77,11 +77,39 @@ To hide cooldown timers, set `ShowCooldowns=false` in `config.txt`.
 `PerfLog=true` writes the mod's per-second cost to UE4SS.log (troubleshooting only).
 To disable the mod, set `Enabled=false` in `config.txt` and restart the game.
 
+### Optional keyboard shortcuts (unreleased)
+
+Both features default to **off**, including when upgrading an older config.
+Edit `config.txt` with the game closed, then restart:
+
+- `QuickPick=true`: open the wheel normally, press the skill's label (`1`–`0`,
+  `-`, `=`), release, then press its spell number (`1`–`6`). `F`/`G` change pages.
+  Holding a key never selects twice. Mouse motion or controller navigation takes
+  over immediately; after four seconds, the next number chooses a skill again.
+- `SlotHotkeys=true`: set `Slot1Key` through `Slot8Key` to unused keys (`F1`–`F8`,
+  `Z`, `X`, `C`, `V`), or `None`. Check your game and other mods' bindings first.
+  Hover a spell and press the slot key to save it; press over the wheel's centre
+  to clear it. In gameplay, that key selects the assigned spell through the normal
+  native casting flow. A native refusal opens the wheel with its reason.
+
+Assignments are stable spell IDs in `config.txt`, preserved on update. They are
+shared across your local characters; each character's unlocks and native costs
+are rechecked when casting. Menu, cursor, targeting and Ctrl/Shift/Alt presses do
+not trigger a shortcut. Duplicate or unsupported keys are ignored and logged.
+Shortcut keys are consumed while the wheel owns input; gameplay key conflicts
+must be resolved in your own bindings. No shortcut HUD runs in the background.
+If a disk failure leaves `config.txt.shortcuts.bak`, restore that file to
+`config.txt` with the game closed before making further assignments.
+
 ## Credits
 
 Version 0.4.0 brings in improvements first made in a community fork by jackisace
 (centred layout, rune counts, cooldown timers, movement while open, right-stick
 navigation), reviewed and adapted here.
+
+The optional quick-pick and saved-slot idea was proposed by nachobenedetto in
+[PR #9](https://github.com/Proxify/rsdw-betterspellwheel/pull/9). This implementation
+uses the existing game-thread input and native casting lifecycle independently.
 
 ## Compatibility
 

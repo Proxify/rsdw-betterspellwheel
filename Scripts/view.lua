@@ -590,6 +590,14 @@ return function(E, model, L, art)
   end
 
   function u.draw(state,dt,message,now,cooldowns,selectedSpell)
+   if state.quickPick and not u.quickLabels then
+    u.quickLabels={}
+    local labels={'1','2','3','4','5','6','7','8','9','0','-','='}
+    for i,label in ipairs(labels) do
+     local x,y=model.point(model.skillAngle(i,#model.skills),155)
+     u.quickLabels[i]=text(label,{x=L.cx+x-14,y=L.cy+y-14,w=28,h=28},14,'DescriptionTextStyle',GOLD,true,false)
+    end
+   end
    local fade=1
    if fade>=.995 then fade=1 end
    u.fade=fade
@@ -626,11 +634,16 @@ return function(E, model, L, art)
    local detailKey=selectedSpell and (tostring(selectedSpell.id)..':'..tostring(selectedSpell.name)..':'..tostring(selectedSpell.skill)) or 'none'
    -- A refusal (on cooldown, missing runes or tool) replaces the description in
    -- the tooltip bar, in red, until the pointer moves to another target.
-   local messageKey=detailKey..'|'..tostring(message)
+   local messageKey=detailKey..'|'..tostring(message)..'|'..tostring(state.shortcutNotice)..'|'..tostring(state.shortcutHint)
    if detailKey~=u.detailKey or messageKey~=u.messageKey then
     u.detailKey=detailKey;u.messageKey=messageKey
     drawDetails(selectedSpell)
     if message and message~='' then layoutTip(message,RED);u.tipHas=true end
+    if not message and state.shortcutNotice then layoutTip(state.shortcutNotice,GOLD);u.tipHas=true end
+    if not message and not state.shortcutNotice and state.shortcutHint then
+     local description=selectedSpell and selectedSpell.description or ''
+     layoutTip((description~='' and description..'  |  ' or '')..state.shortcutHint,WHITE);u.tipHas=true
+    end
    end
    local tipTarget=u.tipHas and 1 or 0
    u.tipAlpha=tipTarget

@@ -85,5 +85,18 @@ local pad2,style2=input2.device();assert(pad2 and style2=='playstation')
 input2.capture();input2.shutdown()
 assert(scans==0,'input subsystems without object scans, got '..scans)
 assert(asked[1]=='/Script/CommonInput.CommonInputSubsystem' and asked[2]=='/Script/EnhancedInput.EnhancedInputLocalPlayerSubsystem','asked for the local player subsystems')
+-- Opt-in keys share the same mapping lifetime; no additions when disabled.
+assert(not mappings.One and not mappings.Z,'default wheel consumes no shortcut keys')
+down={};axes={}
+local extra=dofile(root..'/Scripts/input.lua')(E2).new(pc,{quick=true,slots=true,keys={[1]='Z',[2]='X'}})
+queries=0;pc.IsInputKeyDown=function(...)queries=queries+1;return isDown(...)end
+down.One=true;down.Z=true
+local extraSample=extra.shortcuts(false);assert(extraSample.quick1 and extraSample.slot1 and queries==20,'12 numbers, 2 slots, 6 modifiers')
+queries=0;extra.shortcuts(true);assert(queries==8,'closed samples configured slots plus modifiers only')
+down.LeftShift=true;assert(extra.shortcuts(true).shortcutModifier);down.LeftShift=false
+extra.capture();assert(mappings.One and mappings.Equals and mappings.Z and mappings.X)
+extra.release();assert(extra.draining,'quick-pick press cannot leak to gameplay after cast')
+down.One=false;down.Z=false;for _=1,8 do extra.release() end;assert(not extra.draining)
+extra.shutdown();pc.IsInputKeyDown=isDown
 FindFirstOf,StaticFindObject,StaticConstructObject,FName=oldFind,oldStatic,oldConstruct,oldFName
 print('PASS: raw input, right-stick-only navigation, movement passthrough, scoped mapping, B/Y interception, quiet-tick release drain (5 queries per tick), emote passthrough and forced shutdown cleanup')

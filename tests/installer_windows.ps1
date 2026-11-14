@@ -50,10 +50,11 @@ try {
   }
   Assert ((Get-FileHash (Join-Path $w 'dwmapi.dll')).Hash.ToLower() -eq $hashes.'dwmapi.dll') 'Loader mismatch'
   Pass 'fresh install: all packaged mod files and four dependency hashes match'
-  Put (Join-Path $m 'config.txt') 'Enabled=false';Put (Join-Path $m 'data\keep.txt') 'user data'
+  $customConfig="Enabled=false`r`nQuickPick=true`r`nSlotHotkeys=true`r`nSlot1Key=Z`r`nSlot1Spell=USD_Windstep`r`n"
+  Put (Join-Path $m 'config.txt') $customConfig;Put (Join-Path $m 'data\keep.txt') 'user data'
   Put (Join-Path $m 'Scripts\main.lua') 'old mod version'
   Run $dir;Installed $m $true;Run $dir
-  Assert ((Get-Content -Raw (Join-Path $m 'config.txt')) -eq 'Enabled=false') 'Config overwritten'
+  Assert ((Get-Content -Raw (Join-Path $m 'config.txt')) -ceq $customConfig) 'Config/shortcut assignment overwritten'
   Assert ((Get-Content -Raw (Join-Path $m 'data\keep.txt')) -eq 'user data') 'Data overwritten'
   Assert (@(Get-Content (Join-Path $w 'ue4ss\Mods\mods.txt') | Where-Object {$_ -match '^BetterSpellWheel\s*:\s*1'}).Count -eq 1) 'Duplicate enable lines'
   Pass 'upgrade and repeat install preserve custom config/data and enable once'
