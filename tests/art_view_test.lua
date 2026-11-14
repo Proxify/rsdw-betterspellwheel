@@ -10,6 +10,12 @@ local L=dofile(root..'/Scripts/layout.lua')
 local icons=dofile(root..'/Scripts/icons.lua')
 local art=dofile(root..'/Scripts/art.lua')
 local records=dofile(root..'/tests/live_catalogue_snapshot.lua')
+-- Additional UI fixture, not a native progression receipt. The object path is
+-- present in installed game build 26574764. An unmapped Earth spell used to
+-- silently display Attack's generic icon instead of the native spell artwork.
+local earthIcon='/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Earth.T_Skill_Attack_Spell_Enchantweapon_Earth'
+records[#records+1]={id='USD_EnchantWeapon_Earth',name='Enchant Weapon: Earth',
+ skill='Attack',level=60,description='Earth enchantment artwork regression fixture.'}
 for _,r in ipairs(records) do r.unlocked=true end
 local groups=model.catalogue(records)
 
@@ -95,6 +101,10 @@ local function run(mode)
    local b=model.branch(state)
    for i=1,b.count do
     local n=u.spells[i]
+    local record=g.spells[b.first+i-1]
+    if record.id=='USD_EnchantWeapon_Earth' then
+     assert(brush(n.icon)==earthIcon,'Earth enchantment must show its native spell artwork, not the Attack skill icon')
+    end
     local a=b.center-b.span/2+b.step*(i-.5)
     assert(n.angle==a)
     same(n.base,'spell',a,mode..' '..g.id..' page '..page..' slot '..i)
@@ -104,6 +114,8 @@ local function run(mode)
   end
  end
  assert(angles==#records,'every spell slot angle checked: '..angles)
+ while not u.warm() do end
+ assert(u.texturePins[earthIcon],'Earth artwork must be retained by an engine-held brush')
  -- Unrotated centre disc and tooltip bar: the texels keep their full-frame spots.
  local ctr=byTexture('center');assert(#ctr==1)
  same(ctr[1],'center',0,mode..' centre')
