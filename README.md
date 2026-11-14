@@ -8,7 +8,7 @@ browse its spells, and cast without reaching for the mouse.
 
 ## Your skills. Your magic.
 
-- **39 spells across 12 skills**, grouped using the game's actual progression data.
+- **Utility spells across 12 skills**, grouped using the game's actual progression data.
 - **A clean, centred wheel:** the hovered spell's name, tool requirement and rune costs
   appear in the middle, with each rune count **green** when you carry enough and **red**
   when you don't. Its description sits in a tooltip bar under the wheel.

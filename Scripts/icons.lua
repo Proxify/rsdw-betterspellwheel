@@ -9,6 +9,7 @@ local spells={
 ["USD_DetectOre"]="/Game/Art/UI/Skills/Icons/Unlock/Mining/T_Skill_Mining_Detect_Ore.T_Skill_Mining_Detect_Ore",
 ["USD_DivineRock"]="/Game/Art/UI/Skills/Icons/Unlock/Mining/T_Skill_Mining_Spell_DivineRock.T_Skill_Mining_Spell_DivineRock",
 ["USD_EnchantWeapon_Air"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Air.T_Skill_Attack_Spell_Enchantweapon_Air",
+["USD_EnchantWeapon_Earth"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Earth.T_Skill_Attack_Spell_Enchantweapon_Earth",
 ["USD_EnchantWeapon_Fire"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Fire.T_Skill_Attack_Spell_Enchantweapon_Fire",
 ["USD_EnchantWeapon_Water"]="/Game/Art/UI/Skills/Icons/Unlock/Attack/T_Skill_Attack_Spell_Enchantweapon_Water.T_Skill_Attack_Spell_Enchantweapon_Water",
 ["USD_Enfeeble"]="/Game/Art/UI/Skills/Icons/Unlock/Magic/T_Skill_Magic_Spell_Enfeeble.T_Skill_Magic_Spell_Enfeeble",
