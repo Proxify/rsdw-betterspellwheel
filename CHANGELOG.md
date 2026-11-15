@@ -1,3 +1,13 @@
+# 0.4.9 — Earth enchantment artwork (2026-11-15)
+
+- Enchant Weapon: Earth uses its native game artwork instead of the generic
+  Attack skill icon. The texture is loaded from the installed game; no game
+  artwork is included in the download.
+- Spell discovery continues to use native progression. Documentation no longer
+  presents the historical 39-spell snapshot as a current limit.
+- Native unlocks, casting, rune costs, cooldowns and saved shortcuts are unchanged.
+- Verification and current limitations: `docs/SPELL-ARTWORK.md`.
+
 # 0.4.8 — Optional keyboard shortcuts (2026-11-14)
 
 - Optional quick pick: open the wheel, press a number-row key to choose a skill,

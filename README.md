@@ -23,12 +23,12 @@ browse its spells, and cast without reaching for the mouse.
 
 ## Download and install
 
-**0.4.8 · Windows · Keyboard and mouse (controller: beta)**
+**0.4.9 · Windows · Keyboard and mouse (controller: beta)**
 
 | Download | Installation |
 | --- | --- |
-| [Easy installer (.exe)](https://www.rsence.com/downloads/betterspellwheel/0.4.8/BetterSpellWheel-0.4.8-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
-| [Manual install (.zip)](https://www.rsence.com/downloads/betterspellwheel/0.4.8/BetterSpellWheel-0.4.8.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
+| [Easy installer (.exe)](https://www.rsence.com/downloads/betterspellwheel/0.4.9/BetterSpellWheel-0.4.9-setup.exe) | Close the game and run setup. It finds your Steam installation and installs UE4SS if needed. |
+| [Manual install (.zip)](https://www.rsence.com/downloads/betterspellwheel/0.4.9/BetterSpellWheel-0.4.9.zip) | Follow the included `INSTALL.txt`. Requires Dragonwilds-compatible UE4SS already installed. |
 
 The EXE is a separate download. Setup preserves other mods and your existing
 settings on update; run it again to update or uninstall. The installer is unsigned.
@@ -77,7 +77,7 @@ To hide cooldown timers, set `ShowCooldowns=false` in `config.txt`.
 `PerfLog=true` writes the mod's per-second cost to UE4SS.log (troubleshooting only).
 To disable the mod, set `Enabled=false` in `config.txt` and restart the game.
 
-### Optional keyboard shortcuts (unreleased)
+### Optional keyboard shortcuts (since 0.4.8)
 
 Both features default to **off**, including when upgrading an older config.
 Edit `config.txt` with the game closed, then restart:
