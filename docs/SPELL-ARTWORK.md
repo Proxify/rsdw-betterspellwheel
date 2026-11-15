@@ -35,7 +35,8 @@ names alone are not used to extend the supported catalogue.
 
 ## Native acceptance pending
 
-This change is not released or verified in-game. Asset-path existence and mocked
+The 0.4.9 payload includes the merged mapping; fresh native acceptance is still
+pending. Asset-path existence and mocked
 brush selection do not prove visual correctness, actual progression membership,
 native casting, cost/cooldown behavior or input handling in the updated client.
 
@@ -51,8 +52,7 @@ the complete Scripts set to an owned target. Close the wheel and finish/cancel a
 spell first; no Ctrl+R and no independent icons.lua reload into old closures.
 
 Native baseline/candidate screenshots, gameplay video, all-spell census and final
-visual self-review are pending machine access. SudoBlade is reserved for another
-run. nJoyDesk's four-server comparison cannot be interrupted; its owner offered
-a handoff after about 10:30 UTC, and Anders' Windows session is currently locked.
-No occupied desktop was taken. Existing shortcut footage only documents the
-previous wheel and is not evidence of this fix or the new Earth spell.
+visual self-review remain pending machine access as of 2026-11-15. nJoyDesk and
+SudoBlade are reserved for other tests. No occupied desktop was taken. Existing
+shortcut footage only documents the previous wheel and is not evidence of this
+fix or the new Earth spell. See RELEASE-0.4.9.md for the exact payload and checks.
