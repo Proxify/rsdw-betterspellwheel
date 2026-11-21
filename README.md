@@ -101,6 +101,24 @@ must be resolved in your own bindings. No shortcut HUD runs in the background.
 If a disk failure leaves `config.txt.shortcuts.bak`, restore that file to
 `config.txt` with the game closed before making further assignments.
 
+### Optional double-tap recast (unreleased)
+
+Made for controller play, such as casting Windstep on agility courses. It defaults
+to **off**, including when upgrading an older config. Edit `config.txt` with the
+game closed, then restart:
+
+- `DoubleTapRecast=true`: tap your spell-wheel button twice (Y / Triangle, or Q).
+  The second tap casts again instead of closing the wheel.
+- `DoubleTapWindowMs=350`: the time allowed for the second tap (150–1000 ms).
+- `DoubleTapSpell=Last` casts the spell you last cast with BetterSpellWheel
+  (remembered until you close the game). Set a spell ID such as `USD_Windstep`
+  to always cast that spell instead.
+
+The cast uses the normal native casting flow: unlocks, runes, cooldowns and
+targeting still apply. If the game refuses the spell, the wheel stays open with
+its reason; tap again to close it. A tap after the time limit closes the wheel as
+before. The wheel is visible for the moment between the two taps.
+
 ## Credits
 
 Version 0.4.0 brings in improvements first made in a community fork by jackisace
@@ -110,6 +128,9 @@ navigation), reviewed and adapted here.
 The optional quick-pick and saved-slot idea was proposed by nachobenedetto in
 [PR #9](https://github.com/Proxify/rsdw-betterspellwheel/pull/9). This implementation
 uses the existing game-thread input and native casting lifecycle independently.
+
+The double-tap recast was requested by controller players on the project Discord
+(thread "Controller - BSW").
 
 ## Compatibility
 
