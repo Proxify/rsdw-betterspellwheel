@@ -97,7 +97,11 @@ function LoopInGameThreadWithDelay(_,fn)callback=fn;return 1 end
 function CancelDelayedAction()end
 local catalogueScans=0
 local shortcutTestConfig,shortcutSample=nil,{}
+local recastTestConfig
 function dofile(path)
+ if path:find('/recast.lua',1,true) and recastTestConfig then
+  local R=realDofile(path);R.load=function()return R.parse(recastTestConfig)end;return R
+ end
  if path:find('/shortcuts.lua',1,true) and shortcutTestConfig then
   local S=realDofile(path);S.load=function()return S.parse(shortcutTestConfig)end;return S
  end
@@ -441,6 +445,39 @@ shortcutSample={};ticks();shortcutSample={slot1=true};ticks();assert(calls==befo
 shortcutSample={};ticks();shortcutSample={slot2=true};ticks();assert(calls>before,'current slot resolves after reload');finish();sameSlots()
 mod.shutdown();shortcutTestConfig=nil;shortcutSample={};gameUnlocked=nil
 print('PASS: shortcut native cast/refusal/unlock, slots restored, held/menu/cursor guards, two-stage quick pick and fresh reload configuration')
+-- Double-tap recast through the real adapter and native casting handoff.
+recastTestConfig='DoubleTapRecast=true\nDoubleTapWindowMs=400'
+aim=false;instant=true;denied=false;book=0;record.cooldown=0;record.unlocked=true;usingPad=false
+padSample={};mod=realDofile(root..'/Scripts/main.lua');ticks(340)
+assert(mod.recast.last=='USD_Test','the previous generation passes on its last spell');mod.recast.last=nil
+local function nativeOpen()native=true;x,y=0,0;ticks(2);assert(mod.open)end
+local function tap(key)padSample={[key]=true};ticks();padSample={};ticks()end
+before=calls;nativeOpen();tap('toggle')
+assert(mod.open and calls==before and mod.message:find('Cast a spell first',1,true),'nothing cast yet: wheel stays open')
+keys[0x1B]();ticks()
+open();select();finish();sameSlots()
+before=calls;nativeOpen();padSample={open=true};ticks()
+assert(calls>before and not mod.open,'Q double tap recasts the last spell natively');padSample={};finish();sameSlots()
+before=calls;nativeOpen();tap('toggle');assert(calls>before and not mod.open,'Y / Triangle double tap recasts');finish();sameSlots()
+before=calls;nativeOpen();ticks(30);padSample={open=true};ticks()
+assert(calls==before and not mod.open,'a tap after the window closes the wheel');padSample={};ticks()
+before=calls;padSample={toggle=true};native=true;ticks(4);assert(mod.open and calls==before,'a button held through opening is not a tap')
+padSample={};ticks();keys[0x1B]();ticks()
+denied=true;before=calls;nativeOpen();tap('open')
+assert(mod.open and calls>before and mod.message,'native refusal keeps the wheel open with its reason');sameSlots()
+padSample={open=true};ticks();assert(not mod.open,'a third tap closes');padSample={};ticks();denied=false
+-- A development reload keeps the last spell.
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
+before=calls;nativeOpen();tap('open');assert(calls>before and not mod.open,'last spell survives reload');finish();sameSlots()
+-- A configured spell that is missing reports it; the default config keeps double tap OFF.
+recastTestConfig='DoubleTapRecast=true\nDoubleTapSpell=USD_Missing'
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
+before=calls;nativeOpen();tap('open');assert(mod.open and calls==before and mod.message:find('unavailable',1,true));keys[0x1B]();ticks()
+recastTestConfig=''
+mod=realDofile(root..'/Scripts/main.lua');ticks(340)
+before=calls;nativeOpen();padSample={open=true};ticks();assert(not mod.open and calls==before,'disabled: second tap closes as before')
+padSample={};ticks();mod.shutdown();recastTestConfig=nil
+print('PASS: double-tap recast: Q and Y within the window, late/held taps, refusal then third-tap close, reload keeps the spell, missing spell, default off')
 failView=true;mod=realDofile(root..'/Scripts/main.lua');native=true
 for _=1,300 do clock=clock+.02;callback() end
 assert(mod.disabled and native and not mod.open,'view failure must leave native wheel available')

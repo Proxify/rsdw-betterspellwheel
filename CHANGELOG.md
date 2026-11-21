@@ -1,3 +1,22 @@
+# Unreleased — Double-tap recast
+
+- Optional double-tap recast for controller and keyboard: tap the spell-wheel
+  button (Y / Triangle or Q) twice to cast the last spell again without choosing
+  it on the wheel. Requested by controller players for Windstep on agility courses.
+- `DoubleTapSpell` in `config.txt` selects `Last` (default) or a fixed spell ID,
+  for example `USD_Windstep`. `DoubleTapWindowMs` sets the time for the second
+  tap (default 350, limited to 150–1000).
+- Defaults off (`DoubleTapRecast=false`); existing configurations are preserved
+  on update, so add the options manually to opt in.
+- The recast uses the same native selection handoff as a wheel click. A refusal
+  keeps the wheel open with the game's reason; a third tap closes it. Only a
+  wheel opened by the game's own binding arms the double tap (not the emote
+  return or saved slot keys). No extra loop or HUD; input is read on the
+  existing tick while the wheel is open.
+- Verification: offline unit and adapter-simulation tests (`tests/recast_test.lua`,
+  `tests/runtime_test.lua`). Native controller and keyboard checks in the game
+  are still pending.
+
 # 0.4.9 — Earth enchantment artwork (2026-11-15)
 
 - Enchant Weapon: Earth uses its native game artwork instead of the generic

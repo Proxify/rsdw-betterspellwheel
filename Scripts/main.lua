@@ -2,6 +2,8 @@
 local source=debug.getinfo(1,'S').source:gsub('^@',''):gsub('\\','/')
 local folder=source:match('^(.*)/Scripts/[^/]+$')
 assert(folder,'BetterSpellWheel must run from its Scripts directory')
+-- The last accepted spell survives a development reload (stable spell ID only).
+local previousLastCast=_G.BetterSpellWheel and _G.BetterSpellWheel.recast and _G.BetterSpellWheel.recast.last
 if _G.BetterSpellWheel and _G.BetterSpellWheel.shutdown then _G.BetterSpellWheel.shutdown() end
 local M={version='0.4.9',open=false,folder=folder,disabled=false,queue={}}
 _G.BetterSpellWheel=M
@@ -74,6 +76,11 @@ for _,warning in ipairs(shortcutConfig.warnings) do log(warning) end
 M.shortcuts=shortcuts
 local hasSlotKeys=shortcutConfig.slots and next(shortcutConfig.keys)~=nil
 local hasShortcuts=shortcutConfig.quick or hasSlotKeys
+local recastModule=dofile(folder..'/Scripts/recast.lua')
+local recastConfig=recastModule.load(folder..'/config.txt')
+local recast=recastModule.new(recastConfig,previousLastCast)
+for _,warning in ipairs(recastConfig.warnings) do log(warning) end
+M.recast=recast
 -- Opt-in profiler (PerfLog=true in config.txt): once a second, logs the time the
 -- mod spent on the game thread (total, worst tick, per section), the frame time,
 -- object-scan calls and the Lua heap. Off by default: no cost when off.
@@ -102,6 +109,7 @@ local unlockRefreshAt={}
 local nativeWasOpen=false
 M.radial=nil
 local openWasDown=false
+local toggleWasDown=false -- Y / Triangle, for the double-tap recast
 local pointerX,pointerY
 -- Gamepad X / Square while the wheel is open hands over to the game's emote wheel.
 local emoteWasDown=false
@@ -241,7 +249,7 @@ function M.close()
   end
   if E.valid(pc) then controls(false) end
  end
- M.queue={};M.message=nil;M.notice=nil;shortcuts.reset()
+ M.queue={};M.message=nil;M.notice=nil;shortcuts.reset();recast.disarm()
 end
 -- FindFirstOf walks the whole UObject array (hundreds of thousands of objects).
 -- It runs only to find the first controller, and every BIND_RETRY seconds while
@@ -620,7 +628,9 @@ local function open(direct)
  shortcuts.reset(hasShortcuts and device.shortcuts(false) or nil)
  pad=controller.new()
  local usingPad,style=device.device();state.input=usingPad and 'controller' or 'mouse';state.padStyle=cfg.ControllerPrompts~='auto' and cfg.ControllerPrompts or style
- controller.prime(pad,device.sample());state.controllerStage=pad.stage
+ local primeSample=device.sample()
+ controller.prime(pad,primeSample);state.controllerStage=pad.stage
+ toggleWasDown=primeSample.toggle==true;recast.disarm()
  if perf then mark('openSetup') end
  -- Build the custom view after the native wheel has been suppressed.
  if not ui or not E.valid(ui.root) then ui=view.new(pc,folder,icons,shortcutConfig.quick) end
@@ -702,6 +712,7 @@ local function selectSpell()
   -- The game accepted a spell our timer said was on cooldown: the timer was
   -- wrong (e.g. a no-cooldown mod). Drop it and stop estimating this spell.
   if estimate>.5 then cooldowns:waive(spell) end
+  recast.remember(spell.id)
   -- The native selection has been accepted. Close only the custom wheel and
   -- return mouse/input ownership to gameplay; keep `pending` alive so targeted
   -- spells can finish/cancel and cooldown handling can still run in tick().
@@ -751,6 +762,23 @@ local function castShortcut(slot)
   selectSpell()
  else M.message='Assigned spell is unavailable. Open the wheel and assign another spell.' end
  if M.open then ui.show();controls(true) end
+end
+-- Double-tap recast: the second tap of the open button selects the last
+-- accepted spell (or DoubleTapSpell) through the same native handoff as a
+-- wheel click. A refusal keeps the wheel open with the game's reason.
+local function castAgain()
+ local id=recast.target()
+ -- Controller players keep controller prompts: on a refusal, A retries the
+ -- spell and B goes back. Mouse/keyboard hold the selection until moved.
+ if state.input=='controller' then pad.stage='spells';state.controllerStage='spells' else state.input='keyboard' end
+ M.back=false;M.notice=nil
+ if not id then M.message='Cast a spell first; double-tap then casts it again.';return end
+ local gi,si=shortcuts.find(state.groups,id)
+ if not gi then M.message='Double-tap spell is unavailable. Check DoubleTapSpell in config.txt.';return end
+ model.setGroup(state,gi);state.spell=si;state.zone='spell'
+ state.page=math.floor((si-1)/model.geometry.maxBranch)+1
+ M.hover=state.groups[gi].spells[si].id
+ selectSpell()
 end
 local ESCAPE,RIGHT_MOUSE -- key structs, made once on first use
 local NO_ACTIONS={}
@@ -917,6 +945,8 @@ local function tick()
    nativeWasOpen=true
    if perf then mark('closed') end
    open()
+   -- Only the game's own binding arms the double tap (not emote or slot keys).
+   if M.open then recast.arm(elapsed) end
    if perf then mark('openWheel') end
    return
   elseif not isNativeOpen and not M.open then
@@ -936,6 +966,15 @@ local function tick()
  ui.resize()
  local x,y=ui.pointer()
  local sample=device.sample()
+ -- A second fresh tap of the open button inside the window recasts instead
+ -- of closing. Checked before the Q / Y close handling below.
+ local tapFresh=(sample.open and not openWasDown) or (sample.toggle and not toggleWasDown)
+ toggleWasDown=sample.toggle==true
+ if recast.tapped(elapsed,tapFresh) then
+  openWasDown=sample.open==true;controller.prime(pad,sample)
+  castAgain()
+  if not M.open then return end
+ end
  -- Q is the native keyboard toggle. Once the open press has been released,
  -- a fresh Q press closes the replacement without depending on IsOpen(pc,21).
  if sample.open and not openWasDown then openWasDown=true;M.close();return end

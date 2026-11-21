@@ -47,3 +47,14 @@ Slot5Spell=None
 Slot6Spell=None
 Slot7Spell=None
 Slot8Spell=None
+
+# Optional double-tap recast (handy on controller, e.g. Windstep on agility
+# courses). OFF on existing/missing configs. Restart after changing.
+# Tap your spell-wheel button twice (Y / Triangle or Q): the second tap casts
+# DoubleTapSpell through the normal native casting flow instead of closing.
+DoubleTapRecast=false
+# Time allowed for the second tap, in milliseconds (150-1000).
+DoubleTapWindowMs=350
+# Last = the spell you last cast with BetterSpellWheel. Or a spell ID to always
+# cast that spell, for example USD_Windstep.
+DoubleTapSpell=Last
